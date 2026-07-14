@@ -40,4 +40,5 @@ services:
 
 networks:
   nitip-net:
-    driver: bridge
+    external: true
+    name: nitip-core_nitip-net

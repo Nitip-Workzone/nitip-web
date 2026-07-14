@@ -67,9 +67,14 @@ export default defineNuxtConfig({
   future: {
     compatibilityVersion: 4,
   },
+  routeRules: {
+    '/api/v1/**': {
+      proxy: 'http://nitip-core:8000/api/v1/**'
+    }
+  },
   nitro: {
     devProxy: {
-      '/api/v1': {
+      '/api/v1/**': {
         target: process.env.API_BASE_URL || 'http://localhost:8000/api/v1',
         changeOrigin: true
       }
