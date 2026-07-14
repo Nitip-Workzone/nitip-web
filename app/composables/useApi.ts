@@ -30,6 +30,18 @@ export const useApi = () => {
                 body: options.body,
                 query: options.query,
                 headers,
+                onRequest({ request }) {
+                    if (import.meta.server) {
+                        const method = options.method || 'GET'
+                        console.log(`[NITIP-WEB→API] ${method} ${request}`)
+                    }
+                },
+                onResponse({ request, response }) {
+                    if (import.meta.server) {
+                        const method = options.method || 'GET'
+                        console.log(`[NITIP-WEB→API] ${method} ${request} → ${response.status}`)
+                    }
+                },
                 async onResponseError({ request, response }) {
                     const isLoginRequest = request.toString().includes('/auth/login')
 
