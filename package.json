@@ -1,0 +1,48 @@
+{
+  "name": "nitip-web",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint . && yarn typecheck",
+    "lint:fix": "eslint . --fix && yarn typecheck",
+    "typecheck": "npx nuxi typecheck"
+  },
+  "dependencies": {
+    "@pinia/nuxt": "^0.11.3",
+    "@vueuse/core": "^14.2.1",
+    "leaflet": "^1.9.4",
+    "lucide-vue-next": "^0.577.0",
+    "nuxt": "^4.3.1",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.30",
+    "vue-router": "^4.6.4",
+    "vue-sonner": "^2.0.9"
+  },
+  "devDependencies": {
+    "@nuxt/eslint": "^1.15.2",
+    "@nuxt/eslint-config": "^1.15.2",
+    "@nuxtjs/tailwindcss": "^6.14.0",
+    "@types/leaflet": "^1.9.21",
+    "@types/node": "^25.4.0",
+    "@typescript-eslint/eslint-plugin": "^8.57.0",
+    "@typescript-eslint/parser": "^8.57.0",
+    "@vite-pwa/nuxt": "^1.1.1",
+    "@vue/compiler-sfc": "^3.5.30",
+    "@vueuse/nuxt": "^14.2.1",
+    "autoprefixer": "^10.4.27",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.8.0",
+    "postcss": "^8.5.8",
+    "prettier": "^3.8.1",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3",
+    "vite": "^6.0.0",
+    "vue-eslint-parser": "^10.4.0"
+  }
+}
