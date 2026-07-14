@@ -1,11 +1,8 @@
-node_modules
-.nuxt
-.output
 .git
-.gitignore
+.github
 *.md
 .env
 .env.example
-.prettierrc
-.eslintrc
-.github
+.output
+.nuxt
+node_modules
