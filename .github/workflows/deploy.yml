@@ -15,30 +15,21 @@ jobs:
 
       - name: Build Static Files via Docker
         run: |
-          # Build image (hanya untuk generate static files)
-          docker build -t nitip-web-builder .
+          docker build \
+            --build-arg NUXT_PUBLIC_NITIP_API_KEY="${{ secrets.NUXT_PUBLIC_NITIP_API_KEY }}" \
+            --build-arg NUXT_PUBLIC_NITIP_API_SECRET="${{ secrets.NUXT_PUBLIC_NITIP_API_SECRET }}" \
+            -t nitip-web-builder .
 
-          # Extract output dari container ke host
-          # Container temporary → copy .output/public/ → hapus container
           docker create --name nitip-web-extract nitip-web-builder
           docker cp nitip-web-extract:/app/.output/public /tmp/nitip-web-build
           docker rm nitip-web-extract
 
       - name: Deploy to Nginx Directory
         run: |
-          # Clear old files
           sudo rm -rf /var/www/web.nihtip.com/*
-
-          # Copy new build
           sudo cp -r /tmp/nitip-web-build/* /var/www/web.nihtip.com/
-
-          # Set proper permissions
           sudo chown -R www-data:www-data /var/www/web.nihtip.com/
-
-          # Cleanup temp
           rm -rf /tmp/nitip-web-build
-
-          # Reload nginx (no downtime)
           sudo nginx -t && sudo systemctl reload nginx
 
       - name: Cleanup Docker
