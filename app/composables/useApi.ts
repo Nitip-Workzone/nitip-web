@@ -31,15 +31,17 @@ export const useApi = () => {
                 query: options.query,
                 headers,
                 onRequest({ request }) {
-                    if (import.meta.server) {
+                    if (process.server) {
                         const method = options.method || 'GET'
-                        console.log(`[NITIP-WEB→API] ${method} ${request}`)
+                        // eslint-disable-next-line no-console
+                        console.log(`[NITIP-WEB->API] ${method} ${request}`)
                     }
                 },
                 onResponse({ request, response }) {
-                    if (import.meta.server) {
+                    if (process.server) {
                         const method = options.method || 'GET'
-                        console.log(`[NITIP-WEB→API] ${method} ${request} → ${response.status}`)
+                        // eslint-disable-next-line no-console
+                        console.log(`[NITIP-WEB->API] ${method} ${request} -> ${response.status}`)
                     }
                 },
                 async onResponseError({ request, response }) {
