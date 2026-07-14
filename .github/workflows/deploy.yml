@@ -13,35 +13,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Build Static Files via Docker
+      - name: Build New Docker Image
         run: |
-          docker build \
-            --build-arg NUXT_PUBLIC_NITIP_API_KEY="${{ secrets.NUXT_PUBLIC_NITIP_API_KEY }}" \
-            --build-arg NUXT_PUBLIC_NITIP_API_SECRET="${{ secrets.NUXT_PUBLIC_NITIP_API_SECRET }}" \
-            -t nitip-web-builder .
+          docker compose build app
 
-          docker create --name nitip-web-extract nitip-web-builder
-          docker cp nitip-web-extract:/app/.output/public /tmp/nitip-web-build
-          docker rm nitip-web-extract
-
-      - name: Deploy to Nginx Directory
+      - name: Restart Container
         run: |
-          rm -rf /var/www/web.nihtip.com/*
-          cp -r /tmp/nitip-web-build/* /var/www/web.nihtip.com/
-          rm -rf /tmp/nitip-web-build
-          sudo nginx -t && sudo systemctl reload nginx
+          docker compose up -d
 
-      - name: Cleanup Docker
+      - name: Cleanup Old Images
         run: |
-          docker image rm nitip-web-builder 2>/dev/null || true
           docker image prune -f
-
-      - name: Verify Deployment
-        run: |
-          sleep 2
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://web.nihtip.com/ || echo "000")
-          if [ "$HTTP_CODE" = "200" ]; then
-            echo "✅ Deployment successful - HTTP $HTTP_CODE"
-          else
-            echo "⚠️ Got HTTP $HTTP_CODE (check DNS/SSL if needed)"
-          fi

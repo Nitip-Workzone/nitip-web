@@ -1,0 +1,41 @@
+services:
+  app:
+    networks:
+      - nitip-net
+    build:
+      context: .
+      args:
+        - NUXT_PUBLIC_NITIP_API_KEY=${NUXT_PUBLIC_NITIP_API_KEY}
+        - NUXT_PUBLIC_NITIP_API_SECRET=${NUXT_PUBLIC_NITIP_API_SECRET}
+    container_name: nitip-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3002:80"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 64M
+        reservations:
+          cpus: "0.02"
+          memory: 16M
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "logging_job=nitip-web"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  nitip-net:
+    driver: bridge
