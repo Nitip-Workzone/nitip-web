@@ -14,21 +14,15 @@ const featureChips = [
 
 <template>
   <div class="min-h-[100dvh] h-[100dvh] bg-background flex flex-col overflow-hidden max-w-md mx-auto border-x border-border/40 shadow-sm">
-    <!-- Top Logo Bar -->
-    <header class="px-6 pt-6 shrink-0 flex justify-center">
-      <CommonAppLogo :size="16" :font-size="18" />
-    </header>
-
     <!-- All content centered together -->
     <main class="flex-1 flex flex-col items-center justify-center px-6">
       <div class="w-full text-center space-y-6">
-        <!-- Illustration -->
-        <div class="flex items-end justify-center h-[24vh] pb-2">
+        <!-- Logo Utama -->
+        <div class="flex items-center justify-center h-[24vh] pb-2">
           <img
-            src="/welcome_illustration.png"
-            alt="Kirim & Titip Barang"
-            class="max-h-[26vh] w-auto object-contain"
-            @error="($event.target as HTMLImageElement).style.display = 'none'"
+            src="/welcome_logo.png"
+            alt="Nihtip Logo"
+            class="max-h-[24vh] w-auto object-contain"
           >
         </div>
 
@@ -57,14 +51,8 @@ const featureChips = [
         <!-- CTA Buttons -->
         <div class="pt-4 space-y-3 max-w-xs mx-auto w-full">
           <NuxtLink
-            to="/register"
-            class="w-full h-12 bg-primary text-white font-bold text-sm rounded-xl active:scale-[0.98] transition-transform flex items-center justify-center shadow-md shadow-primary/10"
-          >
-            Mulai Sekarang
-          </NuxtLink>
-          <NuxtLink
             to="/login"
-            class="w-full h-12 bg-card text-primary font-bold text-sm rounded-xl border border-primary/20 active:scale-[0.98] transition-transform flex items-center justify-center hover:bg-accent/40"
+            class="w-full h-12 bg-primary text-white font-bold text-sm rounded-xl active:scale-[0.98] transition-transform flex items-center justify-center shadow-md shadow-primary/10"
           >
             Masuk ke Akun
           </NuxtLink>

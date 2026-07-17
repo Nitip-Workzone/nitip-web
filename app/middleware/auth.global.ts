@@ -1,6 +1,19 @@
 export default defineNuxtRouteMiddleware(async (to) => {
     const authStore = useAuthStore()
 
+    // === CRITICAL: Baca cookie langsung di middleware untuk mengatasi SSR hydration gap ===
+    // Plugin mungkin belum dieksekusi atau store belum tersinkronisasi saat middleware berjalan.
+    // Membaca cookie di sini memastikan token selalu tersedia di setiap request SSR.
+    if (!authStore.token) {
+        const tokenCookie = useCookie('auth_token')
+        console.log('[Auth Middleware] Reading auth_token cookie:', tokenCookie.value ? 'EXISTS' : 'EMPTY')
+        if (tokenCookie.value) {
+            authStore.token = tokenCookie.value
+        }
+    } else {
+        console.log('[Auth Middleware] authStore.token already exists.')
+    }
+
     // Define public routes (including map pages used by Flutter WebView — client-only, no user auth needed)
     const publicRoutes = ['/', '/login', '/register']
     const isMapRoute = to.path.startsWith('/map')
@@ -19,7 +32,21 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
     // Fetch profile if authenticated but user data not loaded
     if (authStore.isAuthenticated && !authStore.user) {
-        await authStore.fetchProfile()
+        try {
+            console.log('[Auth Middleware] Fetching profile...')
+            await authStore.fetchProfile()
+            console.log('[Auth Middleware] Profile fetched successfully:', authStore.user?.email)
+        } catch (err) {
+            console.error('[Auth Middleware] fetchProfile failed:', err)
+            // Jika fetch profile gagal (misal token expired), bersihkan state dan redirect ke login
+            authStore.token = null
+            const tokenCookie = useCookie('auth_token')
+            tokenCookie.value = null
+            if (!isPublic) {
+                console.log('[Auth Middleware] Redirecting to login due to fetchProfile failure.')
+                return navigateTo('/login')
+            }
+        }
     }
 
     // Role-based access control

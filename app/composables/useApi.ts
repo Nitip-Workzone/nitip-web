@@ -30,26 +30,24 @@ export const useApi = () => {
                 body: options.body,
                 query: options.query,
                 headers,
-                onRequest({ request }) {
-                    if (process.server) {
-                        const method = options.method || 'GET'
-                        // eslint-disable-next-line no-console
-                        console.log(`[NITIP-WEB->API] ${method} ${request}`)
-                    }
+                onRequest({ request, options }) {
+                    console.log(`[API Request] ${options.method || 'GET'} ${request.toString()}`, 'Headers:', options.headers)
                 },
                 onResponse({ request, response }) {
-                    if (process.server) {
-                        const method = options.method || 'GET'
-                        // eslint-disable-next-line no-console
-                        console.log(`[NITIP-WEB->API] ${method} ${request} -> ${response.status}`)
-                    }
+                    console.log(`[API Response] ${request.toString()} - Status: ${response.status}`)
                 },
                 async onResponseError({ request, response }) {
+                    console.error(`[API Error] ${request.toString()} - Status: ${response.status}`, response._data)
                     const isLoginRequest = request.toString().includes('/auth/login')
 
                     if (response.status === 401) {
+                        console.error('[API Error] 401 Unauthorized detected. Logging out...')
                         if (!isLoginRequest) {
-                            authStore.logout()
+                            if (import.meta.client) {
+                                authStore.logout()
+                            } else {
+                                authStore.token = null
+                            }
                         } else {
                             const errorStore = useErrorStore()
                             const serverMessage = (response._data as { message?: string })?.message

@@ -11,10 +11,10 @@ const iconMap = {
 }
 
 const colorMap = {
-  success: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-  error: 'bg-destructive/10 border-destructive/20 text-destructive',
-  info: 'bg-primary/10 border-primary/20 text-primary',
-  warning: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+  success: 'bg-card border-emerald-500/30 text-foreground shadow-lg',
+  error: 'bg-card border-destructive/30 text-foreground shadow-lg',
+  info: 'bg-card border-primary/30 text-foreground shadow-lg',
+  warning: 'bg-card border-amber-500/30 text-foreground shadow-lg',
 }
 
 const iconColorMap = {

@@ -74,8 +74,8 @@ watch(() => route.path, () => {
       <div class="flex flex-col h-full">
         <div class="flex items-center h-16 px-4 border-b border-border/50">
           <NuxtLink to="/admin" class="flex items-center gap-2 overflow-hidden group">
-            <img src="/nitip-mini.png" alt="Nitip" class="w-12 h-12 object-contain transition-transform duration-200 group-hover:scale-110 flex-shrink-0" >
-            <span v-if="isOpen || isMobile" class="font-bold text-lg tracking-tight truncate">Nitip Admin</span>
+            <img src="/logo.webp" alt="Nihtip" class="w-12 h-12 object-contain transition-transform duration-200 group-hover:scale-110 flex-shrink-0" >
+            <span v-if="isOpen || isMobile" class="font-bold text-lg tracking-tight truncate">Nihtip Admin</span>
           </NuxtLink>
           <button class="lg:hidden p-1 rounded-md hover:bg-accent" @click="toggle">
             <X class="w-5 h-5" />

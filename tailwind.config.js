@@ -51,8 +51,8 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        'nitip-sky': "#00A8E8",
-        'nitip-navy': "#1A1A40",
+        'nitip-sky': "#00c0c0",
+        'nitip-navy': "#052066",
         'nitip-surface': "#FAFAFA",
       },
       borderRadius: {

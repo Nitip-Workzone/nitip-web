@@ -17,13 +17,13 @@ export default defineNuxtConfig({
   },
   app: {
     head: {
-      title: 'Nitip - Kirim & Titip Barang',
+      title: 'Nihtip - Kirim & Titip Barang',
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { charset: 'utf-8' }
       ],
       link: [
-        { rel: 'icon', type: 'image/png', href: '/nitip-mini.png' },
+        { rel: 'icon', type: 'image/png', href: '/favicon.png' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap' }
@@ -33,10 +33,10 @@ export default defineNuxtConfig({
   pwa: {
     registerType: 'autoUpdate',
     manifest: {
-      name: 'Nitip - Kirim & Titip Barang',
-      short_name: 'Nitip',
-      description: 'Kirim & Titip barang lebih mudah dengan Nitip',
-      theme_color: '#1E3A5F',
+      name: 'Nihtip - Kirim & Titip Barang',
+      short_name: 'Nihtip',
+      description: 'Kirim & Titip barang lebih mudah dengan Nihtip',
+      theme_color: '#0062cc',
       background_color: '#ffffff',
       display: 'standalone',
       icons: [
@@ -69,13 +69,27 @@ export default defineNuxtConfig({
   },
   routeRules: {
     '/api/v1/**': {
-      proxy: `${process.env.API_BASE_URL || 'http://nitip-core:8000'}/api/v1/**`
+      proxy: `${process.env.API_BASE_URL || 'http://localhost:8000'}/api/v1/**`
+    },
+    '/storage/**': {
+      proxy: `${process.env.API_BASE_URL || 'http://localhost:8000'}/storage/**`
+    },
+    '/uploads/**': {
+      proxy: `${process.env.API_BASE_URL || 'http://localhost:8000'}/uploads/**`
     }
   },
   nitro: {
     devProxy: {
       '/api/v1/**': {
         target: `${process.env.API_BASE_URL || 'http://localhost:8000'}/api/v1`,
+        changeOrigin: true
+      },
+      '/storage/**': {
+        target: `${process.env.API_BASE_URL || 'http://localhost:8000'}/storage`,
+        changeOrigin: true
+      },
+      '/uploads/**': {
+        target: `${process.env.API_BASE_URL || 'http://localhost:8000'}/uploads`,
         changeOrigin: true
       }
     }

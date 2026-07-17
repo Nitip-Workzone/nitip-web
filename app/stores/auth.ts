@@ -16,7 +16,7 @@ interface User {
 export const useAuthStore = defineStore('auth', {
     state: () => ({
         user: null as User | null,
-        token: typeof window !== 'undefined' ? localStorage.getItem('token') : null as string | null,
+        token: null as string | null,
         loading: false,
     }),
 
@@ -33,10 +33,13 @@ export const useAuthStore = defineStore('auth', {
         setToken(token: string | null) {
             this.token = token
             if (typeof window !== 'undefined') {
+                // Client-side: Gunakan document.cookie secara langsung karena useCookie 
+                // akan gagal jika dipanggil di luar konteks setup (misal setelah await)
                 if (token) {
-                    localStorage.setItem('token', token)
+                    const maxAge = 60 * 60 * 24 * 7 // 7 hari
+                    document.cookie = `auth_token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`
                 } else {
-                    localStorage.removeItem('token')
+                    document.cookie = `auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
                 }
             }
         },
@@ -126,6 +129,7 @@ export const useAuthStore = defineStore('auth', {
                 }
             } catch (error) {
                 console.error('Fetch profile failed:', error)
+                throw error // Rethrow agar middleware tahu kalau request gagal
             }
         },
         async setupPin(pin: string) {
@@ -214,7 +218,9 @@ export const useAuthStore = defineStore('auth', {
         logout() {
             this.setUser(null)
             this.setToken(null)
-            navigateTo('/login')
+            if (import.meta.client) {
+                navigateTo('/login')
+            }
         },
     },
 })

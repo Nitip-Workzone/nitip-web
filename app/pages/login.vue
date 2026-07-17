@@ -36,14 +36,14 @@ const handleLogin = async () => {
     <!-- Background Decorator -->
     <div
       class="absolute top-0 left-0 right-0 bg-primary"
-      style="height: 40%; clip-path: polygon(0 0, 100% 0, 100% 75%, 0 100%);"
+      style="height: 48%; clip-path: polygon(0 0, 100% 0, 100% 80%, 0 100%);"
     />
 
     <!-- Content -->
-    <div class="relative z-10 w-full max-w-md space-y-6">
-      <div class="text-center space-y-2 text-white">
-        <CommonAppLogo :size="16" :font-size="20" class="justify-center" :dark-mode="true" />
-        <h1 class="text-2xl font-bold tracking-tight mt-3">Masuk</h1>
+    <div class="relative z-10 w-full max-w-md space-y-5 -mt-6">
+      <div class="text-center space-y-1 text-white">
+        <CommonAppLogo :size="48" :font-size="20" class="justify-center" :dark-mode="true" :show-text="false" />
+        <h1 class="text-2xl font-bold tracking-tight mt-1">Masuk</h1>
         <p class="text-white/70 text-sm">Silakan masuk untuk melanjutkan</p>
       </div>
 
@@ -100,14 +100,6 @@ const handleLogin = async () => {
           >
             Masuk
           </UiButton>
-
-          <!-- Register Link -->
-          <div class="text-center pt-2">
-            <span class="text-xs text-muted-foreground">Belum punya akun? </span>
-            <NuxtLink to="/register" class="text-xs text-primary font-bold hover:underline">
-              Daftar
-            </NuxtLink>
-          </div>
         </form>
       </div>
     </div>

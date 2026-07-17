@@ -200,6 +200,28 @@ function formatWeight(w: number) {
   if (!w || w <= 0) return null
   return `${w} kg`
 }
+
+function getImageUrl(url: string | undefined) {
+  if (!url) return ''
+  // Case 1: URL langsung dari backend dengan host localhost/docker (hardcoded di storage.go)
+  // Contoh: http://localhost:8000/uploads/receipts/uuid.jpg
+  if (url.startsWith('http://localhost:8000') || url.startsWith('http://nitip-core:8000')) {
+    // Ambil hanya path-nya (/uploads/...) dan akses via Nuxt proxy
+    const relativePath = url.replace(/^http:\/\/[^/]+/, '')
+    return relativePath // Nuxt proxy /uploads/** akan meneruskan ke backend
+  }
+  // Case 2: Path relatif yang dimulai dengan /storage atau /uploads
+  if (url.startsWith('/storage') || url.startsWith('storage') || url.startsWith('/uploads') || url.startsWith('uploads')) {
+    const cleanPath = url.startsWith('/') ? url : `/${url}`
+    return cleanPath
+  }
+  // Case 3: URL eksternal (Firebase signed URL, Minio, dll) — langsung gunakan
+  return url
+}
+
+function openImage(url: string) {
+  window.open(getImageUrl(url), '_blank')
+}
 </script>
 
 <template>
@@ -279,12 +301,13 @@ function formatWeight(w: number) {
         <h3 class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Status Perjalanan</h3>
         
         <div class="flex items-center justify-between relative px-2 pt-2 pb-1">
-          <!-- Stepper line -->
-          <div class="absolute left-10 right-10 top-[26px] h-[2.5px] bg-slate-100 z-0" />
-          <div 
-            class="absolute left-10 top-[26px] h-[2.5px] bg-emerald-500 transition-all duration-500 z-0" 
-            :style="{ width: getProgressWidth(order) }"
-          />
+          <!-- Stepper line container -->
+          <div class="absolute left-10 right-10 top-[26px] h-[2.5px] bg-slate-100 z-0 overflow-hidden rounded-full">
+            <div 
+              class="h-full bg-emerald-500 transition-all duration-500" 
+              :style="{ width: getProgressWidth(order) }"
+            />
+          </div>
 
           <!-- Step Nodes -->
           <div v-for="(step, idx) in getSteps(order)" :key="idx" class="flex flex-col items-center gap-1.5 relative z-10 w-16">
@@ -396,17 +419,37 @@ function formatWeight(w: number) {
         </div>
       </div>
 
+      <!-- Proof Photos Card -->
+      <div v-if="order.receipt_image_url || order.delivery_image_url" class="bg-white border border-border/30 rounded-3xl p-5 shadow-sm space-y-4">
+        <h3 class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Foto Bukti Pesanan</h3>
+        <div class="grid grid-cols-2 gap-4">
+          <div v-if="order.receipt_image_url" class="space-y-1.5">
+            <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Struk Belanja</p>
+            <div class="relative aspect-square rounded-2xl overflow-hidden border border-slate-100 bg-slate-50 group cursor-pointer" @click="openImage(order.receipt_image_url)">
+              <img :src="getImageUrl(order.receipt_image_url)" alt="Struk Belanja" class="w-full h-full object-cover hover:scale-105 transition-transform duration-200">
+            </div>
+          </div>
+          <div v-if="order.delivery_image_url" class="space-y-1.5">
+            <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Foto Pengantaran</p>
+            <div class="relative aspect-square rounded-2xl overflow-hidden border border-slate-100 bg-slate-50 group cursor-pointer" @click="openImage(order.delivery_image_url)">
+              <img :src="getImageUrl(order.delivery_image_url)" alt="Foto Pengantaran" class="w-full h-full object-cover hover:scale-105 transition-transform duration-200">
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Payment details -->
       <div class="bg-white border border-border/30 rounded-3xl p-5 shadow-sm space-y-3">
         <div class="flex items-center justify-between mb-1">
           <h3 class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Rincian Pembayaran</h3>
-          <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-            {{ order.payment_status }}
-          </span>
-        </div>
-        <div class="flex justify-between text-xs">
-          <span class="text-muted-foreground">Metode Pembayaran</span>
-          <span class="font-bold text-foreground uppercase text-[10px] bg-slate-100 px-2 py-0.5 rounded">{{ order.payment_method }}</span>
+          <div class="flex gap-1.5">
+            <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-primary/5 text-primary border border-primary/10">
+              {{ order.payment_method }}
+            </span>
+            <span v-if="order.payment_status !== order.payment_method" class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+              {{ order.payment_status }}
+            </span>
+          </div>
         </div>
         <div v-if="order.service_category === 'beli'" class="flex justify-between text-xs">
           <span class="text-muted-foreground">Harga Barang</span>
@@ -420,7 +463,7 @@ function formatWeight(w: number) {
           <span class="text-muted-foreground">Biaya Layanan</span>
           <span class="font-medium text-foreground">{{ formatCurrency(order.service_fee) }}</span>
         </div>
-        <div v-if="order.checking_fee" class="flex justify-between text-xs">
+        <div v-if="order.checking_fee && order.status !== 'completed'" class="flex justify-between text-xs">
           <span class="text-muted-foreground">Biaya Pengecekan</span>
           <span class="font-medium text-foreground">{{ formatCurrency(order.checking_fee) }}</span>
         </div>
@@ -593,3 +636,10 @@ function formatWeight(w: number) {
     </template>
   </div>
 </template>
+
+<style>
+html, body {
+  overflow-y: auto !important;
+  height: auto !important;
+}
+</style>
