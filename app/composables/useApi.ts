@@ -12,8 +12,9 @@ export const useApi = () => {
     const config = useRuntimeConfig()
     // Jika NUXT_PUBLIC_NITIP_API_URL diset (production), browser menembak langsung ke API domain
     // Jika kosong (development), gunakan proxy lokal /api/v1 via Nitro
-    const baseURL = config.public.nitipApiUrl 
-        ? `${config.public.nitipApiUrl}/api/v1` 
+    const rawApiUrl = (config.public.nitipApiUrl as string || '').replace(/\/$/, '')
+    const baseURL = rawApiUrl 
+        ? (rawApiUrl.endsWith('/api/v1') ? rawApiUrl : `${rawApiUrl}/api/v1`)
         : '/api/v1'
 
     return {
