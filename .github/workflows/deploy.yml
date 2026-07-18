@@ -23,7 +23,7 @@ jobs:
 
       - name: Restart Container
         run: |
-          docker compose up -d
+          docker compose up -d --build
 
       - name: Cleanup Old Images
         run: |

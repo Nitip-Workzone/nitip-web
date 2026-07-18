@@ -51,7 +51,10 @@ export const useAuthStore = defineStore('auth', {
                 const grantToken = await getGrantToken()
 
                 // Step 2: Login with grant token
-                const baseURL = '/api/v1'
+                const config = useRuntimeConfig()
+                const baseURL = config.public.nitipApiUrl 
+                    ? `${config.public.nitipApiUrl}/api/v1` 
+                    : '/api/v1'
                 const res = await $fetch<{ data: { token?: string, require_totp?: boolean } }>(
                     `${baseURL}/auth/login`,
                     {
