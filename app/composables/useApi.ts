@@ -9,7 +9,10 @@ interface ApiOptions {
 
 export const useApi = () => {
     const authStore = useAuthStore()
-    const baseURL = '/api/v1'
+    const config = useRuntimeConfig()
+    const baseURL = config.public.nitipApiBaseUrl 
+        ? `${config.public.nitipApiBaseUrl}/api/v1` 
+        : '/api/v1'
 
     return {
         async request<T>(path: string, options: ApiOptions = {}) {

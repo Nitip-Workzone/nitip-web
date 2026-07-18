@@ -54,7 +54,9 @@ export const useAuthGrant = () => {
     const payload = `${timestamp}.${bodyHash}`
     const signature = await hmacSHA256(payload, apiSecret)
 
-    const baseURL = '/api/v1'
+    const baseURL = config.public.nitipApiBaseUrl 
+      ? `${config.public.nitipApiBaseUrl}/api/v1` 
+      : '/api/v1'
     const res = await $fetch<{ data: { grant_token: string; expires_at: string } }>(
       `${baseURL}/auth/grant`,
       {
