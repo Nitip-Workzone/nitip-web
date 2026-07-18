@@ -10,8 +10,10 @@ interface ApiOptions {
 export const useApi = () => {
     const authStore = useAuthStore()
     const config = useRuntimeConfig()
-    const baseURL = config.public.nitipApiBaseUrl 
-        ? `${config.public.nitipApiBaseUrl}/api/v1` 
+    // Jika NUXT_PUBLIC_NITIP_API_URL diset (production), browser menembak langsung ke API domain
+    // Jika kosong (development), gunakan proxy lokal /api/v1 via Nitro
+    const baseURL = config.public.nitipApiUrl 
+        ? `${config.public.nitipApiUrl}/api/v1` 
         : '/api/v1'
 
     return {
