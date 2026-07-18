@@ -15,7 +15,7 @@ export default defineNuxtConfig({
       nitipApiSecret: process.env.NUXT_PUBLIC_NITIP_API_SECRET || '',
       // URL publik API untuk digunakan browser langsung (kosong = gunakan proxy lokal /api/v1)
       // Di production: set NUXT_PUBLIC_NITIP_API_URL=https://api.nihtip.com
-      nitipApiUrl: process.env.NUXT_PUBLIC_NITIP_API_URL || '',
+      nitipApiUrl: process.env.NUXT_PUBLIC_NITIP_API_URL || process.env.API_BASE_URL || '',
     },
   },
   app: {
