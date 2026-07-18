@@ -10,7 +10,7 @@ import {
   LogOut, 
   ShieldCheck,
   History,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useAuthStore } from '~/stores/auth'
 
 const authStore = useAuthStore()

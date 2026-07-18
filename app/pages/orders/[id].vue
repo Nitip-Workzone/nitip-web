@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, AlertCircle, AlertTriangle, ShieldAlert, Check, ShoppingBag, Truck, CheckCircle2, Package } from 'lucide-vue-next'
+import { ArrowLeft, AlertCircle, AlertTriangle, ShieldAlert, Check, ShoppingBag, Truck, CheckCircle2, Package } from '@lucide/vue'
 import { useUserOrdersStore, type UserOrder, type Review } from '~/stores/user-orders'
 import { useToastStore } from '~/stores/toast'
 

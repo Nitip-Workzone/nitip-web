@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Home, RefreshCw, Wrench, WifiOff, Clock, ServerCrash, Search } from 'lucide-vue-next'
+import { Home, RefreshCw, Wrench, WifiOff, Clock, ServerCrash, Search } from '@lucide/vue'
 
 const props = defineProps<{
   error: {

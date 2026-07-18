@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Home, ArrowLeft, Search } from 'lucide-vue-next'
+import { Home, ArrowLeft, Search } from '@lucide/vue'
 
 definePageMeta({
   layout: false,

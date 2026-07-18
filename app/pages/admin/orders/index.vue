@@ -7,7 +7,7 @@ import {
   RefreshCw,
   CheckCircle2,
   XCircle,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useOrdersStore, type AdminOrder } from '~/stores/orders'
 
 definePageMeta({

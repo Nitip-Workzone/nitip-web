@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, ArrowUpRight, ArrowDownLeft } from 'lucide-vue-next'
+import { ArrowLeft, ArrowUpRight, ArrowDownLeft } from '@lucide/vue'
 import { useUserWalletStore } from '~/stores/user-wallet'
 
 definePageMeta({

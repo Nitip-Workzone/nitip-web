@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Shield, ShieldOff, Star, ShieldAlert } from 'lucide-vue-next'
+import { Shield, ShieldOff, Star, ShieldAlert } from '@lucide/vue'
 import type { AdminUser } from '~/stores/users'
 
 const props = defineProps<{

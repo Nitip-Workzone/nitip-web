@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, ShoppingBag, CreditCard, ChevronRight, MapPin, Store } from 'lucide-vue-next'
+import { ArrowLeft, ShoppingBag, CreditCard, ChevronRight, MapPin, Store } from '@lucide/vue'
 import { useUserOrdersStore } from '~/stores/user-orders'
 import { useToastStore } from '~/stores/toast'
 import { useCurrencyInput } from '~/composables/useCurrencyInput'

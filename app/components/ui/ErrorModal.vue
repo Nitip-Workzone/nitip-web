@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlertCircle } from 'lucide-vue-next'
+import { AlertCircle } from '@lucide/vue'
 import { useErrorStore } from '~/stores/error'
 
 const errorStore = useErrorStore()

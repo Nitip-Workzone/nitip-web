@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Calendar, Clock, Truck, Plus, ChevronRight, HelpCircle } from 'lucide-vue-next'
+import { ArrowLeft, Calendar, Clock, Truck, Plus, ChevronRight, HelpCircle } from '@lucide/vue'
 
 definePageMeta({
   layout: 'user',

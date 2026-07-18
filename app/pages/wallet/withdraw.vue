@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Wallet, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-vue-next'
+import { ArrowLeft, Wallet, AlertCircle, ArrowRight, ShieldCheck } from '@lucide/vue'
 import { useUserWalletStore } from '~/stores/user-wallet'
 import { useToastStore } from '~/stores/toast'
 import { useCurrencyInput } from '~/composables/useCurrencyInput'

@@ -10,7 +10,7 @@ import {
   Banknote,
   TrendingUp,
   CalendarDays
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useWalletsStore } from '~/stores/wallets'
 
 definePageMeta({

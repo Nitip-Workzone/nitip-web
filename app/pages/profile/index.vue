@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LogOut, ChevronRight, Lock, ShieldCheck, Mail, Phone, UserCheck, KeySquare, HelpCircle } from 'lucide-vue-next'
+import { LogOut, ChevronRight, Lock, ShieldCheck, Mail, Phone, UserCheck, KeySquare, HelpCircle } from '@lucide/vue'
 import { useAuthStore } from '~/stores/auth'
 import { useToastStore } from '~/stores/toast'
 import { useUserOrdersStore } from '~/stores/user-orders'

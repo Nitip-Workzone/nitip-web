@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-export interface WalletTransaction {
+interface WalletTransaction {
     id: string
     wallet_id: string
     order_id?: string

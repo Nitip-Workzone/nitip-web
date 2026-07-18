@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, RefreshCw, ShoppingBag } from 'lucide-vue-next'
+import { ArrowLeft, RefreshCw, ShoppingBag } from '@lucide/vue'
 import { useUserOrdersStore } from '~/stores/user-orders'
 
 definePageMeta({

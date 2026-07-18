@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ShieldCheck, Lock, Zap } from 'lucide-vue-next'
+import { ShieldCheck, Lock, Zap } from '@lucide/vue'
 
 definePageMeta({
   layout: false,

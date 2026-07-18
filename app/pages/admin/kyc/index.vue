@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ShieldCheck, Eye, RefreshCw, X, Check } from 'lucide-vue-next'
+import { ShieldCheck, Eye, RefreshCw, X, Check } from '@lucide/vue'
 import { useKycStore, type KycSubmission } from '~/stores/kyc'
 import { useUsersStore } from '~/stores/users'
 import { useToast } from '~/stores/toast'

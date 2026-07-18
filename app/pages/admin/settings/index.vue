@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Settings, Save, RefreshCw, AlertCircle } from 'lucide-vue-next'
+import { Settings, Save, RefreshCw, AlertCircle } from '@lucide/vue'
 import { useConfigsStore } from '~/stores/configs'
 import { useToast } from '~/stores/toast'
 

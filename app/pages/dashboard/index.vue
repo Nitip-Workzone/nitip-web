@@ -3,7 +3,7 @@ import {
   ShoppingBag, HelpCircle, ArrowRight, Eye, EyeOff, Plus, ChevronRight,
   CheckCircle, Clock, XCircle, RotateCcw, History, Wallet,
   Truck, Package, BadgeCheck, ShoppingCart, Bell, MapPin, QrCode
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useAuthStore } from '~/stores/auth'
 import { useNotificationsStore } from '~/stores/notifications'
 import { useUserOrdersStore, type UserOrder } from '~/stores/user-orders'

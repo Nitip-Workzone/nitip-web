@@ -10,7 +10,7 @@ import {
   AlertTriangle,
   ExternalLink,
   History
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import type { AdminOrder } from '~/stores/orders'
 
 const props = defineProps<{

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { History, Eye, RefreshCw, ChevronLeft, ChevronRight, Filter } from 'lucide-vue-next'
+import { History, Eye, RefreshCw, ChevronLeft, ChevronRight, Filter } from '@lucide/vue'
 import { useAuditStore, type AuditLog } from '~/stores/audit'
 import { useUsersStore } from '~/stores/users'
 

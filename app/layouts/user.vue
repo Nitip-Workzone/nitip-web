@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Home, Package, User, Truck } from 'lucide-vue-next'
+import { Home, Package, User, Truck } from '@lucide/vue'
 import { useNotificationsStore } from '~/stores/notifications'
 
 const route = useRoute()

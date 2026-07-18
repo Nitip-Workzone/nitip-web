@@ -8,7 +8,7 @@ import {
   TrendingUp,
   Clock,
   Banknote
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useUsersStore } from '~/stores/users'
 import { useOrdersStore } from '~/stores/orders'
 import { useWalletsStore } from '~/stores/wallets'

@@ -8,6 +8,8 @@ on:
 jobs:
   deploy:
     runs-on: nitip-prod
+    env:
+      NODE_NO_WARNINGS: 1
 
     steps:
       - name: Checkout Code
@@ -41,6 +43,5 @@ jobs:
 
       - name: Deploy Static Files to Nginx Path
         run: |
-          mkdir -p /var/www/nitip-web
           rm -rf /var/www/nitip-web/*
           cp -r .output/public/* /var/www/nitip-web/

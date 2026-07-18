@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { X, Search, MapPin, LocateFixed, Loader2 } from 'lucide-vue-next'
+import { X, Search, MapPin, LocateFixed, Loader2 } from '@lucide/vue'
 
 const props = defineProps<{
   title: string

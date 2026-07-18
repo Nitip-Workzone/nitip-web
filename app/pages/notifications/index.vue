@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Check, ArrowLeft, Inbox, Wallet, Package, ArrowRight } from 'lucide-vue-next'
+import { Bell, Check, ArrowLeft, Inbox, Wallet, Package, ArrowRight } from '@lucide/vue'
 import { useNotificationsStore } from '~/stores/notifications'
 
 definePageMeta({

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Users, Search, ShieldCheck, ShieldX, ShieldAlert, Star, Eye, RefreshCw, Plus } from 'lucide-vue-next'
+import { Users, Search, ShieldCheck, ShieldX, ShieldAlert, Star, Eye, RefreshCw, Plus } from '@lucide/vue'
 import type { AdminUser } from '~/stores/users'
 
 definePageMeta({
