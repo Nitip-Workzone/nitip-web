@@ -69,32 +69,5 @@ export default defineNuxtConfig({
   },
   future: {
     compatibilityVersion: 4,
-  },
-  routeRules: {
-    '/api/v1/**': {
-      proxy: `${process.env.API_BASE_URL || 'http://localhost:8000'}/api/v1/**`
-    },
-    '/storage/**': {
-      proxy: `${process.env.API_BASE_URL || 'http://localhost:8000'}/storage/**`
-    },
-    '/uploads/**': {
-      proxy: `${process.env.API_BASE_URL || 'http://localhost:8000'}/uploads/**`
-    }
-  },
-  nitro: {
-    devProxy: {
-      '/api/v1/**': {
-        target: `${process.env.API_BASE_URL || 'http://localhost:8000'}/api/v1`,
-        changeOrigin: true
-      },
-      '/storage/**': {
-        target: `${process.env.API_BASE_URL || 'http://localhost:8000'}/storage`,
-        changeOrigin: true
-      },
-      '/uploads/**': {
-        target: `${process.env.API_BASE_URL || 'http://localhost:8000'}/uploads`,
-        changeOrigin: true
-      }
-    }
   }
 })
