@@ -1616,6 +1616,11 @@
   resolved "https://registry.npmjs.org/@kwsites/promise-deferred/-/promise-deferred-1.1.1.tgz"
   integrity sha512-GaHYm+c0O9MjZRu0ongGBRbinu8gVAMd2UZjji6jVmqKtZluZnptXGWhz1E8j8D2HJ3f/yMxKAUC0b+57wncIw==
 
+"@lucide/vue@^1.0.2":
+  version "1.25.0"
+  resolved "https://registry.yarnpkg.com/@lucide/vue/-/vue-1.25.0.tgz#758c98fd8e8a65bf72b0e67ff37e9f523afc4cee"
+  integrity sha512-hkEetV+v48ScIn3uwqwWQ66sI8foeP2q6OMI09GzLFH4SfvBlfe3JHYlMBdBCqFC7WRlhFsndyDn/awRKRc2OQ==
+
 "@mapbox/node-pre-gyp@^2.0.0":
   version "2.0.3"
   resolved "https://registry.npmjs.org/@mapbox/node-pre-gyp/-/node-pre-gyp-2.0.3.tgz"
@@ -6412,11 +6417,6 @@ lru-cache@^5.1.1:
   integrity sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==
   dependencies:
     yallist "^3.0.2"
-
-lucide-vue-next@^0.577.0:
-  version "0.577.0"
-  resolved "https://registry.npmjs.org/lucide-vue-next/-/lucide-vue-next-0.577.0.tgz"
-  integrity sha512-py05bAfv9SHVJqscbiOnjcnLlEmOffA58a+7XhZuFxrs6txe1E8VoR1ngWGTYO+9aVKABAz8l3ee3PqiQN9QPA==
 
 magic-regexp@^0.10.0:
   version "0.10.0"
