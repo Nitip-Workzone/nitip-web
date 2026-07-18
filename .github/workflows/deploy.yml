@@ -17,14 +17,27 @@ jobs:
         run: |
           cp ~/.secret/nitip-web-production.env .env
 
-      - name: Build New Docker Image
-        run: |
-          docker compose build app
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'yarn'
 
-      - name: Restart Container
+      - name: Install Dependencies
         run: |
-          docker compose up -d --build
+          yarn install --frozen-lockfile
 
-      - name: Cleanup Old Images
+      - name: Build Static Site
         run: |
-          docker image prune -f
+          yarn generate
+
+      - name: Stop and Cleanup Docker Web Container
+        run: |
+          docker compose down || true
+          docker image rm nitip-web-app || true
+
+      - name: Deploy Static Files to Nginx Path
+        run: |
+          mkdir -p /var/www/nitip-web
+          rm -rf /var/www/nitip-web/*
+          cp -r .output/public/* /var/www/nitip-web/
