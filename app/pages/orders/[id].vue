@@ -19,6 +19,7 @@ const loading = ref(true)
 // QRIS Countdown and Polling State
 const timeLeft = ref('15:00')
 const isExpired = ref(false)
+const checkingPayment = ref(false)
 let countdownInterval: any = null
 let pollInterval: any = null
 
@@ -174,6 +175,22 @@ async function handleRefreshQRIS() {
   } else {
     toastStore.add('Gagal memperbarui kode QRIS. Silakan coba lagi.')
   }
+}
+
+async function handleCheckPayment() {
+  checkingPayment.value = true
+  const res = await ordersStore.fetchOrderDetail(orderId)
+  if (res) {
+    order.value = res
+    if (res.payment_status === 'escrow') {
+      if (pollInterval) clearInterval(pollInterval)
+      if (countdownInterval) clearInterval(countdownInterval)
+      toastStore.add('Pembayaran Berhasil! Pesanan Anda kini aktif.')
+    } else {
+      toastStore.add('Pembayaran belum diterima. Silakan selesaikan pembayaran Anda.')
+    }
+  }
+  checkingPayment.value = false
 }
 
 async function handleApproveAdjustment() {
@@ -358,12 +375,24 @@ function openImage(url: string) {
             </div>
           </div>
 
-          <div class="flex flex-col items-center gap-1.5 pt-1">
+          <div class="flex flex-col items-center gap-2 pt-2 border-t border-slate-100">
             <div class="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 text-[10px] font-bold rounded-full border border-amber-200 mx-auto">
               <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
               Menunggu Pembayaran
             </div>
-            <p class="text-[10px] text-muted-foreground italic">Halaman ini akan otomatis diperbarui setelah Anda membayar.</p>
+            
+            <button
+              :disabled="checkingPayment"
+              class="w-full max-w-[200px] bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-60"
+              @click="handleCheckPayment"
+            >
+              <span v-if="checkingPayment" class="w-3.5 h-3.5 border-2 border-slate-400 border-t-slate-800 rounded-full animate-spin" />
+              <svg v-else class="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18" />
+              </svg>
+              Cek Status Pembayaran
+            </button>
+            <p class="text-[10px] text-muted-foreground italic mt-0.5">Halaman ini akan otomatis diperbarui setelah Anda membayar.</p>
           </div>
         </div>
 
