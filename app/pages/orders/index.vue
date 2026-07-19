@@ -24,8 +24,11 @@ async function refreshOrders() {
   await ordersStore.fetchMyOrders()
 }
 
-function getStatusColor(status: string) {
-  switch (status) {
+function getStatusColor(order: any) {
+  if (order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris') {
+    return 'bg-amber-50 text-amber-700 border-amber-200'
+  }
+  switch (order.status) {
     case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200'
     case 'accepted': return 'bg-sky-50 text-sky-700 border-sky-200'
     case 'purchasing': return 'bg-purple-50 text-purple-700 border-purple-200'
@@ -37,8 +40,11 @@ function getStatusColor(status: string) {
   }
 }
 
-function getStatusLabel(status: string) {
-  switch (status) {
+function getStatusLabel(order: any) {
+  if (order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris') {
+    return 'Menunggu Pembayaran'
+  }
+  switch (order.status) {
     case 'pending': return 'Menunggu Runner'
     case 'accepted': return 'Diterima Runner'
     case 'purchasing': return 'Sedang Belanja'
@@ -46,7 +52,7 @@ function getStatusLabel(status: string) {
     case 'completed': return 'Selesai'
     case 'cancelled': return 'Dibatalkan'
     case 'disputed': return 'Sengketa'
-    default: return status
+    default: return order.status
   }
 }
 
@@ -147,10 +153,10 @@ function formatDate(dateStr: string) {
         <div class="flex items-center justify-between">
           <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">ID: #{{ order.id.slice(0, 8).toUpperCase() }}</span>
           <span 
-            :class="getStatusColor(order.status)" 
+            :class="getStatusColor(order)" 
             class="text-[10px] font-bold px-2 py-0.5 rounded-full border"
           >
-            {{ getStatusLabel(order.status) }}
+            {{ getStatusLabel(order) }}
           </span>
         </div>
 

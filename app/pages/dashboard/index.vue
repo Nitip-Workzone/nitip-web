@@ -74,8 +74,11 @@ onMounted(async () => {
 
 
 
-function getStatusColor(status: string) {
-  switch (status) {
+function getStatusColor(order: any) {
+  if (order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris') {
+    return { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', icon: 'text-amber-500' }
+  }
+  switch (order.status) {
     case 'pending': return { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', icon: 'text-amber-500' }
     case 'accepted': return { bg: 'bg-sky-50', text: 'text-sky-600', border: 'border-sky-200', icon: 'text-sky-500' }
     case 'purchasing': return { bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-200', icon: 'text-purple-500' }
@@ -86,15 +89,18 @@ function getStatusColor(status: string) {
   }
 }
 
-function getStatusLabel(status: string) {
-  switch (status) {
+function getStatusLabel(order: any) {
+  if (order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris') {
+    return 'Menunggu Pembayaran'
+  }
+  switch (order.status) {
     case 'pending': return 'Menunggu'
     case 'accepted': return 'Diterima'
     case 'purchasing': return 'Belanja'
     case 'delivering': return 'Antar'
     case 'completed': return 'Selesai'
     case 'cancelled': return 'Batal'
-    default: return status
+    default: return order.status
   }
 }
 
@@ -485,9 +491,9 @@ class="absolute -bottom-12 -left-12 w-36 h-36 rounded-full pointer-events-none"
                 <!-- Status icon circle -->
                 <div
                   class="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                  :class="getStatusColor(order.status).bg"
+                  :class="getStatusColor(order).bg"
                 >
-                  <component :is="getStatusIcon(order.status)" class="w-4 h-4" :class="getStatusColor(order.status).icon" />
+                  <component :is="getStatusIcon(order.status)" class="w-4 h-4" :class="getStatusColor(order).icon" />
                 </div>
 
                 <!-- Details -->
@@ -513,9 +519,9 @@ class="absolute -bottom-12 -left-12 w-36 h-36 rounded-full pointer-events-none"
                       </span>
                       <span
                         class="text-[9px] font-extrabold px-2 py-0.5 rounded-md border"
-                        :class="[getStatusColor(order.status).bg, getStatusColor(order.status).text, getStatusColor(order.status).border]"
+                        :class="[getStatusColor(order).bg, getStatusColor(order).text, getStatusColor(order).border]"
                       >
-                        {{ getStatusLabel(order.status) }}
+                        {{ getStatusLabel(order) }}
                       </span>
                     </div>
 

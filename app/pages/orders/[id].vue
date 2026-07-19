@@ -300,7 +300,11 @@ function openImage(url: string) {
         <div class="h-10 bg-slate-100 rounded w-full" />
         <div class="h-20 bg-slate-50 rounded w-full" />
       </div>
+    </div>
+
     <div v-if="!loading && order">
+      <!-- QRIS Checkout View (If unpaid QRIS escrow) -->
+      <div v-if="order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris'" class="space-y-6">
         <!-- QRIS Payment Box -->
         <div class="bg-white border border-amber-200 rounded-3xl p-6 shadow-sm text-center space-y-5">
           <div class="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto text-amber-500">
