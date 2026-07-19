@@ -163,6 +163,19 @@ async function handleCancel() {
   }
 }
 
+async function handleRefreshQRIS() {
+  const updatedOrder = await ordersStore.refreshQRIS(orderId)
+  if (updatedOrder) {
+    order.value = updatedOrder
+    isExpired.value = false
+    timeLeft.value = '15:00'
+    startCountdown(updatedOrder.created_at)
+    toastStore.add('Kode QRIS berhasil diperbarui.')
+  } else {
+    toastStore.add('Gagal memperbarui kode QRIS. Silakan coba lagi.')
+  }
+}
+
 async function handleApproveAdjustment() {
   const success = await ordersStore.approveAdjustment(orderId)
   if (success) {
@@ -303,8 +316,8 @@ function openImage(url: string) {
     </div>
 
     <div v-if="!loading && order">
-      <!-- QRIS Checkout View (If unpaid QRIS escrow) -->
-      <div v-if="order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris'" class="space-y-6">
+      <!-- QRIS Checkout View (If unpaid QRIS escrow and not cancelled) -->
+      <div v-if="order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris' && order.status !== 'cancelled'" class="space-y-6">
         <!-- QRIS Payment Box -->
         <div class="bg-white border border-amber-200 rounded-3xl p-6 shadow-sm text-center space-y-5">
           <div class="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto text-amber-500">
@@ -331,9 +344,17 @@ function openImage(url: string) {
             <div v-else class="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
             
             <!-- Expired overlay -->
-            <div v-if="isExpired" class="absolute inset-0 bg-white/95 backdrop-blur-[1px] flex flex-col items-center justify-center p-4 rounded-2xl">
-              <span class="text-rose-500 font-extrabold text-sm">QRIS Kedaluwarsa</span>
-              <p class="text-[9px] text-muted-foreground mt-1">Silakan batalkan dan buat pesanan baru.</p>
+            <div v-if="isExpired" class="absolute inset-0 bg-white/95 backdrop-blur-[1px] flex flex-col items-center justify-center p-4 rounded-2xl space-y-2">
+              <span class="text-rose-500 font-extrabold text-xs">QRIS Kedaluwarsa</span>
+              <p class="text-[9px] text-muted-foreground">Batas waktu pembayaran habis. Anda dapat memperbarui kode QRIS untuk memperpanjang waktu.</p>
+              <button
+                :disabled="ordersStore.actionLoading"
+                class="bg-primary hover:bg-primary/95 text-white text-[10px] font-bold py-2 px-3 rounded-xl transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-1 shadow-sm shadow-primary/20"
+                @click="handleRefreshQRIS"
+              >
+                <span v-if="ordersStore.actionLoading" class="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+                Perbaharui QRIS
+              </button>
             </div>
           </div>
 
@@ -385,8 +406,8 @@ function openImage(url: string) {
         </button>
       </div>
 
-      <!-- Full Detail View (If paid, or COD, or other status) -->
-      <div v-if="order && (order.payment_status !== 'unpaid' || order.payment_method !== 'escrow' || order.payment_source !== 'qris')" class="space-y-6">
+      <!-- Full Detail View (If paid, or COD, or other status like cancelled) -->
+      <div v-if="order && (order.payment_status !== 'unpaid' || order.payment_method !== 'escrow' || order.payment_source !== 'qris' || order.status === 'cancelled')" class="space-y-6">
         <!-- Status Card -->
         <div class="bg-white border border-border/30 rounded-3xl p-5 shadow-sm space-y-4">
           <div class="flex items-center justify-between">

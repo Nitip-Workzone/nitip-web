@@ -133,6 +133,24 @@ export const useUserOrdersStore = defineStore('user-orders', {
             }
         },
 
+        async refreshQRIS(id: string): Promise<UserOrder | null> {
+            this.actionLoading = true
+            const { request } = useApi()
+            try {
+                const res = await request<{ data: UserOrder }>(`/orders/${id}/refresh-qris`, { method: 'POST' })
+                if (res.data) {
+                    await this.fetchMyOrders()
+                    return res.data
+                }
+                return null
+            } catch (error) {
+                console.error('Failed to refresh QRIS:', error)
+                return null
+            } finally {
+                this.actionLoading = false
+            }
+        },
+
         async cancelOrder(id: string): Promise<boolean> {
             this.actionLoading = true
             const { request } = useApi()
