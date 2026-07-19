@@ -75,7 +75,7 @@ onMounted(async () => {
 
 
 function getStatusColor(order: any) {
-  if (order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris') {
+  if (order.status === 'pending' && order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris') {
     return { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', icon: 'text-amber-500' }
   }
   switch (order.status) {
@@ -90,7 +90,7 @@ function getStatusColor(order: any) {
 }
 
 function getStatusLabel(order: any) {
-  if (order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris') {
+  if (order.status === 'pending' && order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris') {
     return 'Menunggu Pembayaran'
   }
   switch (order.status) {
