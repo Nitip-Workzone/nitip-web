@@ -68,16 +68,23 @@ export const useUserOrdersStore = defineStore('user-orders', {
     },
 
     actions: {
-        async fetchMyOrders() {
-            this.loading = true
+        async fetchMyOrders(page = 1, limit = 15) {
+            this.loading = page === 1
             const { request } = useApi()
             try {
-                const res = await request<{ data: UserOrder[] }>('/orders/me')
+                const res = await request<{ data: UserOrder[] }>(`/orders/me?page=${page}&limit=${limit}`)
                 if (res.data) {
-                    this.orders = res.data
+                    if (page === 1) {
+                        this.orders = res.data
+                    } else {
+                        this.orders = [...this.orders, ...res.data]
+                    }
+                    return res.data
                 }
+                return []
             } catch (error) {
                 console.error('Failed to fetch user orders:', error)
+                return []
             } finally {
                 this.loading = false
             }

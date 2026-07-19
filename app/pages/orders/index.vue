@@ -9,19 +9,33 @@ definePageMeta({
 const route = useRoute()
 const ordersStore = useUserOrdersStore()
 const activeTab = ref<'active' | 'history'>('active')
+const page = ref(1)
+const hasMore = ref(true)
+const loadingMore = ref(false)
 
 // Handle direct navigation with a query parameter (?tab=active)
-onMounted(() => {
+onMounted(async () => {
   if (route.query.tab === 'history') {
     activeTab.value = 'history'
   } else {
     activeTab.value = 'active'
   }
-  refreshOrders()
+  await refreshOrders()
 })
 
 async function refreshOrders() {
-  await ordersStore.fetchMyOrders()
+  page.value = 1
+  const res = await ordersStore.fetchMyOrders(1, 15)
+  hasMore.value = res.length === 15
+}
+
+async function loadMore() {
+  if (loadingMore.value || !hasMore.value) return
+  loadingMore.value = true
+  page.value += 1
+  const res = await ordersStore.fetchMyOrders(page.value, 15)
+  hasMore.value = res.length === 15
+  loadingMore.value = false
 }
 
 function getStatusColor(order: any) {
@@ -174,6 +188,18 @@ function formatDate(dateStr: string) {
           </div>
         </div>
       </NuxtLink>
+
+      <!-- Show More Button -->
+      <div v-if="hasMore && !ordersStore.loading" class="pt-2 text-center">
+        <button 
+          :disabled="loadingMore"
+          class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] disabled:opacity-60"
+          @click="loadMore"
+        >
+          <span v-if="loadingMore" class="w-4 h-4 border-2 border-slate-400 border-t-slate-800 rounded-full animate-spin inline-block mr-1.5" />
+          Lihat Lebih Banyak
+        </button>
+      </div>
     </div>
   </div>
 </template>
