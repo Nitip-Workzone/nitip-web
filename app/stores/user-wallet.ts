@@ -57,16 +57,23 @@ export const useUserWalletStore = defineStore('user-wallet', {
             }
         },
 
-        async fetchTransactions() {
-            this.loading = true
+        async fetchTransactions(page = 1, limit = 15) {
+            this.loading = page === 1
             const { request } = useApi()
             try {
-                const res = await request<{ data: WalletTransaction[] }>('/wallets/transactions')
+                const res = await request<{ data: WalletTransaction[] }>(`/wallets/transactions?page=${page}&limit=${limit}`)
                 if (res.data) {
-                    this.transactions = res.data
+                    if (page === 1) {
+                        this.transactions = res.data
+                    } else {
+                        this.transactions = [...this.transactions, ...res.data]
+                    }
+                    return res.data
                 }
+                return []
             } catch (error) {
                 console.error('Failed to fetch wallet transactions:', error)
+                return []
             } finally {
                 this.loading = false
             }

@@ -8,12 +8,25 @@ definePageMeta({
 
 const walletStore = useUserWalletStore()
 const loading = ref(true)
+const page = ref(1)
+const hasMore = ref(true)
+const loadingMore = ref(false)
 
 onMounted(async () => {
   loading.value = true
-  await walletStore.fetchTransactions()
+  const res = await walletStore.fetchTransactions(1, 15)
+  hasMore.value = res.length === 15
   loading.value = false
 })
+
+async function loadMore() {
+  if (loadingMore.value || !hasMore.value) return
+  loadingMore.value = true
+  page.value += 1
+  const res = await walletStore.fetchTransactions(page.value, 15)
+  hasMore.value = res.length === 15
+  loadingMore.value = false
+}
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount)
@@ -114,6 +127,18 @@ function isIncoming(type: string, amount: number): boolean {
           </span>
           <p class="text-[9px] text-muted-foreground capitalize mt-0.5">{{ tx.status }}</p>
         </div>
+      </div>
+
+      <!-- Show More Button -->
+      <div v-if="hasMore && !loading" class="pt-2 text-center">
+        <button 
+          :disabled="loadingMore"
+          class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-60"
+          @click="loadMore"
+        >
+          <span v-if="loadingMore" class="w-4 h-4 border-2 border-slate-400 border-t-slate-800 rounded-full animate-spin inline-block mr-1.5" />
+          Lihat Lebih Banyak
+        </button>
       </div>
     </div>
   </div>
