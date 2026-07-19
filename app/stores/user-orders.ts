@@ -24,6 +24,8 @@ export interface UserOrder {
     status: string
     payment_status: string
     payment_method: string
+    payment_source?: string
+    qris_data?: string
     created_at: string
     updated_at: string
     pickup_name?: string
@@ -106,6 +108,7 @@ export const useUserOrdersStore = defineStore('user-orders', {
             delivery_lng: number
             tip_amount: number
             payment_method: 'cod' | 'escrow'
+            payment_source?: 'wallet' | 'qris'
             weight_kg: number
             volume_liters: number
             service_category: string

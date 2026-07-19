@@ -21,6 +21,7 @@ const serviceCategory = ref<'beli' | 'kirim'>('beli')
 const itemDetails = ref('')
 const estimatedCostInput = useCurrencyInput()
 const paymentMethod = ref<'cod' | 'escrow'>('escrow')
+const paymentSource = ref<'wallet' | 'qris'>('wallet')
 const tipInput = useCurrencyInput()
 
 // Weight & Volume
@@ -170,6 +171,7 @@ async function submitOrder() {
     delivery_lng: deliveryLng.value!,
     tip_amount: totalTip,
     payment_method: paymentMethod.value,
+    payment_source: paymentMethod.value === 'escrow' ? paymentSource.value : 'wallet',
     weight_kg: selectedWeight.value,
     volume_liters: selectedVolume.value,
     service_category: serviceCategory.value,
@@ -383,6 +385,36 @@ function formatCurrency(amount: number) {
             <ShoppingBag class="w-5 h-5" />
             <span class="text-xs font-bold">Bayar di Tempat (COD)</span>
           </button>
+        </div>
+
+        <!-- Sumber Dana Escrow (Wallet / QRIS) -->
+        <div v-if="paymentMethod === 'escrow'" class="pt-4 border-t border-slate-100 space-y-3">
+          <label class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Sumber Dana Escrow</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button 
+              type="button"
+              :class="[
+                'p-3 border rounded-xl text-center transition-all flex items-center justify-center gap-2',
+                paymentSource === 'wallet' ? 'border-primary bg-primary/5 text-primary font-bold' : 'border-border/60 text-muted-foreground text-xs'
+              ]"
+              @click="paymentSource = 'wallet'"
+            >
+              <span class="w-2 h-2 rounded-full" :class="paymentSource === 'wallet' ? 'bg-primary' : 'bg-transparent border border-slate-400'" />
+              Saldo Wallet
+            </button>
+
+            <button 
+              type="button"
+              :class="[
+                'p-3 border rounded-xl text-center transition-all flex items-center justify-center gap-2',
+                paymentSource === 'qris' ? 'border-primary bg-primary/5 text-primary font-bold' : 'border-border/60 text-muted-foreground text-xs'
+              ]"
+              @click="paymentSource = 'qris'"
+            >
+              <span class="w-2 h-2 rounded-full" :class="paymentSource === 'qris' ? 'bg-primary' : 'bg-transparent border border-slate-400'" />
+              Bayar QRIS
+            </button>
+          </div>
         </div>
       </div>
 

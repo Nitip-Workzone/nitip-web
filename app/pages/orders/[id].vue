@@ -481,6 +481,27 @@ function openImage(url: string) {
         </div>
       </div>
 
+      <!-- QRIS Payment Box (If unpaid QRIS escrow) -->
+      <div v-if="order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris'" class="bg-white border border-amber-200 rounded-3xl p-5 shadow-sm text-center space-y-4">
+        <h3 class="text-xs font-bold text-amber-800 uppercase tracking-wider">Selesaikan Pembayaran QRIS</h3>
+        <p class="text-[11px] text-muted-foreground leading-relaxed">
+          Silakan scan QRIS di bawah ini menggunakan aplikasi mobile banking atau e-wallet pilihan Anda.
+        </p>
+        
+        <div v-if="order.qris_data" class="flex justify-center p-2 bg-slate-50 rounded-2xl border border-slate-100 max-w-[240px] mx-auto">
+          <img :src="order.qris_data" alt="QRIS Code" class="w-full aspect-square object-contain" />
+        </div>
+        
+        <div class="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 text-[10px] font-bold rounded-full border border-amber-200 mx-auto">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+          Status: Menunggu Pembayaran
+        </div>
+        
+        <p class="text-[10px] text-muted-foreground italic">
+          Setelah pembayaran sukses, pesanan Anda akan otomatis diterbitkan ke Runner.
+        </p>
+      </div>
+
       <!-- Price Adjustment Banner (if applicable) -->
       <div v-if="order.adjustment_status === 'pending'" class="bg-amber-50 border border-amber-200 rounded-3xl p-5 space-y-3">
         <div class="flex items-start gap-2.5">

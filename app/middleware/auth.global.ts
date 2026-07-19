@@ -35,7 +35,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
         try {
             console.log('[Auth Middleware] Fetching profile...')
             await authStore.fetchProfile()
-            console.log('[Auth Middleware] Profile fetched successfully:', authStore.user?.email)
+            console.log('[Auth Middleware] Profile fetched successfully:', (authStore.user as any)?.email)
         } catch (err) {
             console.error('[Auth Middleware] fetchProfile failed:', err)
             // Jika fetch profile gagal (misal token expired), bersihkan state dan redirect ke login
