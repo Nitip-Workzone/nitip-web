@@ -13,6 +13,16 @@ onMounted(() => {
   // Hanya jalankan di client-side
   if (!import.meta.client) return
 
+  // Periksa pembaruan secara berkala ke server setiap 1 jam
+  const updateInterval = 60 * 60 * 1000
+  setInterval(() => {
+    if ($pwa && typeof $pwa.updateServiceWorker === 'function') {
+      console.log('[PWA] Checking for updates on the server...')
+      // Parameter kosong memicu browser mengecek file sw.js baru ke server
+      $pwa.updateServiceWorker()
+    }
+  }, updateInterval)
+
   // Cek apakah sudah terinstall (standalone display mode)
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches
   if (isStandalone) return
