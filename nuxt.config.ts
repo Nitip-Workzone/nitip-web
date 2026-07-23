@@ -34,7 +34,7 @@ export default defineNuxtConfig({
     }
   },
   pwa: {
-    registerType: 'autoUpdate',
+    registerType: 'prompt',
     manifest: {
       name: 'Nihtip - Kirim & Titip Barang',
       short_name: 'Nihtip',
@@ -66,6 +66,14 @@ export default defineNuxtConfig({
     devOptions: {
       enabled: false,
     },
+  },
+  nitro: {
+    devProxy: {
+      '/api/v1': {
+        target: 'https://api.nihtip.com/api/v1',
+        changeOrigin: true,
+      }
+    }
   },
   future: {
     compatibilityVersion: 4,

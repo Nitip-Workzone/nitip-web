@@ -9,5 +9,6 @@ import '~/assets/css/main.css'
     </NuxtLayout>
     <UiErrorModal />
     <UiToastContainer />
+    <PwaHandler />
   </div>
 </template>
