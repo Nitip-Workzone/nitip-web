@@ -1,14 +1,17 @@
 <script setup lang="ts">
+// Import new icons for coming soon features
 import {
   ShoppingBag, HelpCircle, ArrowRight, Eye, EyeOff, Plus, ChevronRight,
-  CheckCircle, Clock, XCircle, RotateCcw, History, Wallet,
-  Truck, Package, BadgeCheck, ShoppingCart, Bell, MapPin, QrCode
+  CheckCircle, Clock, XCircle, RotateCcw, Wallet,
+  Truck, Package, BadgeCheck, ShoppingCart, Bell, MapPin, QrCode,
+  UserCheck, Waves, Pill, Store, CreditCard, FileText, Utensils
 } from '@lucide/vue'
 import { useAuthStore } from '~/stores/auth'
 import { useNotificationsStore } from '~/stores/notifications'
 import { useUserOrdersStore, type UserOrder } from '~/stores/user-orders'
 import { useUserWalletStore } from '~/stores/user-wallet'
 import { useToastStore } from '~/stores/toast'
+import { useBannersStore } from '~/stores/banners'
 
 const notificationsStore = useNotificationsStore()
 
@@ -19,6 +22,7 @@ definePageMeta({
 const authStore = useAuthStore()
 const ordersStore = useUserOrdersStore()
 const walletStore = useUserWalletStore()
+const bannersStore = useBannersStore()
 
 const isBalanceVisible = ref(true)
 const loading = ref(true)
@@ -26,6 +30,60 @@ const loading = ref(true)
 const toggleBalance = () => {
   isBalanceVisible.value = !isBalanceVisible.value
 }
+
+// Banners Carousel Logic
+const currentBannerIndex = ref(0)
+const carouselRef = ref<HTMLElement | null>(null)
+let autoplayTimer: ReturnType<typeof setInterval> | null = null
+
+const startAutoplay = () => {
+  if (bannersStore.banners.length <= 1) return
+  stopAutoplay()
+  autoplayTimer = setInterval(() => {
+    if (!carouselRef.value) return
+    const nextIndex = (currentBannerIndex.value + 1) % bannersStore.banners.length
+    scrollToBanner(nextIndex)
+  }, 4000)
+}
+
+const stopAutoplay = () => {
+  if (autoplayTimer) {
+    clearInterval(autoplayTimer)
+    autoplayTimer = null
+  }
+}
+
+const scrollToBanner = (index: number) => {
+  currentBannerIndex.value = index
+  if (!carouselRef.value) return
+  const width = carouselRef.value.offsetWidth
+  carouselRef.value.scrollTo({
+    left: index * width,
+    behavior: 'smooth',
+  })
+}
+
+const handleScroll = () => {
+  if (!carouselRef.value) return
+  const width = carouselRef.value.offsetWidth
+  const scrollLeft = carouselRef.value.scrollLeft
+  const index = Math.round(scrollLeft / width)
+  if (index >= 0 && index < bannersStore.banners.length) {
+    currentBannerIndex.value = index
+  }
+}
+
+// Coming Soon Features (Sorted by most common user needs)
+const comingSoonFeatures = [
+  { label: 'Nihtip Food', icon: Utensils, badge: 'Soon' },
+  { label: 'Belanja Pasar', icon: Store, badge: 'Soon' },
+  { label: 'Nitip Obat', icon: Pill, badge: 'Soon' },
+  { label: 'Ambil Barang', icon: Package, badge: 'Soon' },
+  { label: 'Nitip Laundry', icon: Waves, badge: 'Soon' },
+  { label: 'Nitip Antri', icon: UserCheck, badge: 'Soon' },
+  { label: 'Bayar Tagihan', icon: CreditCard, badge: 'Soon' },
+  { label: 'Nitip Dokumen', icon: FileText, badge: 'Soon' },
+]
 
 // Computed: today's orders
 const todayOrders = computed(() => {
@@ -63,6 +121,7 @@ async function fetchAll() {
     authStore.fetchProfile(),
     walletStore.fetchBalance(),
     ordersStore.fetchMyOrders(),
+    bannersStore.fetchActiveBanners(),
   ])
 }
 
@@ -70,6 +129,11 @@ onMounted(async () => {
   loading.value = true
   await fetchAll()
   loading.value = false
+  startAutoplay()
+})
+
+onUnmounted(() => {
+  stopAutoplay()
 })
 
 
@@ -183,20 +247,12 @@ const triggerTopUp = async () => {
   }
 }
 
-// Quick action groups — mirroring Flutter _QuickActionsGrid structure
-const orderActions = [
-  { label: 'Titip Beli', icon: ShoppingBag, to: '/orders/new', color: 'bg-indigo-50', iconColor: 'text-indigo-600' },
-  { label: 'Order Saya', icon: Package, to: '/orders', color: 'bg-sky-50', iconColor: 'text-sky-600' },
-  { label: 'Lacak Order', icon: Truck, to: '/orders?tab=active', color: 'bg-emerald-50', iconColor: 'text-emerald-600' },
-  { label: 'Riwayat', icon: History, to: '/orders?tab=history', color: 'bg-violet-50', iconColor: 'text-violet-600' },
-]
-
-const accountActions = [
-  { label: 'Top Up', icon: Plus, to: null, color: 'bg-indigo-50', iconColor: 'text-indigo-600', action: () => { showTopUpModal.value = true } },
-  { label: 'Tarik Saldo', icon: Wallet, to: '/wallet/withdraw', color: 'bg-amber-50', iconColor: 'text-amber-600', action: null },
-  { label: 'Riwayat Saldo', icon: RotateCcw, to: '/wallet/history', color: 'bg-teal-50', iconColor: 'text-teal-600', action: null },
-  { label: 'Bantuan', icon: HelpCircle, to: null, color: 'bg-rose-50', iconColor: 'text-rose-500', action: () => { window.open('https://wa.me/628123456789', '_blank') } },
-]
+// Quick action helpers
+const openHelp = () => {
+  if (import.meta.client) {
+    window.open('https://wa.me/628123456789', '_blank')
+  }
+}
 </script>
 
 <template>
@@ -205,10 +261,10 @@ const accountActions = [
     <!-- ── Ambient Glow Background (Flutter _GlowCircle equivalent) ── -->
     <div class="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
       <div
-class="absolute -top-32 -left-20 w-[320px] h-[320px] rounded-full"
+        class="absolute -top-32 -left-20 w-[320px] h-[320px] rounded-full"
         style="background: radial-gradient(circle, rgba(99,102,241,0.14) 0%, transparent 70%);" />
       <div
-class="absolute top-[45%] -right-28 w-[260px] h-[260px] rounded-full"
+        class="absolute top-[45%] -right-28 w-[260px] h-[260px] rounded-full"
         style="background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);" />
     </div>
 
@@ -254,12 +310,12 @@ class="absolute top-[45%] -right-28 w-[260px] h-[260px] rounded-full"
         <!-- Card mesh overlay -->
         <div
           class="absolute inset-0 opacity-30 pointer-events-none"
-          style="background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjAuMyIgb3BhY2l0eT0iMC4xNSI+PHBhdGggZD0iTTAgMGw2MCA2ME02MCAw TDAgNjAiLz48L2c+PC9zdmc+');" />
+          style="background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjAuMyI b3BhY2l0eT0iMC4xNSI+PHBhdGggZD0iTTAgMGw2MCA2ME02MCAw TDAgNjAiLz48L2c+PC9zdmc+');" />
         <div
-class="absolute -top-16 -right-16 w-40 h-40 rounded-full pointer-events-none"
+          class="absolute -top-16 -right-16 w-40 h-40 rounded-full pointer-events-none"
           style="background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);" />
         <div
-class="absolute -bottom-12 -left-12 w-36 h-36 rounded-full pointer-events-none"
+          class="absolute -bottom-12 -left-12 w-36 h-36 rounded-full pointer-events-none"
           style="background: radial-gradient(circle, rgba(79,70,229,0.5) 0%, transparent 70%);" />
 
         <div class="relative z-10 p-6">
@@ -334,70 +390,112 @@ class="absolute -bottom-12 -left-12 w-36 h-36 rounded-full pointer-events-none"
         </div>
       </div>
 
-      <!-- ── 3. QUICK ACTIONS — Grouped Grid 4-Column (Flutter _QuickActionsGrid) ── -->
-      <div class="space-y-5">
-
-        <!-- Group 1: Order & Pesanan -->
-        <div>
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 pl-0.5">Order &amp; Pesanan</p>
-          <div class="grid grid-cols-4 gap-3">
-            <template v-for="item in orderActions" :key="item.label">
-              <NuxtLink
-                :to="item.to"
-                class="flex flex-col items-center gap-2 group active:scale-90 transition-all"
-              >
-                <div
-                  class="w-12 h-12 rounded-[14px] flex items-center justify-center group-hover:scale-105 transition-transform duration-200"
-                  :class="item.color"
-                >
-                  <component :is="item.icon" class="w-5 h-5" :class="item.iconColor" />
-                </div>
-                <span class="text-[9.5px] font-semibold text-slate-700 text-center leading-tight">{{ item.label }}</span>
-              </NuxtLink>
-            </template>
+      <!-- ── PROMOTIONS/BANNERS CAROUSEL (Auto-scrolling) ── -->
+      <div v-if="bannersStore.banners.length > 0" class="relative group">
+        <div 
+          ref="carouselRef" 
+          class="flex overflow-x-auto gap-3 snap-x snap-mandatory scroll-smooth scrollbar-none rounded-2xl"
+          @scroll="handleScroll"
+          @mouseenter="stopAutoplay"
+          @mouseleave="startAutoplay"
+        >
+          <div 
+            v-for="banner in bannersStore.banners" 
+            :key="banner.id"
+            class="min-w-full snap-start snap-always relative aspect-[21/9] rounded-2xl overflow-hidden bg-slate-100 shadow-sm border border-slate-100/50 flex-shrink-0"
+          >
+            <a 
+              v-if="banner.redirect_url" 
+              :href="banner.redirect_url" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              class="block w-full h-full"
+            >
+              <img :src="banner.image_url" :alt="banner.title" class="w-full h-full object-cover">
+            </a>
+            <img v-else :src="banner.image_url" :alt="banner.title" class="w-full h-full object-cover">
           </div>
         </div>
 
-        <!-- Group 2: Akun & Dompet -->
-        <div>
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 pl-0.5">Akun &amp; Dompet</p>
-          <div class="grid grid-cols-4 gap-3">
-            <template v-for="item in accountActions" :key="item.label">
-              <!-- Action with handler (no route) -->
-              <button
-                v-if="item.action"
-                class="flex flex-col items-center gap-2 group active:scale-90 transition-all"
-                @click="item.action()"
-              >
-                <div
-                  class="w-12 h-12 rounded-[14px] flex items-center justify-center group-hover:scale-105 transition-transform duration-200"
-                  :class="item.color"
-                >
-                  <component :is="item.icon" class="w-5 h-5" :class="item.iconColor" />
-                </div>
-                <span class="text-[9.5px] font-semibold text-slate-700 text-center leading-tight whitespace-pre-line">{{ item.label }}</span>
-              </button>
-
-              <!-- Action with route -->
-              <NuxtLink
-                v-else
-                :to="item.to"
-                class="flex flex-col items-center gap-2 group active:scale-90 transition-all"
-              >
-                <div
-                  class="w-12 h-12 rounded-[14px] flex items-center justify-center group-hover:scale-105 transition-transform duration-200"
-                  :class="item.color"
-                >
-                  <component :is="item.icon" class="w-5 h-5" :class="item.iconColor" />
-                </div>
-                <span class="text-[9.5px] font-semibold text-slate-700 text-center leading-tight whitespace-pre-line">{{ item.label }}</span>
-              </NuxtLink>
-            </template>
-          </div>
+        <!-- Indicator dots -->
+        <div class="flex justify-center gap-1.5 mt-2">
+          <button 
+            v-for="(_, index) in bannersStore.banners" 
+            :key="index"
+            class="w-1.5 h-1.5 rounded-full transition-all duration-300"
+            :class="index === currentBannerIndex ? 'w-4 bg-primary' : 'bg-slate-300'"
+            @click="scrollToBanner(index)"
+          />
         </div>
       </div>
 
-      <!-- ── 4. AKTIVITAS HARI INI (Redesigned) ── -->
+      <!-- ── 3. LAYANAN & FITUR UTAMA ── -->
+      <div class="space-y-2.5">
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">Layanan &amp; Fitur</p>
+        <div class="grid grid-cols-4 gap-2">
+          <!-- 1. Titip Beli (Aktif) -->
+          <NuxtLink to="/orders/new?category=beli" class="group flex flex-col items-center gap-1.5 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 active:scale-95 transition-all duration-150">
+            <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+              <ShoppingBag class="w-4.5 h-4.5 text-primary" />
+            </div>
+            <span class="text-[9px] font-semibold text-slate-600 text-center leading-tight">Titip Beli</span>
+          </NuxtLink>
+
+          <!-- 2. Kirim Paket (Aktif) -->
+          <NuxtLink to="/orders/new?category=kirim" class="group flex flex-col items-center gap-1.5 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 active:scale-95 transition-all duration-150">
+            <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+              <Package class="w-4.5 h-4.5 text-primary" />
+            </div>
+            <span class="text-[9px] font-semibold text-slate-600 text-center leading-tight">Kirim Paket</span>
+          </NuxtLink>
+
+          <!-- 3. Cari Runner (Aktif) -->
+          <NuxtLink to="/trips" class="group flex flex-col items-center gap-1.5 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 active:scale-95 transition-all duration-150">
+            <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+              <Truck class="w-4.5 h-4.5 text-primary" />
+            </div>
+            <span class="text-[9px] font-semibold text-slate-600 text-center leading-tight">Cari Runner</span>
+          </NuxtLink>
+
+          <!-- 4. Order Saya (Aktif) -->
+          <NuxtLink to="/orders" class="group flex flex-col items-center gap-1.5 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 active:scale-95 transition-all duration-150">
+            <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+              <ShoppingCart class="w-4.5 h-4.5 text-primary" />
+            </div>
+            <span class="text-[9px] font-semibold text-slate-600 text-center leading-tight">Order Saya</span>
+          </NuxtLink>
+        </div>
+      </div>
+
+      <!-- ── 4. FITUR SEGERA HADIR (Coming Soon Grid) ── -->
+      <div class="space-y-2.5">
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">Segera Hadir</p>
+        <div class="grid grid-cols-4 gap-2">
+          <div
+            v-for="item in comingSoonFeatures"
+            :key="item.label"
+            class="relative group flex flex-col items-center gap-1.5 py-3 rounded-xl bg-slate-50/40 opacity-70 cursor-not-allowed select-none"
+          >
+            <!-- Badge "Soon" -->
+            <span class="absolute top-1 right-1 px-1 py-0.5 text-[6.5px] font-extrabold bg-slate-200 text-slate-500 rounded uppercase scale-90">Soon</span>
+            <div class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center">
+              <component :is="item.icon" class="w-4.5 h-4.5 text-slate-400" />
+            </div>
+            <span class="text-[9px] font-semibold text-slate-400 text-center leading-tight">{{ item.label }}</span>
+          </div>
+        </div>
+
+        <!-- Bantuan — slim full-width pill -->
+        <button
+          class="group w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 active:scale-[0.98] transition-all duration-150"
+          @click="openHelp"
+        >
+          <HelpCircle class="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-colors" />
+          <span class="text-[10px] font-semibold text-slate-500 group-hover:text-slate-700 transition-colors">Butuh bantuan? Hubungi kami</span>
+        </button>
+      </div>
+
+      <!-- ── 5. AKTIVITAS HARI INI (Redesigned) ── -->
       <div class="space-y-3">
 
         <!-- Section header -->

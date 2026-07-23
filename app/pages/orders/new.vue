@@ -17,7 +17,8 @@ const { request } = useApi()
 const step = ref(1)
 
 // Form data
-const serviceCategory = ref<'beli' | 'kirim'>('beli')
+const route = useRoute()
+const serviceCategory = ref<'beli' | 'kirim'>((route.query.category as 'beli' | 'kirim') || 'beli')
 const itemDetails = ref('')
 const estimatedCostInput = useCurrencyInput()
 const paymentMethod = ref<'cod' | 'escrow'>('escrow')
