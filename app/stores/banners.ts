@@ -103,5 +103,21 @@ export const useBannersStore = defineStore('banners', {
         throw error
       }
     },
+
+    async adminUploadBannerImage(file: File) {
+      const { request } = useApi()
+      const formData = new FormData()
+      formData.append('image', file)
+      try {
+        const res = await request<{ data: { url: string } }>('/admin/banners/upload', {
+          method: 'POST',
+          body: formData,
+        })
+        return res.data?.url
+      } catch (error) {
+        console.error('Failed to upload banner image:', error)
+        throw error
+      }
+    },
   },
 })

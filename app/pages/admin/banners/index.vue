@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Image, Search, Plus, Trash2, Edit, RefreshCw } from '@lucide/vue'
+import { Image, Search, Plus, Trash2, Edit, RefreshCw, Upload } from '@lucide/vue'
 import { useBannersStore, type Banner } from '~/stores/banners'
 
 definePageMeta({
@@ -22,6 +22,8 @@ const form = ref({
 })
 
 const editId = ref('')
+const selectedFile = ref<File | null>(null)
+const uploadMode = ref<'file' | 'url'>('file')
 
 const openAddModal = () => {
   form.value = {
@@ -30,16 +32,48 @@ const openAddModal = () => {
     redirect_url: '',
     is_active: true,
   }
+  selectedFile.value = null
+  uploadMode.value = 'file'
   showAddModal.value = true
 }
 
+const handleFileChange = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    selectedFile.value = target.files[0] || null
+  }
+}
+
+const uploadAndSave = async () => {
+  if (uploadMode.value === 'file' && selectedFile.value) {
+    try {
+      const url = await bannersStore.adminUploadBannerImage(selectedFile.value)
+      if (url) {
+        form.value.image_url = url
+      }
+    } catch {
+      throw new Error('Gagal mengupload gambar ke Tencent COS.')
+    }
+  }
+}
+
 const handleAddBanner = async () => {
-  if (!form.value.title || !form.value.image_url) {
-    error('Judul dan URL gambar wajib diisi.')
+  if (!form.value.title) {
+    error('Judul wajib diisi.')
     return
   }
+  if (uploadMode.value === 'file' && !selectedFile.value) {
+    error('Silakan pilih file gambar untuk diupload.')
+    return
+  }
+  if (uploadMode.value === 'url' && !form.value.image_url) {
+    error('URL gambar wajib diisi.')
+    return
+  }
+
   actionLoading.value = true
   try {
+    await uploadAndSave()
     await bannersStore.adminCreateBanner({
       title: form.value.title,
       image_url: form.value.image_url,
@@ -48,8 +82,9 @@ const handleAddBanner = async () => {
     })
     success('Banner berhasil ditambahkan.')
     showAddModal.value = false
-  } catch {
-    error('Gagal menambahkan banner.')
+  } catch (err) {
+    const errMsg = (err as { message?: string })?.message || 'Gagal menambahkan banner.'
+    error(errMsg)
   } finally {
     actionLoading.value = false
   }
@@ -63,16 +98,28 @@ const openEditModal = (banner: Banner) => {
     redirect_url: banner.redirect_url || '',
     is_active: banner.is_active,
   }
+  selectedFile.value = null
+  uploadMode.value = 'url' // Default to show existing URL, can switch to file
   showEditModal.value = true
 }
 
 const handleEditBanner = async () => {
-  if (!form.value.title || !form.value.image_url) {
-    error('Judul dan URL gambar wajib diisi.')
+  if (!form.value.title) {
+    error('Judul wajib diisi.')
     return
   }
+  if (uploadMode.value === 'url' && !form.value.image_url) {
+    error('URL gambar wajib diisi.')
+    return
+  }
+  if (uploadMode.value === 'file' && !selectedFile.value) {
+    error('Silakan pilih file gambar untuk diupload.')
+    return
+  }
+
   actionLoading.value = true
   try {
+    await uploadAndSave()
     await bannersStore.adminUpdateBanner(editId.value, {
       title: form.value.title,
       image_url: form.value.image_url,
@@ -81,8 +128,9 @@ const handleEditBanner = async () => {
     })
     success('Banner berhasil diperbarui.')
     showEditModal.value = false
-  } catch {
-    error('Gagal memperbarui banner.')
+  } catch (err) {
+    const errMsg = (err as { message?: string })?.message || 'Gagal memperbarui banner.'
+    error(errMsg)
   } finally {
     actionLoading.value = false
   }
@@ -297,8 +345,53 @@ const displayedBanners = computed(() => {
           >
         </div>
 
-        <!-- Image URL -->
+        <!-- Image Selection Mode Toggle -->
         <div class="space-y-1">
+          <label class="text-[10px] font-bold text-muted-foreground uppercase">Sumber Gambar</label>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              class="flex-1 py-1.5 text-xs font-semibold rounded-md border transition-all"
+              :class="uploadMode === 'file' ? 'bg-primary/10 text-primary border-primary' : 'bg-background border-input text-muted-foreground'"
+              @click="uploadMode = 'file'"
+            >
+              Upload Gambar (Tencent COS)
+            </button>
+            <button
+              type="button"
+              class="flex-1 py-1.5 text-xs font-semibold rounded-md border transition-all"
+              :class="uploadMode === 'url' ? 'bg-primary/10 text-primary border-primary' : 'bg-background border-input text-muted-foreground'"
+              @click="uploadMode = 'url'"
+            >
+              Input URL Gambar
+            </button>
+          </div>
+        </div>
+
+        <!-- Image File Upload -->
+        <div v-if="uploadMode === 'file'" class="space-y-1">
+          <label class="text-[10px] font-bold text-muted-foreground uppercase">Pilih File Banner</label>
+          <div class="flex items-center justify-center w-full">
+            <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-input rounded-lg cursor-pointer bg-background hover:bg-muted/30 transition-all">
+              <div class="flex flex-col items-center justify-center pt-3 pb-3">
+                <Upload class="w-6 h-6 text-muted-foreground mb-1" />
+                <p class="text-xs text-slate-500">
+                  {{ selectedFile ? selectedFile.name : 'Klik untuk memilih gambar banner' }}
+                </p>
+                <p class="text-[9px] text-muted-foreground">Maksimal 5MB (JPG, JPEG, PNG)</p>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                class="hidden"
+                @change="handleFileChange"
+              >
+            </label>
+          </div>
+        </div>
+
+        <!-- Image URL -->
+        <div v-else class="space-y-1">
           <label class="text-[10px] font-bold text-muted-foreground uppercase">URL Gambar Banner</label>
           <input
             v-model="form.image_url"
@@ -368,8 +461,53 @@ const displayedBanners = computed(() => {
           >
         </div>
 
-        <!-- Image URL -->
+        <!-- Image Selection Mode Toggle -->
         <div class="space-y-1">
+          <label class="text-[10px] font-bold text-muted-foreground uppercase">Sumber Gambar</label>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              class="flex-1 py-1.5 text-xs font-semibold rounded-md border transition-all"
+              :class="uploadMode === 'file' ? 'bg-primary/10 text-primary border-primary' : 'bg-background border-input text-muted-foreground'"
+              @click="uploadMode = 'file'"
+            >
+              Upload Gambar Baru
+            </button>
+            <button
+              type="button"
+              class="flex-1 py-1.5 text-xs font-semibold rounded-md border transition-all"
+              :class="uploadMode === 'url' ? 'bg-primary/10 text-primary border-primary' : 'bg-background border-input text-muted-foreground'"
+              @click="uploadMode = 'url'"
+            >
+              Lihat/Ubah URL Gambar
+            </button>
+          </div>
+        </div>
+
+        <!-- Image File Upload -->
+        <div v-if="uploadMode === 'file'" class="space-y-1">
+          <label class="text-[10px] font-bold text-muted-foreground uppercase">Pilih File Banner Baru</label>
+          <div class="flex items-center justify-center w-full">
+            <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-input rounded-lg cursor-pointer bg-background hover:bg-muted/30 transition-all">
+              <div class="flex flex-col items-center justify-center pt-3 pb-3">
+                <Upload class="w-6 h-6 text-muted-foreground mb-1" />
+                <p class="text-xs text-slate-500">
+                  {{ selectedFile ? selectedFile.name : 'Klik untuk memilih gambar banner baru' }}
+                </p>
+                <p class="text-[9px] text-muted-foreground">Maksimal 5MB (JPG, JPEG, PNG)</p>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                class="hidden"
+                @change="handleFileChange"
+              >
+            </label>
+          </div>
+        </div>
+
+        <!-- Image URL -->
+        <div v-else class="space-y-1">
           <label class="text-[10px] font-bold text-muted-foreground uppercase">URL Gambar Banner</label>
           <input
             v-model="form.image_url"
