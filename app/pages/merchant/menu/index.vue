@@ -470,82 +470,93 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Menu Section Header -->
-      <div class="flex justify-between items-center mt-8 px-1">
-        <div class="space-y-1">
-          <h3 class="font-extrabold text-slate-900 text-lg tracking-tight">Katalog Menu</h3>
-          <p class="text-[11px] text-slate-400 font-medium">Kelola daftar makanan, minuman, atau jasa produk Anda.</p>
+      <!-- Quick Statistics Grid -->
+      <div class="grid grid-cols-2 gap-4">
+        <!-- Metric 1: Total Menu -->
+        <div class="bg-white border border-slate-100 rounded-3xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.01)] flex flex-col justify-between h-28">
+          <div class="flex justify-between items-center text-slate-400">
+            <span class="text-[10px] font-extrabold uppercase tracking-wider">Total Menu</span>
+            <Utensils class="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <h4 class="text-2xl font-black text-slate-800">{{ merchantsStore.merchantMenus.length }}</h4>
+            <p class="text-[9px] font-medium text-slate-400 mt-1">Item aktif terdaftar</p>
+          </div>
         </div>
+
+        <!-- Metric 2: Active Orders -->
+        <div class="bg-white border border-slate-100 rounded-3xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.01)] flex flex-col justify-between h-28">
+          <div class="flex justify-between items-center text-slate-400">
+            <span class="text-[10px] font-extrabold uppercase tracking-wider">Order Aktif</span>
+            <ShoppingBag class="w-4 h-4 text-emerald-500" />
+          </div>
+          <div>
+            <h4 class="text-2xl font-black text-slate-800">
+              {{ merchantsStore.merchantOrders.filter(o => o.status === 'pending' || o.status === 'cooking').length }}
+            </h4>
+            <p class="text-[9px] font-medium text-slate-400 mt-1">Pesanan sedang diproses</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Navigation Cards -->
+      <div class="space-y-3 pt-2">
+        <NuxtLink 
+          to="/merchant/orders" 
+          class="flex items-center justify-between p-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-3xl shadow-[0_4px_20px_rgb(15,23,42,0.15)] hover:scale-[1.01] active:scale-[0.99] transition-all"
+        >
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
+              <ShoppingBag class="w-5 h-5 text-white" />
+            </div>
+            <div class="space-y-0.5">
+              <p class="text-xs font-black tracking-wide">Kelola Pesanan Masuk</p>
+              <p class="text-[9px] text-slate-300 font-medium">Proses masakan & antrean order</p>
+            </div>
+          </div>
+          <span class="inline-flex items-center justify-center px-2.5 py-1 bg-rose-500 text-white text-[10px] font-extrabold rounded-full" v-if="merchantsStore.merchantOrders.filter(o => o.status === 'pending').length > 0">
+            {{ merchantsStore.merchantOrders.filter(o => o.status === 'pending').length }} Baru
+          </span>
+        </NuxtLink>
+
+        <!-- Manage Catalog Trigger Card (Opens full modal or redirects) -->
         <button 
           @click="openAddModal"
-          class="flex items-center gap-1.5 h-9 px-4 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/95 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md shadow-primary/10"
+          class="w-full flex items-center justify-between p-4 bg-white border border-slate-100 rounded-3xl shadow-[0_4px_25px_rgb(0,0,0,0.015)] hover:border-slate-200 active:scale-[0.99] transition-all text-left"
         >
-          <Plus class="w-4 h-4" />
-          Tambah Menu
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-primary/5 flex items-center justify-center">
+              <Plus class="w-5 h-5 text-primary" />
+            </div>
+            <div class="space-y-0.5">
+              <p class="text-xs font-black text-slate-800 tracking-wide">Tambah Item Menu Baru</p>
+              <p class="text-[9px] text-slate-400 font-medium">Tambah makanan, minuman & jasa laundry</p>
+            </div>
+          </div>
+          <span class="text-primary font-bold text-xs pr-1">Tambah</span>
         </button>
       </div>
 
-      <!-- Menus Grid / List -->
-      <div v-if="merchantsStore.merchantMenus.length === 0" class="p-12 text-center bg-white border border-slate-100 rounded-3xl text-slate-400 shadow-[0_8px_30px_rgb(0,0,0,0.015)]">
-        <div class="inline-flex p-4 bg-slate-50 text-slate-300 rounded-full mb-3 border border-slate-100">
-          <Utensils class="w-8 h-8" />
+      <!-- Quick Catalog Shortcut Info -->
+      <div class="bg-slate-50 border border-slate-100 rounded-3xl p-5 space-y-4">
+        <div class="flex justify-between items-center">
+          <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Katalog Cepat</span>
+          <span class="text-[10px] font-bold text-primary">{{ merchantsStore.merchantMenus.length }} menu aktif</span>
         </div>
-        <p class="text-sm font-semibold text-slate-800 mb-1">Belum Ada Menu Terdaftar</p>
-        <p class="text-xs text-slate-400 max-w-xs mx-auto">Klik tombol "Tambah Menu" untuk memasukkan item pertama toko Anda.</p>
-      </div>
-      <div v-else class="space-y-3.5">
-        <!-- Menu Card -->
-        <div
-          v-for="menu in merchantsStore.merchantMenus"
-          :key="menu.id"
-          class="bg-white border border-slate-100 rounded-2xl p-4 flex gap-4 items-center justify-between shadow-[0_4px_20px_rgb(0,0,0,0.015)] hover:shadow-md hover:border-slate-200/60 transition-all duration-300"
-          :class="{ 'opacity-60 bg-slate-50/50': !menu.is_available }"
-        >
-          <div class="flex items-center gap-4 min-w-0 flex-1">
-            <!-- Menu Image -->
-            <div class="w-16 h-16 rounded-xl bg-slate-50 overflow-hidden border border-slate-100 flex-shrink-0 flex items-center justify-center">
-              <img
-                v-if="menu.image_url"
-                :src="menu.image_url"
-                alt="Menu"
-                class="w-full h-full object-cover"
-              >
-              <Utensils v-else class="w-6 h-6 text-slate-300" />
+        <div class="space-y-2.5">
+          <div 
+            v-for="menu in merchantsStore.merchantMenus.slice(0, 3)" 
+            :key="menu.id" 
+            class="flex items-center justify-between p-2.5 bg-white border border-slate-50 rounded-2xl text-xs"
+          >
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div class="w-8 h-8 rounded-lg bg-slate-50 overflow-hidden border border-slate-100 shrink-0 flex items-center justify-center">
+                <img v-if="menu.image_url" :src="menu.image_url" class="w-full h-full object-cover">
+                <Utensils v-else class="w-4 h-4 text-slate-300" />
+              </div>
+              <span class="font-bold text-slate-700 truncate max-w-[150px]">{{ menu.name }}</span>
             </div>
-
-            <!-- Menu Info -->
-            <div class="min-w-0 space-y-1">
-              <h4 class="text-sm font-extrabold text-slate-800 truncate">{{ menu.name }}</h4>
-              <p v-if="menu.description" class="text-[10px] text-slate-400 font-medium truncate leading-relaxed max-w-[220px]">
-                {{ menu.description }}
-              </p>
-              <p class="text-sm font-black text-primary mt-1">Rp {{ menu.price.toLocaleString('id-ID') }}</p>
-            </div>
-          </div>
-
-          <!-- Availability & Actions -->
-          <div class="flex flex-col items-end gap-3 flex-shrink-0 pl-2 border-l border-slate-100">
-            <button
-              class="px-2.5 py-1 text-[10px] font-extrabold rounded-lg border transition-all"
-              :class="menu.is_available ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'"
-              @click="toggleMenuAvailable(menu)"
-            >
-              {{ menu.is_available ? 'Tersedia' : 'Habis' }}
-            </button>
-            <div class="flex gap-1.5">
-              <button
-                class="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 text-slate-600 active:scale-95 transition-all"
-                @click="openEditModal(menu)"
-              >
-                <Edit class="w-4 h-4" />
-              </button>
-              <button
-                class="w-8 h-8 rounded-lg border border-rose-100 flex items-center justify-center hover:bg-rose-50 text-rose-500 active:scale-95 transition-all"
-                @click="handleDeleteMenu(menu.id)"
-              >
-                <Trash2 class="w-4 h-4" />
-              </button>
-            </div>
+            <span class="font-extrabold text-slate-800 flex-shrink-0">Rp {{ menu.price.toLocaleString('id-ID') }}</span>
           </div>
         </div>
       </div>
