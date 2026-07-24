@@ -5,21 +5,27 @@ export default defineNuxtRouteMiddleware(async (to) => {
     const tokenQuery = to.query.token as string
     if (tokenQuery) {
         console.log('[Auth Middleware] Found token query parameter, setting cookie & state')
-        const tokenCookie = useCookie('auth_token')
+        const tokenCookie = useCookie('auth_token', {
+            path: '/',
+            maxAge: 60 * 60 * 24 * 7, // 7 days
+            sameSite: 'lax',
+        })
         tokenCookie.value = tokenQuery
-        authStore.token = tokenQuery
+        authStore.setToken(tokenQuery)
         
         try {
             await authStore.fetchProfile(true)
             console.log('[Auth Middleware] Auto-login profile loaded:', authStore.user?.email)
+            // Remove token from query parameters for clean URL and route to merchant menu directly
+            const cleanQuery = { ...to.query }
+            delete cleanQuery.token
+            return navigateTo({ path: '/merchant/menu', query: cleanQuery })
         } catch (e) {
             console.error('[Auth Middleware] Auto-login profile fetch failed:', e)
+            authStore.token = null
+            tokenCookie.value = null
+            return navigateTo('/')
         }
-        
-        // Remove token from query parameters for clean URL
-        const cleanQuery = { ...to.query }
-        delete cleanQuery.token
-        return navigateTo({ path: to.path, query: cleanQuery })
     }
 
     if (!authStore.token) {
@@ -45,7 +51,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
     // Redirect unauthenticated users trying to access protected routes
     if (!authStore.isAuthenticated && !isPublic) {
         // Merchant routes redirect to merchant login portal
-        if (isMerchantRoute) return navigateTo('/merchant/login')
+        if (isMerchantRoute) {
+            // Block standard browser login for merchants by redirecting to homepage
+            return navigateTo('/')
+        }
         return navigateTo('/login')
     }
 
@@ -62,7 +71,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
             tokenCookie.value = null
             if (!isPublic) {
                 console.log('[Auth Middleware] Redirecting to login due to fetchProfile failure.')
-                return navigateTo('/login')
+                return navigateTo('/')
             }
         }
     }
@@ -70,6 +79,11 @@ export default defineNuxtRouteMiddleware(async (to) => {
     // Role-based access control
     if (authStore.isAuthenticated && authStore.user) {
         const role = authStore.user.role
+
+        // Block direct access to merchant login for authenticated merchants
+        if (role === ROLE_MERCHANT && to.path === '/merchant/login') {
+            return navigateTo('/merchant/menu')
+        }
 
         // Runner is not allowed on Web Platform (exclusively mobile)
         if (role === ROLE_RUNNER) {
