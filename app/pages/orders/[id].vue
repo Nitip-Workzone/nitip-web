@@ -263,6 +263,8 @@ async function handleReview() {
 function getStatusColor(status: string) {
   switch (status) {
     case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200'
+    case 'cooking': return 'bg-blue-50 text-blue-700 border-blue-200'
+    case 'ready': return 'bg-indigo-50 text-indigo-700 border-indigo-200'
     case 'accepted': return 'bg-sky-50 text-sky-700 border-sky-200'
     case 'purchasing': return 'bg-purple-50 text-purple-700 border-purple-200'
     case 'delivering': return 'bg-orange-50 text-orange-700 border-orange-200'
@@ -275,7 +277,9 @@ function getStatusColor(status: string) {
 
 function getStatusLabel(status: string) {
   switch (status) {
-    case 'pending': return 'Mencari Runner'
+    case 'pending': return order.value?.merchant_id ? 'Menunggu Dapur Menerima' : 'Mencari Runner'
+    case 'cooking': return 'Sedang Dimasak'
+    case 'ready': return 'Pesanan Siap Diambil'
     case 'accepted': return 'Diterima Runner'
     case 'purchasing': return 'Sedang Belanja'
     case 'delivering': return 'Sedang Diantar'

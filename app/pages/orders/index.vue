@@ -44,6 +44,8 @@ function getStatusColor(order: any) {
   }
   switch (order.status) {
     case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200'
+    case 'cooking': return 'bg-blue-50 text-blue-700 border-blue-200'
+    case 'ready': return 'bg-indigo-50 text-indigo-700 border-indigo-200'
     case 'accepted': return 'bg-sky-50 text-sky-700 border-sky-200'
     case 'purchasing': return 'bg-purple-50 text-purple-700 border-purple-200'
     case 'delivering': return 'bg-orange-50 text-orange-700 border-orange-200'
@@ -59,7 +61,9 @@ function getStatusLabel(order: any) {
     return 'Menunggu Pembayaran'
   }
   switch (order.status) {
-    case 'pending': return 'Menunggu Runner'
+    case 'pending': return order.merchant_id ? 'Menunggu Dapur Menerima' : 'Menunggu Runner'
+    case 'cooking': return 'Sedang Dimasak'
+    case 'ready': return 'Pesanan Siap Diambil'
     case 'accepted': return 'Diterima Runner'
     case 'purchasing': return 'Sedang Belanja'
     case 'delivering': return 'Sedang Diantar'
@@ -175,6 +179,17 @@ function formatDate(dateStr: string) {
         </div>
 
         <div class="space-y-1">
+          <div class="flex items-center gap-1.5 mb-1 flex-wrap">
+            <span v-if="order.merchant_id" class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[9px] font-extrabold bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-wide">
+              🍔 Nitip Food
+            </span>
+            <span v-else-if="order.service_category === 'kirim'" class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[9px] font-extrabold bg-blue-50 text-blue-600 border border-blue-100 uppercase tracking-wide">
+              📦 Nitip Kirim
+            </span>
+            <span v-else class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[9px] font-extrabold bg-amber-50 text-amber-600 border border-amber-100 uppercase tracking-wide">
+              🛍️ Jastip Beli
+            </span>
+          </div>
           <h4 class="text-xs font-extrabold text-foreground truncate">{{ order.item_details }}</h4>
           <p class="text-[10px] text-muted-foreground">Tujuan: {{ order.delivery_address }}</p>
         </div>

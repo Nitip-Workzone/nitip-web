@@ -234,81 +234,50 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Store Header Card & Status Controls (Moved from Dashboard) -->
-      <div class="relative overflow-hidden bg-white border border-slate-100 rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)] space-y-5">
-        <!-- Top Gradient Decorator -->
-        <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-purple-500" />
-        
-        <div class="flex justify-between items-start">
-          <div class="space-y-1 max-w-[80%]">
-            <span class="inline-flex items-center gap-1.5 text-[10px] font-extrabold text-primary px-2.5 py-1 bg-primary/5 rounded-full border border-primary/10 uppercase tracking-widest">
-              <span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
-              Mitra {{ merchantsStore.currentMerchant?.category }}
-            </span>
-            <h2 class="text-xl font-extrabold tracking-tight mt-2 text-slate-900 leading-tight">
-              {{ merchantsStore.currentMerchant?.name }}
-            </h2>
-            <p class="text-xs text-slate-500 font-medium line-clamp-2 leading-relaxed">
-              📍 {{ merchantsStore.currentMerchant?.address }}
-            </p>
-          </div>
-          <div class="flex items-center gap-1 bg-amber-50 text-amber-600 border border-amber-100 text-xs font-extrabold px-2.5 py-1.5 rounded-xl shadow-sm">
-            ⭐ {{ merchantsStore.currentMerchant?.rating.toFixed(1) }}
-          </div>
+      <!-- Compact Store Settings & Status Controls -->
+      <div class="bg-white border border-slate-100 rounded-3xl p-5 shadow-[0_4px_25px_rgb(0,0,0,0.01)] space-y-4">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs font-black text-slate-800 tracking-wide uppercase">Pengaturan Operasional</h3>
+          <span class="inline-flex items-center gap-1.5 text-[9px] font-extrabold text-primary px-2 py-0.5 bg-primary/5 rounded-full border border-primary/10">
+            {{ storeForm.is_open ? 'BUKA' : 'TUTUP' }}
+          </span>
         </div>
 
-        <hr class="border-slate-100">
-
-        <!-- Quick Controls -->
-        <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-3.5">
           <!-- Toggle Open Status -->
-          <div class="flex items-center justify-between p-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl transition-all">
-            <div class="flex items-center gap-3">
-              <span class="relative flex h-3 w-3">
-                <span v-if="storeForm.is_open" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-3 w-3" :class="storeForm.is_open ? 'bg-emerald-50' : 'bg-rose-500'" />
-              </span>
-              <div class="space-y-0.5">
-                <p class="text-xs font-bold text-slate-800">Status Operasional Toko</p>
-                <p class="text-[10px] font-medium text-slate-400">
-                  {{ storeForm.is_open ? 'Menerima orderan aktif' : 'Tutup / Libur sementara' }}
-                </p>
-              </div>
-            </div>
-            <button @click="storeForm.is_open = !storeForm.is_open; toggleStoreOpen()" class="focus:outline-none focus:scale-95 transition-transform">
-              <ToggleRight v-if="storeForm.is_open" class="w-12 h-7 text-emerald-500" />
-              <ToggleLeft v-else class="w-12 h-7 text-slate-300" />
-            </button>
-          </div>
+          <button 
+            @click="storeForm.is_open = !storeForm.is_open; toggleStoreOpen()" 
+            class="flex flex-col items-start gap-1 p-3.5 border rounded-2xl transition-all text-left"
+            :class="storeForm.is_open ? 'bg-emerald-50/20 border-emerald-100/50' : 'bg-slate-50 border-slate-100'"
+          >
+            <span class="text-[9px] font-black text-slate-400 uppercase">Status Toko</span>
+            <span class="text-xs font-bold text-slate-800">{{ storeForm.is_open ? 'Buka (Aktif)' : 'Tutup (Libur)' }}</span>
+          </button>
 
           <!-- Toggle Auto Confirm -->
-          <div class="flex items-center justify-between p-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl transition-all">
-            <div class="space-y-1 pr-4">
-              <p class="text-xs font-bold text-slate-800">Konfirmasi Otomatis (Auto Confirm)</p>
-              <p class="text-[10px] leading-normal text-slate-400 font-medium">Order langsung siap dimasak/diproses tanpa persetujuan manual.</p>
-            </div>
-            <button @click="storeForm.auto_confirm = !storeForm.auto_confirm; toggleAutoConfirm()" class="focus:outline-none focus:scale-95 transition-transform flex-shrink-0">
-              <ToggleRight v-if="storeForm.auto_confirm" class="w-12 h-7 text-primary" />
-              <ToggleLeft v-else class="w-12 h-7 text-slate-300" />
-            </button>
-          </div>
+          <button 
+            @click="storeForm.auto_confirm = !storeForm.auto_confirm; toggleAutoConfirm()" 
+            class="flex flex-col items-start gap-1 p-3.5 border rounded-2xl transition-all text-left"
+            :class="storeForm.auto_confirm ? 'bg-primary/5 border-primary/10' : 'bg-slate-50 border-slate-100'"
+          >
+            <span class="text-[9px] font-black text-slate-400 uppercase">Auto Confirm</span>
+            <span class="text-xs font-bold text-slate-800">{{ storeForm.auto_confirm ? 'Aktif' : 'Nonaktif' }}</span>
+          </button>
+        </div>
 
-          <!-- Active Orders Queue Limit -->
-          <div class="flex items-center justify-between gap-4 p-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl transition-all">
-            <div class="space-y-0.5">
-              <p class="text-xs font-bold text-slate-800">Batas Antrean Maksimal</p>
-              <p class="text-[10px] text-slate-400 font-medium">Maksimal pesanan aktif yang ditangani serentak.</p>
-            </div>
-            <div class="flex items-center gap-2 flex-shrink-0">
-              <input
-                v-model="storeForm.max_active_orders"
-                type="number"
-                min="1"
-                class="w-16 h-9 text-center text-sm font-extrabold border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
-                @change="updateQueueLimit"
-              >
-            </div>
+        <!-- Active Orders Queue Limit -->
+        <div class="flex items-center justify-between p-3 bg-slate-50/50 border border-slate-100 rounded-2xl">
+          <div class="space-y-0.5">
+            <p class="text-xs font-bold text-slate-700">Maksimal Antrean Aktif</p>
+            <p class="text-[9px] text-slate-400 font-medium">Batas maksimal pesanan diproses serentak.</p>
           </div>
+          <input
+            v-model="storeForm.max_active_orders"
+            type="number"
+            min="1"
+            class="w-12 h-8 text-center text-xs font-extrabold border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-primary transition-all"
+            @change="updateQueueLimit"
+          >
         </div>
       </div>
 

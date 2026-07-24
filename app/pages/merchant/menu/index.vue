@@ -392,41 +392,16 @@ onMounted(() => {
 
     <!-- Merchant Dashboard View -->
     <div v-else class="space-y-6 pt-3">
-      <!-- Store Info Card (No Configuration Switches) -->
-      <div class="relative overflow-hidden bg-white border border-slate-100 rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)] space-y-4">
-        <!-- Top Gradient Decorator -->
-        <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-purple-500" />
-        
-        <div class="flex justify-between items-start">
-          <div class="space-y-1 max-w-[80%]">
-            <span class="inline-flex items-center gap-1.5 text-[10px] font-extrabold text-primary px-2.5 py-1 bg-primary/5 rounded-full border border-primary/10 uppercase tracking-widest">
-              <span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
-              Mitra {{ merchantsStore.currentMerchant?.category }}
-            </span>
-            <h2 class="text-xl font-extrabold tracking-tight mt-2 text-slate-900 leading-tight">
-              {{ merchantsStore.currentMerchant?.name }}
-            </h2>
-            <p class="text-xs text-slate-500 font-medium line-clamp-2 leading-relaxed">
-              📍 {{ merchantsStore.currentMerchant?.address }}
-            </p>
-          </div>
-          <div class="flex items-center gap-1 bg-amber-50 text-amber-600 border border-amber-100 text-xs font-extrabold px-2.5 py-1.5 rounded-xl shadow-sm">
-            ⭐ {{ merchantsStore.currentMerchant?.rating.toFixed(1) }}
-          </div>
+      <!-- Store Header Title -->
+      <div class="px-1 flex justify-between items-center">
+        <div class="space-y-0.5">
+          <p class="text-[10px] font-extrabold text-primary uppercase tracking-widest">Dashboard Mitra</p>
+          <h2 class="text-xl font-black text-slate-900 tracking-tight">{{ merchantsStore.currentMerchant?.name }}</h2>
         </div>
-
-        <hr class="border-slate-100">
-
-        <!-- Simple Status Indicator -->
-        <div class="flex items-center gap-2">
-          <span class="relative flex h-2 w-2">
-            <span v-if="merchantsStore.currentMerchant?.is_open" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2" :class="merchantsStore.currentMerchant?.is_open ? 'bg-emerald-500' : 'bg-rose-500'" />
-          </span>
-          <span class="text-xs font-bold text-slate-600">
-            Toko saat ini: {{ merchantsStore.currentMerchant?.is_open ? 'Menerima Pesanan' : 'Tutup' }}
-          </span>
-        </div>
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 text-[10px] font-bold">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          {{ merchantsStore.currentMerchant?.is_open ? 'Buka' : 'Tutup' }}
+        </span>
       </div>
 
       <!-- Quick Statistics Grid -->
@@ -456,44 +431,6 @@ onMounted(() => {
             <p class="text-[9px] font-medium text-slate-400 mt-1">Pesanan sedang diproses</p>
           </div>
         </div>
-      </div>
-
-      <!-- Action Navigation Cards -->
-      <div class="space-y-3 pt-2">
-        <NuxtLink 
-          to="/merchant/orders" 
-          class="flex items-center justify-between p-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-3xl shadow-[0_4px_20px_rgb(15,23,42,0.15)] hover:scale-[1.01] active:scale-[0.99] transition-all"
-        >
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
-              <ShoppingBag class="w-5 h-5 text-white" />
-            </div>
-            <div class="space-y-0.5">
-              <p class="text-xs font-black tracking-wide">Kelola Pesanan Masuk</p>
-              <p class="text-[9px] text-slate-300 font-medium">Proses masakan & antrean order</p>
-            </div>
-          </div>
-          <span class="inline-flex items-center justify-center px-2.5 py-1 bg-rose-500 text-white text-[10px] font-extrabold rounded-full" v-if="merchantsStore.merchantOrders.filter(o => o.status === 'pending').length > 0">
-            {{ merchantsStore.merchantOrders.filter(o => o.status === 'pending').length }} Baru
-          </span>
-        </NuxtLink>
-
-        <!-- Manage Catalog Trigger Card (Opens catalog management) -->
-        <NuxtLink 
-          to="/merchant/menu/catalog"
-          class="w-full flex items-center justify-between p-4 bg-white border border-slate-100 rounded-3xl shadow-[0_4px_25px_rgb(0,0,0,0.015)] hover:border-slate-200 active:scale-[0.99] transition-all text-left"
-        >
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-2xl bg-primary/5 flex items-center justify-center">
-              <Plus class="w-5 h-5 text-primary" />
-            </div>
-            <div class="space-y-0.5">
-              <p class="text-xs font-black text-slate-800 tracking-wide">Kelola Katalog Menu Toko</p>
-              <p class="text-[9px] text-slate-400 font-medium">Ubah harga, status ketersediaan & tambah produk</p>
-            </div>
-          </div>
-          <span class="text-primary font-bold text-xs pr-1">Kelola</span>
-        </NuxtLink>
       </div>
 
       <!-- Quick Catalog Shortcut Info -->

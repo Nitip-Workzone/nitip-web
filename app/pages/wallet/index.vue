@@ -21,6 +21,18 @@ const refreshWallet = async () => {
   }
 }
 
+function getTxTypeLabel(type: string) {
+  switch (type) {
+    case 'TOP_UP': return 'Top Up'
+    case 'WITHDRAWAL': return 'Penarikan Dana'
+    case 'ESCROW_HOLD': return 'Pembayaran Pesanan'
+    case 'ESCROW_RELEASE': return 'Dana Cair (Escrow)'
+    case 'PLATFORM_FEE': return 'Biaya Layanan'
+    case 'REFUND': return 'Pengembalian Dana'
+    default: return type
+  }
+}
+
 onMounted(() => {
   refreshWallet()
 })
@@ -107,17 +119,14 @@ onMounted(() => {
           <div class="flex items-center gap-3">
             <div 
               class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              :class="tx.type === 'credit' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'"
+              :class="tx.amount >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'"
             >
-              <ArrowDownLeft v-if="tx.type === 'credit'" class="w-4 h-4" />
+              <ArrowDownLeft v-if="tx.amount >= 0" class="w-4 h-4" />
               <ArrowUpRight v-else class="w-4 h-4" />
             </div>
             <div>
               <p class="text-xs font-bold text-slate-800 leading-snug">
-                {{ 
-                  tx.type === 'credit' ? 'Pemasukan' : 
-                  tx.type === 'debit' ? 'Pembayaran' : 'Penarikan Dana' 
-                }}
+                {{ getTxTypeLabel(tx.type) }}
               </p>
               <p class="text-[9px] text-slate-400 mt-0.5 font-semibold">
                 {{ new Date(tx.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) }}
@@ -127,14 +136,14 @@ onMounted(() => {
           <div class="text-right">
             <p 
               class="text-xs font-black"
-              :class="tx.type === 'credit' ? 'text-emerald-500' : 'text-slate-800'"
+              :class="tx.amount >= 0 ? 'text-emerald-500' : 'text-slate-800'"
             >
-              {{ tx.type === 'credit' ? '+' : '-' }} Rp {{ tx.amount.toLocaleString('id-ID') }}
+              {{ tx.amount >= 0 ? '+' : '-' }} Rp {{ Math.abs(tx.amount).toLocaleString('id-ID') }}
             </p>
             <span 
               class="text-[8px] font-bold px-1.5 py-0.5 rounded uppercase mt-1 inline-block"
               :class="
-                tx.status === 'success' ? 'bg-emerald-500/10 text-emerald-500' : 
+                tx.status === 'success' || tx.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' : 
                 tx.status === 'pending' ? 'bg-amber-500/10 text-amber-500' : 
                 'bg-rose-500/10 text-rose-500'
               "

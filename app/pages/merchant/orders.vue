@@ -47,7 +47,14 @@ const pendingOrders = computed(() =>
   merchantsStore.merchantOrders.filter(o => o.status === 'pending')
 )
 const processingOrders = computed(() => 
-  merchantsStore.merchantOrders.filter(o => o.status === 'cooking' || o.status === 'ready')
+  merchantsStore.merchantOrders.filter(o => 
+    o.status === 'cooking' || 
+    o.status === 'ready' || 
+    o.status === 'accepted' || 
+    o.status === 'purchasing' || 
+    o.status === 'delivering' || 
+    o.status === 'on_progress'
+  )
 )
 const completedOrders = computed(() => 
   merchantsStore.merchantOrders.filter(o => o.status === 'completed')
@@ -185,13 +192,19 @@ onUnmounted(() => {
               order.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-100' : 
               order.status === 'cooking' ? 'bg-blue-50 text-blue-600 border-blue-100' : 
               order.status === 'ready' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
-              'bg-slate-100 text-slate-500 border-slate-200'
+              order.status === 'accepted' ? 'bg-orange-50 text-orange-600 border-orange-100' : 
+              order.status === 'purchasing' ? 'bg-purple-50 text-purple-600 border-purple-100' : 
+              order.status === 'delivering' || order.status === 'on_progress' ? 'bg-sky-50 text-sky-600 border-sky-100' : 
+              'bg-slate-50 text-slate-500 border-slate-200'
             "
           >
             {{ 
               order.status === 'pending' ? 'Masuk' : 
-              order.status === 'cooking' ? 'Diproses' : 
-              order.status === 'ready' ? 'Siap Diambil' : 'Selesai'
+              order.status === 'cooking' ? 'Sedang Dimasak' : 
+              order.status === 'ready' ? 'Siap Diambil' : 
+              order.status === 'accepted' ? 'Mencari Kurir' : 
+              order.status === 'purchasing' ? 'Runner Belanja' : 
+              order.status === 'delivering' || order.status === 'on_progress' ? 'Kurir Mengantar' : 'Selesai'
             }}
           </span>
         </div>
@@ -212,7 +225,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Dynamic Action Buttons for Quick Access -->
-        <div v-if="order.status === 'pending' || order.status === 'cooking'" class="pt-1.5 flex gap-2">
+        <div v-if="order.status === 'pending' || order.status === 'accepted' || order.status === 'cooking'" class="pt-1.5 flex gap-2">
           <!-- Accept Button -->
           <button 
             v-if="order.status === 'pending'"
@@ -223,6 +236,16 @@ onUnmounted(() => {
             <Play class="w-3.5 h-3.5" v-if="actionLoadingId !== order.id" />
             <RefreshCw class="w-3.5 h-3.5 animate-spin" v-else />
             Terima Pesanan
+          </button>
+
+          <!-- Waiting for Runner (Accepted state) -->
+          <button 
+            v-if="order.status === 'accepted'"
+            class="flex-1 h-10 rounded-xl text-xs flex items-center justify-center gap-1.5 font-bold bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+            disabled
+          >
+            <Clock class="w-3.5 h-3.5" />
+            Menunggu Kurir Menerima...
           </button>
 
           <!-- Mark Ready Button -->
