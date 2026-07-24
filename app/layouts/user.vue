@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Home, Package, User, Truck, Store, ShoppingBag, CreditCard } from '@lucide/vue'
+import { Home, Package, User, Truck, Store, ShoppingBag, CreditCard, Utensils } from '@lucide/vue'
 import { useNotificationsStore } from '~/stores/notifications'
 
 const route = useRoute()
@@ -9,7 +9,8 @@ const notificationsStore = useNotificationsStore()
 const navItems = computed(() => {
   if (authStore.user?.role === 'merchant') {
     return [
-      { path: '/merchant/menu', label: 'Menu Toko', icon: Store },
+      { path: '/merchant/menu', label: 'Dashboard', icon: Store },
+      { path: '/merchant/menu/catalog', label: 'Katalog', icon: Utensils },
       { path: '/merchant/orders', label: 'Order Aktif', icon: ShoppingBag },
       { path: '/wallet', label: 'Dompet', icon: CreditCard },
       { path: '/profile', label: 'Profil', icon: User },
