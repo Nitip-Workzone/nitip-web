@@ -9,7 +9,7 @@ definePageMeta({
 const merchantsStore = useMerchantsStore()
 const { success, error } = useToast()
 
-const activeTab = ref<'pending' | 'cooking' | 'ready' | 'completed'>('pending')
+const activeTab = ref<'pending' | 'processing' | 'completed'>('pending')
 const pollingTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const actionLoadingId = ref('')
 
@@ -46,11 +46,8 @@ const fetchOrders = async () => {
 const pendingOrders = computed(() => 
   merchantsStore.merchantOrders.filter(o => o.status === 'pending')
 )
-const cookingOrders = computed(() => 
-  merchantsStore.merchantOrders.filter(o => o.status === 'cooking')
-)
-const readyOrders = computed(() => 
-  merchantsStore.merchantOrders.filter(o => o.status === 'ready')
+const processingOrders = computed(() => 
+  merchantsStore.merchantOrders.filter(o => o.status === 'cooking' || o.status === 'ready')
 )
 const completedOrders = computed(() => 
   merchantsStore.merchantOrders.filter(o => o.status === 'completed')
@@ -96,76 +93,51 @@ onUnmounted(() => {
 
 <template>
   <div class="px-4 pb-24 space-y-6">
-    <!-- Header with Quick Stats -->
-    <div class="bg-card border border-border/50 rounded-2xl p-5 space-y-3">
-      <div class="flex justify-between items-center">
-        <div>
-          <h2 class="text-lg font-black text-slate-900 tracking-tight">Order Aktif Toko</h2>
-          <p class="text-[10px] text-muted-foreground">Kelola pesanan masuk dengan cepat untuk kepuasan pelanggan.</p>
-        </div>
-        <button 
-          @click="fetchOrders" 
-          class="p-2 border border-input rounded-xl hover:bg-slate-50 transition-all text-slate-600"
-          :disabled="merchantsStore.loading"
-        >
-          <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': merchantsStore.loading }" />
-        </button>
+    <!-- Header with Quick Refresh -->
+    <div class="flex justify-between items-center pt-3">
+      <div>
+        <h2 class="text-lg font-black text-slate-900 tracking-tight">Order Masuk & Proses</h2>
+        <p class="text-[10px] text-muted-foreground">Proses antrean pesanan aktif toko Anda.</p>
       </div>
-
-      <hr class="border-border/40">
-
-      <!-- Store Quick Details -->
-      <div class="flex justify-between items-center text-xs">
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full" :class="merchantsStore.currentMerchant?.is_open ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'" />
-          <span class="font-bold text-slate-700">Toko: {{ merchantsStore.currentMerchant?.is_open ? 'BUKA' : 'TUTUP' }}</span>
-        </div>
-        <div class="text-muted-foreground text-[11px]">
-          Batas Antrean: <span class="font-extrabold text-slate-800">{{ merchantsStore.currentMerchant?.max_active_orders }}</span>
-        </div>
-      </div>
+      <button 
+        @click="fetchOrders" 
+        class="p-2 border border-slate-100 rounded-xl bg-white hover:bg-slate-50 transition-all text-slate-600 shadow-sm"
+        :disabled="merchantsStore.loading"
+      >
+        <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': merchantsStore.loading }" />
+      </button>
     </div>
 
-    <!-- Active Count Badges / Tabs -->
-    <div class="grid grid-cols-4 gap-1 bg-slate-100 p-1 rounded-2xl">
+    <!-- Active Count Badges / 3-Tabs Layout -->
+    <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-2xl">
       <!-- Pending Tab -->
       <button 
         @click="activeTab = 'pending'"
         class="py-2.5 rounded-xl text-center transition-all flex flex-col items-center justify-center relative"
-        :class="activeTab === 'pending' ? 'bg-white shadow-sm text-primary' : 'text-slate-500'"
+        :class="activeTab === 'pending' ? 'bg-white shadow-sm text-primary font-bold' : 'text-slate-500'"
       >
-        <span class="text-[10px] font-bold">Baru</span>
+        <span class="text-[10px] font-bold">Masuk</span>
         <span class="text-xs font-black" :class="pendingOrders.length > 0 ? 'text-amber-600 font-extrabold' : ''">
           {{ pendingOrders.length }}
         </span>
-        <span v-if="pendingOrders.length > 0" class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full animate-ping" />
+        <span v-if="pendingOrders.length > 0" class="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 rounded-full animate-ping" />
       </button>
 
-      <!-- Cooking Tab -->
+      <!-- Processing Tab (Cooking + Ready) -->
       <button 
-        @click="activeTab = 'cooking'"
+        @click="activeTab = 'processing'"
         class="py-2.5 rounded-xl text-center transition-all flex flex-col items-center justify-center"
-        :class="activeTab === 'cooking' ? 'bg-white shadow-sm text-primary' : 'text-slate-500'"
+        :class="activeTab === 'processing' ? 'bg-white shadow-sm text-primary font-bold' : 'text-slate-500'"
       >
-        <span class="text-[10px] font-bold">Dimasak</span>
-        <span class="text-xs font-black">{{ cookingOrders.length }}</span>
-      </button>
-
-      <!-- Ready Tab -->
-      <button 
-        @click="activeTab = 'ready'"
-        class="py-2.5 rounded-xl text-center transition-all flex flex-col items-center justify-center"
-        :class="activeTab === 'ready' ? 'bg-white shadow-sm text-primary' : 'text-slate-500'"
-      >
-        <span class="text-[10px] font-bold">Siap</span>
-        <span class="text-xs font-black">{{ readyOrders.length }}</span>
+        <span class="text-[10px] font-bold">Diproses</span>
+        <span class="text-xs font-black">{{ processingOrders.length }}</span>
       </button>
 
       <!-- Completed Tab -->
       <button 
         @click="activeTab = 'completed'"
         class="py-2.5 rounded-xl text-center transition-all flex flex-col items-center justify-center"
-        :class="activeTab === 'completed' ? 'bg-white shadow-sm text-primary' : 'text-slate-500'"
+        :class="activeTab === 'completed' ? 'bg-white shadow-sm text-primary font-bold' : 'text-slate-500'"
       >
         <span class="text-[10px] font-bold">Selesai</span>
         <span class="text-xs font-black">{{ completedOrders.length }}</span>
@@ -178,11 +150,10 @@ onUnmounted(() => {
       <div 
         v-if="
           (activeTab === 'pending' && pendingOrders.length === 0) ||
-          (activeTab === 'cooking' && cookingOrders.length === 0) ||
-          (activeTab === 'ready' && readyOrders.length === 0) ||
+          (activeTab === 'processing' && processingOrders.length === 0) ||
           (activeTab === 'completed' && completedOrders.length === 0)
         " 
-        class="p-12 text-center bg-card border border-border/50 rounded-2xl text-muted-foreground"
+        class="p-12 text-center bg-white border border-slate-100 rounded-3xl text-slate-400"
       >
         <ShoppingBag class="w-10 h-10 mx-auto mb-3 opacity-30" />
         <p class="text-xs">Tidak ada pesanan di tab ini.</p>
@@ -193,49 +164,48 @@ onUnmounted(() => {
         v-else
         v-for="order in (
           activeTab === 'pending' ? pendingOrders : 
-          activeTab === 'cooking' ? cookingOrders : 
-          activeTab === 'ready' ? readyOrders : completedOrders
+          activeTab === 'processing' ? processingOrders : completedOrders
         )" 
         :key="order.id"
-        class="bg-card border border-border/50 rounded-2xl p-4.5 space-y-3.5 shadow-sm"
+        class="bg-white border border-slate-100 rounded-3xl p-5 space-y-4 shadow-[0_4px_25px_rgb(0,0,0,0.015)]"
       >
         <!-- Header: Order ID & Time -->
         <div class="flex justify-between items-start">
           <div class="min-w-0">
             <p class="text-[10px] font-black text-slate-800 tracking-wide uppercase">ID: {{ order.id.slice(0, 8) }}...</p>
-            <div class="flex items-center gap-1 mt-0.5 text-[9px] text-muted-foreground font-semibold">
+            <div class="flex items-center gap-1 mt-0.5 text-[9px] text-slate-400 font-semibold">
               <Clock class="w-3 h-3" />
               <span>{{ new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }} WIB</span>
             </div>
           </div>
           <!-- Status Tag -->
           <span 
-            class="px-2 py-0.5 text-[8px] font-extrabold uppercase rounded-full border"
+            class="px-2.5 py-1 text-[9px] font-extrabold uppercase rounded-lg border"
             :class="
-              order.status === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 
-              order.status === 'cooking' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 
-              order.status === 'ready' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
-              'bg-slate-200 text-slate-600 border-slate-300'
+              order.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-100' : 
+              order.status === 'cooking' ? 'bg-blue-50 text-blue-600 border-blue-100' : 
+              order.status === 'ready' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
+              'bg-slate-100 text-slate-500 border-slate-200'
             "
           >
             {{ 
-              order.status === 'pending' ? 'Menunggu' : 
-              order.status === 'cooking' ? 'Dimasak' : 
+              order.status === 'pending' ? 'Masuk' : 
+              order.status === 'cooking' ? 'Diproses' : 
               order.status === 'ready' ? 'Siap Diambil' : 'Selesai'
             }}
           </span>
         </div>
 
-        <hr class="border-border/30">
+        <hr class="border-slate-100">
 
         <!-- Item Details -->
         <div class="flex gap-3">
-          <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <div class="w-8 h-8 rounded-lg bg-primary/5 text-primary flex items-center justify-center shrink-0">
             <Utensils class="w-4 h-4" />
           </div>
           <div class="min-w-0 flex-1">
             <p class="text-xs font-bold text-slate-800 leading-relaxed">{{ order.item_details }}</p>
-            <p class="text-[10px] text-slate-500 mt-1 font-semibold">
+            <p class="text-[10px] text-slate-400 mt-1 font-semibold">
               Estimasi: <span class="text-slate-800 font-extrabold">Rp {{ order.estimated_cost?.toLocaleString('id-ID') || 0 }}</span>
             </p>
           </div>
@@ -244,28 +214,28 @@ onUnmounted(() => {
         <!-- Dynamic Action Buttons for Quick Access -->
         <div v-if="order.status === 'pending' || order.status === 'cooking'" class="pt-1.5 flex gap-2">
           <!-- Accept Button -->
-          <UiButton 
+          <button 
             v-if="order.status === 'pending'"
             @click="handleAccept(order.id)"
-            class="flex-1 h-9 rounded-xl text-xs flex items-center justify-center gap-1.5 font-bold"
+            class="flex-1 h-10 rounded-xl text-xs flex items-center justify-center gap-1.5 font-bold bg-primary text-white hover:bg-primary/95 active:scale-95 transition-all shadow-md shadow-primary/10"
             :disabled="actionLoadingId === order.id"
           >
             <Play class="w-3.5 h-3.5" v-if="actionLoadingId !== order.id" />
             <RefreshCw class="w-3.5 h-3.5 animate-spin" v-else />
             Terima Pesanan
-          </UiButton>
+          </button>
 
           <!-- Mark Ready Button -->
-          <UiButton 
+          <button 
             v-if="order.status === 'cooking'"
             @click="handleReady(order.id)"
-            class="flex-1 h-9 rounded-xl text-xs flex items-center justify-center gap-1.5 font-bold bg-emerald-500 hover:bg-emerald-600 text-white"
+            class="flex-1 h-10 rounded-xl text-xs flex items-center justify-center gap-1.5 font-bold bg-emerald-500 hover:bg-emerald-600 text-white active:scale-95 transition-all shadow-md shadow-emerald-500/10"
             :disabled="actionLoadingId === order.id"
           >
             <PackageCheck class="w-3.5 h-3.5" v-if="actionLoadingId !== order.id" />
             <RefreshCw class="w-3.5 h-3.5 animate-spin" v-else />
             Tandai Siap Diambil
-          </UiButton>
+          </button>
         </div>
       </div>
     </div>
