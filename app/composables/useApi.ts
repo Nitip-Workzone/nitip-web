@@ -20,7 +20,7 @@ export const useApi = () => {
     return {
         async request<T>(path: string, options: ApiOptions = {}) {
             const headers: Record<string, string> = {
-                'X-Platform': 'web-admin',
+                'X-Platform': authStore.token ? 'mobile' : 'web-admin',
                 ...options.headers,
             }
 
