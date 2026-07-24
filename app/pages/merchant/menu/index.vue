@@ -519,9 +519,9 @@ onMounted(() => {
           </span>
         </NuxtLink>
 
-        <!-- Manage Catalog Trigger Card (Opens full modal or redirects) -->
-        <button 
-          @click="openAddModal"
+        <!-- Manage Catalog Trigger Card (Opens catalog management) -->
+        <NuxtLink 
+          to="/merchant/menu/catalog"
           class="w-full flex items-center justify-between p-4 bg-white border border-slate-100 rounded-3xl shadow-[0_4px_25px_rgb(0,0,0,0.015)] hover:border-slate-200 active:scale-[0.99] transition-all text-left"
         >
           <div class="flex items-center gap-3">
@@ -529,12 +529,12 @@ onMounted(() => {
               <Plus class="w-5 h-5 text-primary" />
             </div>
             <div class="space-y-0.5">
-              <p class="text-xs font-black text-slate-800 tracking-wide">Tambah Item Menu Baru</p>
-              <p class="text-[9px] text-slate-400 font-medium">Tambah makanan, minuman & jasa laundry</p>
+              <p class="text-xs font-black text-slate-800 tracking-wide">Kelola Katalog Menu Toko</p>
+              <p class="text-[9px] text-slate-400 font-medium">Ubah harga, status ketersediaan & tambah produk</p>
             </div>
           </div>
-          <span class="text-primary font-bold text-xs pr-1">Tambah</span>
-        </button>
+          <span class="text-primary font-bold text-xs pr-1">Kelola</span>
+        </NuxtLink>
       </div>
 
       <!-- Quick Catalog Shortcut Info -->
@@ -561,178 +561,6 @@ onMounted(() => {
         </div>
       </div>
     </div>
-
-    <!-- Add/Edit Menu Modal -->
-    <UiModal v-model:open="showAddModal" title="Tambah Menu Baru">
-      <div class="space-y-4 p-1">
-        <!-- Name -->
-        <div class="space-y-1">
-          <label class="text-[10px] font-bold text-muted-foreground uppercase">Nama Makanan/Minuman</label>
-          <input
-            v-model="menuForm.name"
-            type="text"
-            placeholder="Nasi Goreng Spesial, Kopi Susu..."
-            class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none"
-          >
-        </div>
-
-        <!-- Description -->
-        <div class="space-y-1">
-          <label class="text-[10px] font-bold text-muted-foreground uppercase">Deskripsi</label>
-          <textarea
-            v-model="menuForm.description"
-            placeholder="Bahan, pedas/tidak, kelengkapan item..."
-            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none min-h-[60px]"
-          />
-        </div>
-
-        <!-- Price -->
-        <div class="space-y-1">
-          <label class="text-[10px] font-bold text-muted-foreground uppercase">Harga (Rp)</label>
-          <input
-            v-model="menuForm.price"
-            type="number"
-            placeholder="15000"
-            class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none"
-          >
-        </div>
-
-        <!-- Image Picker & Upload -->
-        <div class="space-y-1">
-          <label class="text-[10px] font-bold text-muted-foreground uppercase">Gambar Produk</label>
-          <div class="flex items-center gap-3">
-            <div class="w-16 h-16 rounded-xl border border-input bg-background overflow-hidden flex items-center justify-center flex-shrink-0">
-              <img
-                v-if="menuForm.image_url"
-                :src="menuForm.image_url"
-                alt="Upload Preview"
-                class="w-full h-full object-cover"
-              >
-              <Camera v-else class="w-6 h-6 text-muted-foreground opacity-60" />
-            </div>
-            <label class="flex-1">
-              <span class="inline-flex h-9 items-center justify-center rounded-lg border border-input bg-background px-4 text-xs font-bold cursor-pointer hover:bg-accent transition-all">
-                {{ uploadProgress ? 'Mengunggah...' : 'Pilih Gambar Menu' }}
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                class="hidden"
-                :disabled="uploadProgress"
-                @change="handleFileChange"
-              >
-            </label>
-          </div>
-        </div>
-
-        <!-- Available status -->
-        <div class="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
-          <div class="space-y-0.5">
-            <p class="text-xs font-bold text-slate-700">Tersedia Langsung</p>
-            <p class="text-[10px] text-muted-foreground">Aktifkan agar menu langsung dapat dibeli oleh pengguna.</p>
-          </div>
-          <input
-            v-model="menuForm.is_available"
-            type="checkbox"
-            class="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary"
-          >
-        </div>
-
-        <!-- Buttons -->
-        <div class="flex gap-3 pt-3">
-          <UiButton variant="secondary" class="flex-1 h-9 rounded-lg text-xs" @click="showAddModal = false">Batal</UiButton>
-          <UiButton class="flex-1 h-9 rounded-lg text-xs" :disabled="actionLoading || uploadProgress" @click="handleAddMenu">
-            {{ actionLoading ? 'Menyimpan...' : 'Tambahkan' }}
-          </UiButton>
-        </div>
-      </div>
-    </UiModal>
-
-    <!-- Edit Menu Modal -->
-    <UiModal v-model:open="showEditModal" title="Edit Item Menu">
-      <div class="space-y-4 p-1">
-        <!-- Name -->
-        <div class="space-y-1">
-          <label class="text-[10px] font-bold text-muted-foreground uppercase">Nama Makanan/Minuman</label>
-          <input
-            v-model="menuForm.name"
-            type="text"
-            placeholder="Nasi Goreng Spesial, Kopi Susu..."
-            class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none"
-          >
-        </div>
-
-        <!-- Description -->
-        <div class="space-y-1">
-          <label class="text-[10px] font-bold text-muted-foreground uppercase">Deskripsi</label>
-          <textarea
-            v-model="menuForm.description"
-            placeholder="Bahan, pedas/tidak, kelengkapan item..."
-            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none min-h-[60px]"
-          />
-        </div>
-
-        <!-- Price -->
-        <div class="space-y-1">
-          <label class="text-[10px] font-bold text-muted-foreground uppercase">Harga (Rp)</label>
-          <input
-            v-model="menuForm.price"
-            type="number"
-            placeholder="15000"
-            class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none"
-          >
-        </div>
-
-        <!-- Image Picker & Upload -->
-        <div class="space-y-1">
-          <label class="text-[10px] font-bold text-muted-foreground uppercase">Gambar Produk</label>
-          <div class="flex items-center gap-3">
-            <div class="w-16 h-16 rounded-xl border border-input bg-background overflow-hidden flex items-center justify-center flex-shrink-0">
-              <img
-                v-if="menuForm.image_url"
-                :src="menuForm.image_url"
-                alt="Upload Preview"
-                class="w-full h-full object-cover"
-              >
-              <Camera v-else class="w-6 h-6 text-muted-foreground opacity-60" />
-            </div>
-            <label class="flex-1">
-              <span class="inline-flex h-9 items-center justify-center rounded-lg border border-input bg-background px-4 text-xs font-bold cursor-pointer hover:bg-accent transition-all">
-                {{ uploadProgress ? 'Mengunggah...' : 'Ubah Gambar' }}
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                class="hidden"
-                :disabled="uploadProgress"
-                @change="handleFileChange"
-              >
-            </label>
-          </div>
-        </div>
-
-        <!-- Available status -->
-        <div class="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
-          <div class="space-y-0.5">
-            <p class="text-xs font-bold text-slate-700">Tersedia Langsung</p>
-            <p class="text-[10px] text-muted-foreground">Aktifkan agar menu langsung dapat dibeli oleh pengguna.</p>
-          </div>
-          <input
-            v-model="menuForm.is_available"
-            type="checkbox"
-            class="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary"
-          >
-        </div>
-
-        <!-- Buttons -->
-        <div class="flex gap-3 pt-3">
-          <UiButton variant="secondary" class="flex-1 h-9 rounded-lg text-xs" @click="showEditModal = false">Batal</UiButton>
-          <UiButton class="flex-1 h-9 rounded-lg text-xs" :disabled="actionLoading || uploadProgress" @click="handleEditMenu">
-            {{ actionLoading ? 'Menyimpan...' : 'Simpan Perubahan' }}
-          </UiButton>
-        </div>
-      </div>
-    </UiModal>
 
     <!-- Location Picker Modal for Merchant Onboarding -->
     <CommonLocationPickerModal
