@@ -391,62 +391,78 @@ onMounted(() => {
     </div>
 
     <!-- Merchant Dashboard View -->
-    <div v-else class="space-y-6">
+    <div v-else class="space-y-6 pt-3">
       <!-- Store Header Card -->
-      <div class="bg-card border border-border/50 rounded-2xl p-5 space-y-4">
+      <div class="relative overflow-hidden bg-white border border-slate-100 rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)] space-y-5">
+        <!-- Top Gradient Decorator -->
+        <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-purple-500" />
+        
         <div class="flex justify-between items-start">
-          <div>
-            <span class="text-[9px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded-full border border-primary/20 uppercase tracking-widest">
+          <div class="space-y-1 max-w-[80%]">
+            <span class="inline-flex items-center gap-1.5 text-[10px] font-extrabold text-primary px-2.5 py-1 bg-primary/5 rounded-full border border-primary/10 uppercase tracking-widest">
+              <span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
               Mitra {{ merchantsStore.currentMerchant?.category }}
             </span>
-            <h2 class="text-xl font-bold mt-1.5 text-slate-900">{{ merchantsStore.currentMerchant?.name }}</h2>
-            <p class="text-xs text-muted-foreground mt-0.5">{{ merchantsStore.currentMerchant?.address }}</p>
+            <h2 class="text-xl font-extrabold tracking-tight mt-2 text-slate-900 leading-tight">
+              {{ merchantsStore.currentMerchant?.name }}
+            </h2>
+            <p class="text-xs text-slate-500 font-medium line-clamp-2 leading-relaxed">
+              📍 {{ merchantsStore.currentMerchant?.address }}
+            </p>
           </div>
-          <div class="flex items-center gap-1 bg-amber-500/10 text-amber-500 text-xs font-bold px-2 py-1 rounded-lg">
+          <div class="flex items-center gap-1 bg-amber-50 text-amber-600 border border-amber-100 text-xs font-extrabold px-2.5 py-1.5 rounded-xl shadow-sm">
             ⭐ {{ merchantsStore.currentMerchant?.rating.toFixed(1) }}
           </div>
         </div>
 
-        <hr class="border-border/50">
+        <hr class="border-slate-100">
 
         <!-- Quick Controls -->
-        <div class="space-y-3">
+        <div class="space-y-4">
           <!-- Toggle Open Status -->
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full" :class="storeForm.is_open ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'" />
-              <p class="text-xs font-bold text-slate-700">Status Toko (Menerima Order)</p>
+          <div class="flex items-center justify-between p-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl transition-all">
+            <div class="flex items-center gap-3">
+              <span class="relative flex h-3 w-3">
+                <span v-if="storeForm.is_open" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3 w-3" :class="storeForm.is_open ? 'bg-emerald-500' : 'bg-rose-500'" />
+              </span>
+              <div class="space-y-0.5">
+                <p class="text-xs font-bold text-slate-800">Status Operasional Toko</p>
+                <p class="text-[10px] font-medium text-slate-400">
+                  {{ storeForm.is_open ? 'Menerima orderan aktif' : 'Tutup / Libur sementara' }}
+                </p>
+              </div>
             </div>
-            <button @click="storeForm.is_open = !storeForm.is_open; toggleStoreOpen()">
-              <ToggleRight v-if="storeForm.is_open" class="w-10 h-6 text-emerald-500 cursor-pointer" />
-              <ToggleLeft v-else class="w-10 h-6 text-slate-300 cursor-pointer" />
+            <button @click="storeForm.is_open = !storeForm.is_open; toggleStoreOpen()" class="focus:outline-none focus:scale-95 transition-transform">
+              <ToggleRight v-if="storeForm.is_open" class="w-12 h-7 text-emerald-500" />
+              <ToggleLeft v-else class="w-12 h-7 text-slate-300" />
             </button>
           </div>
 
           <!-- Toggle Auto Confirm -->
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-xs font-bold text-slate-700">Konfirmasi Otomatis (Auto Confirm)</p>
-              <p class="text-[9px] text-muted-foreground">Order langsung siap dimasak tanpa persetujuan manual.</p>
+          <div class="flex items-center justify-between p-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl transition-all">
+            <div class="space-y-1 pr-4">
+              <p class="text-xs font-bold text-slate-800">Konfirmasi Otomatis (Auto Confirm)</p>
+              <p class="text-[10px] leading-normal text-slate-400 font-medium">Order langsung siap dimasak/diproses tanpa persetujuan manual.</p>
             </div>
-            <button @click="storeForm.auto_confirm = !storeForm.auto_confirm; toggleAutoConfirm()">
-              <ToggleRight v-if="storeForm.auto_confirm" class="w-10 h-6 text-primary cursor-pointer" />
-              <ToggleLeft v-else class="w-10 h-6 text-slate-300 cursor-pointer" />
+            <button @click="storeForm.auto_confirm = !storeForm.auto_confirm; toggleAutoConfirm()" class="focus:outline-none focus:scale-95 transition-transform flex-shrink-0">
+              <ToggleRight v-if="storeForm.auto_confirm" class="w-12 h-7 text-primary" />
+              <ToggleLeft v-else class="w-12 h-7 text-slate-300" />
             </button>
           </div>
 
           <!-- Active Orders Queue Limit -->
-          <div class="flex items-center justify-between gap-4 pt-1">
-            <div>
-              <p class="text-xs font-bold text-slate-700">Batas Antrean Maksimal</p>
-              <p class="text-[9px] text-muted-foreground">Maksimal pesanan aktif yang ditangani serentak.</p>
+          <div class="flex items-center justify-between gap-4 p-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl transition-all">
+            <div class="space-y-0.5">
+              <p class="text-xs font-bold text-slate-800">Batas Antrean Maksimal</p>
+              <p class="text-[10px] text-slate-400 font-medium">Maksimal pesanan aktif yang ditangani serentak.</p>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-shrink-0">
               <input
                 v-model="storeForm.max_active_orders"
                 type="number"
                 min="1"
-                class="w-16 h-8 text-center text-sm font-bold border border-input rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                class="w-16 h-9 text-center text-sm font-extrabold border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
                 @change="updateQueueLimit"
               >
             </div>
@@ -455,33 +471,39 @@ onMounted(() => {
       </div>
 
       <!-- Menu Section Header -->
-      <div class="flex justify-between items-center mt-6">
-        <div>
-          <h3 class="font-bold text-slate-900">Katalog Menu</h3>
-          <p class="text-[10px] text-muted-foreground">Kelola daftar produk/makanan yang Anda jual.</p>
+      <div class="flex justify-between items-center mt-8 px-1">
+        <div class="space-y-1">
+          <h3 class="font-extrabold text-slate-900 text-lg tracking-tight">Katalog Menu</h3>
+          <p class="text-[11px] text-slate-400 font-medium">Kelola daftar makanan, minuman, atau jasa produk Anda.</p>
         </div>
-        <UiButton class="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs" @click="openAddModal">
-          <Plus class="w-3.5 h-3.5" />
+        <button 
+          @click="openAddModal"
+          class="flex items-center gap-1.5 h-9 px-4 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/95 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md shadow-primary/10"
+        >
+          <Plus class="w-4 h-4" />
           Tambah Menu
-        </UiButton>
+        </button>
       </div>
 
       <!-- Menus Grid / List -->
-      <div v-if="merchantsStore.merchantMenus.length === 0" class="p-8 text-center bg-card border border-border/50 rounded-2xl text-muted-foreground">
-        <Utensils class="w-8 h-8 mx-auto mb-2 text-slate-300" />
-        Belum ada produk terdaftar. Klik "Tambah Menu" untuk memasukkan item pertama Anda.
+      <div v-if="merchantsStore.merchantMenus.length === 0" class="p-12 text-center bg-white border border-slate-100 rounded-3xl text-slate-400 shadow-[0_8px_30px_rgb(0,0,0,0.015)]">
+        <div class="inline-flex p-4 bg-slate-50 text-slate-300 rounded-full mb-3 border border-slate-100">
+          <Utensils class="w-8 h-8" />
+        </div>
+        <p class="text-sm font-semibold text-slate-800 mb-1">Belum Ada Menu Terdaftar</p>
+        <p class="text-xs text-slate-400 max-w-xs mx-auto">Klik tombol "Tambah Menu" untuk memasukkan item pertama toko Anda.</p>
       </div>
-      <div v-else class="space-y-3">
+      <div v-else class="space-y-3.5">
         <!-- Menu Card -->
         <div
           v-for="menu in merchantsStore.merchantMenus"
           :key="menu.id"
-          class="bg-card border border-border/30 rounded-xl p-3 flex gap-3 items-center justify-between shadow-sm transition-all"
+          class="bg-white border border-slate-100 rounded-2xl p-4 flex gap-4 items-center justify-between shadow-[0_4px_20px_rgb(0,0,0,0.015)] hover:shadow-md hover:border-slate-200/60 transition-all duration-300"
           :class="{ 'opacity-60 bg-slate-50/50': !menu.is_available }"
         >
-          <div class="flex items-center gap-3 min-w-0">
+          <div class="flex items-center gap-4 min-w-0 flex-1">
             <!-- Menu Image -->
-            <div class="w-16 h-16 rounded-lg bg-slate-100 overflow-hidden border border-border/50 flex-shrink-0 flex items-center justify-center">
+            <div class="w-16 h-16 rounded-xl bg-slate-50 overflow-hidden border border-slate-100 flex-shrink-0 flex items-center justify-center">
               <img
                 v-if="menu.image_url"
                 :src="menu.image_url"
@@ -492,36 +514,36 @@ onMounted(() => {
             </div>
 
             <!-- Menu Info -->
-            <div class="min-w-0">
-              <h4 class="text-xs font-bold text-slate-900 truncate">{{ menu.name }}</h4>
-              <p v-if="menu.description" class="text-[10px] text-muted-foreground truncate leading-relaxed max-w-[200px]">
+            <div class="min-w-0 space-y-1">
+              <h4 class="text-sm font-extrabold text-slate-800 truncate">{{ menu.name }}</h4>
+              <p v-if="menu.description" class="text-[10px] text-slate-400 font-medium truncate leading-relaxed max-w-[220px]">
                 {{ menu.description }}
               </p>
-              <p class="text-xs font-black text-slate-800 mt-1">Rp {{ menu.price.toLocaleString('id-ID') }}</p>
+              <p class="text-sm font-black text-primary mt-1">Rp {{ menu.price.toLocaleString('id-ID') }}</p>
             </div>
           </div>
 
           <!-- Availability & Actions -->
-          <div class="flex flex-col items-end gap-2 flex-shrink-0">
+          <div class="flex flex-col items-end gap-3 flex-shrink-0 pl-2 border-l border-slate-100">
             <button
-              class="px-2 py-1 text-[9px] font-bold rounded-lg border transition-all"
-              :class="menu.is_available ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-slate-200 text-slate-500 border-slate-300'"
+              class="px-2.5 py-1 text-[10px] font-extrabold rounded-lg border transition-all"
+              :class="menu.is_available ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'"
               @click="toggleMenuAvailable(menu)"
             >
               {{ menu.is_available ? 'Tersedia' : 'Habis' }}
             </button>
-            <div class="flex gap-1.5 mt-0.5">
+            <div class="flex gap-1.5">
               <button
-                class="w-7 h-7 rounded-lg border border-input flex items-center justify-center hover:bg-accent text-slate-600 transition-all"
+                class="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 text-slate-600 active:scale-95 transition-all"
                 @click="openEditModal(menu)"
               >
-                <Edit class="w-3.5 h-3.5" />
+                <Edit class="w-4 h-4" />
               </button>
               <button
-                class="w-7 h-7 rounded-lg border border-input flex items-center justify-center hover:bg-destructive/10 text-destructive transition-all"
+                class="w-8 h-8 rounded-lg border border-rose-100 flex items-center justify-center hover:bg-rose-50 text-rose-500 active:scale-95 transition-all"
                 @click="handleDeleteMenu(menu.id)"
               >
-                <Trash2 class="w-3.5 h-3.5" />
+                <Trash2 class="w-4 h-4" />
               </button>
             </div>
           </div>
