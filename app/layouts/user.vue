@@ -1,21 +1,31 @@
 <script setup lang="ts">
-import { Home, Package, User, Truck } from '@lucide/vue'
+import { Home, Package, User, Truck, Store, ShoppingBag, CreditCard } from '@lucide/vue'
 import { useNotificationsStore } from '~/stores/notifications'
 
 const route = useRoute()
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
 
-const navItems = [
-  { path: '/dashboard', label: 'Beranda', icon: Home },
-  { path: '/trips', label: 'Cari Trip', icon: Truck },
-  { path: '/orders', label: 'Order Saya', icon: Package },
-  { path: '/profile', label: 'Profil', icon: User },
-]
+const navItems = computed(() => {
+  if (authStore.user?.role === 'merchant') {
+    return [
+      { path: '/merchant/menu', label: 'Menu Toko', icon: Store },
+      { path: '/merchant/orders', label: 'Order Aktif', icon: ShoppingBag },
+      { path: '/wallet', label: 'Dompet', icon: CreditCard },
+      { path: '/profile', label: 'Profil', icon: User },
+    ]
+  }
+  return [
+    { path: '/dashboard', label: 'Beranda', icon: Home },
+    { path: '/trips', label: 'Cari Trip', icon: Truck },
+    { path: '/orders', label: 'Order Saya', icon: Package },
+    { path: '/profile', label: 'Profil', icon: User },
+  ]
+})
 
 const isActive = (path: string) => {
-  if (path === '/dashboard') {
-    return route.path === '/dashboard'
+  if (path === '/dashboard' || path === '/merchant/menu') {
+    return route.path === path
   }
   return route.path.startsWith(path)
 }

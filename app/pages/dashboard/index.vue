@@ -75,7 +75,6 @@ const handleScroll = () => {
 
 // Coming Soon Features (Sorted by most common user needs)
 const comingSoonFeatures = [
-  { label: 'Nihtip Food', icon: Utensils, badge: 'Soon' },
   { label: 'Belanja Pasar', icon: Store, badge: 'Soon' },
   { label: 'Nitip Obat', icon: Pill, badge: 'Soon' },
   { label: 'Ambil Barang', icon: Package, badge: 'Soon' },
@@ -432,8 +431,16 @@ const openHelp = () => {
       <!-- ── 3. LAYANAN & FITUR UTAMA ── -->
       <div class="space-y-2.5">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">Layanan &amp; Fitur</p>
-        <div class="grid grid-cols-4 gap-2">
-          <!-- 1. Titip Beli (Aktif) -->
+        <div class="grid grid-cols-5 gap-1">
+          <!-- 1. Nitip Food (Aktif) -->
+          <NuxtLink to="/food" class="group flex flex-col items-center gap-1.5 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 active:scale-95 transition-all duration-150">
+            <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+              <Utensils class="w-4.5 h-4.5 text-primary" />
+            </div>
+            <span class="text-[9px] font-semibold text-slate-600 text-center leading-tight">Nitip Food</span>
+          </NuxtLink>
+
+          <!-- 2. Titip Beli (Aktif) -->
           <NuxtLink to="/orders/new?category=beli" class="group flex flex-col items-center gap-1.5 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 active:scale-95 transition-all duration-150">
             <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
               <ShoppingBag class="w-4.5 h-4.5 text-primary" />
@@ -441,7 +448,7 @@ const openHelp = () => {
             <span class="text-[9px] font-semibold text-slate-600 text-center leading-tight">Titip Beli</span>
           </NuxtLink>
 
-          <!-- 2. Kirim Paket (Aktif) -->
+          <!-- 3. Kirim Paket (Aktif) -->
           <NuxtLink to="/orders/new?category=kirim" class="group flex flex-col items-center gap-1.5 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 active:scale-95 transition-all duration-150">
             <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
               <Package class="w-4.5 h-4.5 text-primary" />
@@ -449,7 +456,7 @@ const openHelp = () => {
             <span class="text-[9px] font-semibold text-slate-600 text-center leading-tight">Kirim Paket</span>
           </NuxtLink>
 
-          <!-- 3. Cari Runner (Aktif) -->
+          <!-- 4. Cari Runner (Aktif) -->
           <NuxtLink to="/trips" class="group flex flex-col items-center gap-1.5 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 active:scale-95 transition-all duration-150">
             <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
               <Truck class="w-4.5 h-4.5 text-primary" />
@@ -457,7 +464,7 @@ const openHelp = () => {
             <span class="text-[9px] font-semibold text-slate-600 text-center leading-tight">Cari Runner</span>
           </NuxtLink>
 
-          <!-- 4. Order Saya (Aktif) -->
+          <!-- 5. Order Saya (Aktif) -->
           <NuxtLink to="/orders" class="group flex flex-col items-center gap-1.5 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 active:scale-95 transition-all duration-150">
             <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
               <ShoppingCart class="w-4.5 h-4.5 text-primary" />

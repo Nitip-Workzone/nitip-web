@@ -43,7 +43,7 @@ export const useAuthStore = defineStore('auth', {
                 }
             }
         },
-        async login(email: string, pass: string, totpCode?: string) {
+        async login(email: string, pass: string, totpCode?: string, platform = 'web') {
             this.loading = true
             try {
                 // Step 1: Get grant token via HMAC
@@ -63,7 +63,7 @@ export const useAuthStore = defineStore('auth', {
                         body: { email, password: pass, device_id: 'web-client', totp_code: totpCode },
                         headers: {
                             'X-Grant-Token': grantToken,
-                            'X-Platform': 'web',
+                            'X-Platform': platform,
                         },
                     },
                 )

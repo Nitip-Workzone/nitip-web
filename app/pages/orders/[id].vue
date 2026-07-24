@@ -78,8 +78,10 @@ const submittingDispute = ref(false)
 
 // Review modal state
 const showReviewModal = ref(false)
-const rating = ref(5)
-const comment = ref('')
+const rating = ref(5) // runner rating
+const comment = ref('') // runner comment
+const merchantRating = ref(5)
+const merchantComment = ref('')
 const submittingReview = ref(false)
 const existingReview = ref<Review | null>(null)
 const loadingReview = ref(false)
@@ -230,23 +232,32 @@ async function handleDispute() {
 async function handleReview() {
   if (submittingReview.value) return // guard: cegah double-submit
   submittingReview.value = true
-  const success = await ordersStore.submitReview(orderId, rating.value, comment.value)
-  if (success) {
-    toastStore.add('Ulasan berhasil dikirim.')
-    showReviewModal.value = false
-    // Refresh order and review
-    await loadOrder()
-  } else {
-    // Might already be reviewed — check and refresh
-    existingReview.value = await ordersStore.fetchReview(orderId)
-    if (existingReview.value) {
-      toastStore.add('Ulasan sudah pernah diberikan sebelumnya.')
+  try {
+    const success = await ordersStore.submitReview(
+      orderId,
+      rating.value,
+      comment.value,
+      order.value?.merchant_id ? merchantRating.value : null,
+      merchantComment.value
+    )
+    if (success) {
+      toastStore.add('Ulasan berhasil dikirim.')
       showReviewModal.value = false
+      // Refresh order and review
+      await loadOrder()
     } else {
-      toastStore.add('Gagal mengirim ulasan.')
+      // Might already be reviewed — check and refresh
+      existingReview.value = await ordersStore.fetchReview(orderId)
+      if (existingReview.value) {
+        toastStore.add('Ulasan sudah pernah diberikan sebelumnya.')
+        showReviewModal.value = false
+      } else {
+        toastStore.add('Gagal mengirim ulasan.')
+      }
     }
+  } finally {
+    submittingReview.value = false
   }
-  submittingReview.value = false
 }
 
 function getStatusColor(status: string) {
@@ -706,25 +717,62 @@ function openImage(url: string) {
         </div>
 
         <!-- Review Display Card (if already reviewed) -->
-        <div v-if="order.status === 'completed' && existingReview" class="bg-white border border-border/30 rounded-3xl p-5 shadow-sm space-y-3">
-          <h3 class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Ulasan Anda</h3>
-          <div class="flex items-center gap-2">
-            <div class="flex gap-1">
-              <span v-for="star in 5" :key="star" :class="star <= existingReview.rating ? 'text-amber-400' : 'text-slate-200'" class="text-lg">★</span>
-            </div>
-            <span class="text-[10px] text-muted-foreground font-semibold">{{ existingReview.rating }}/5</span>
+        <div v-if="order.status === 'completed'" class="bg-white border border-border/30 rounded-3xl p-5 shadow-sm space-y-4">
+          <div class="space-y-1">
+            <h3 class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Ulasan Anda</h3>
+            <p class="text-[11px] text-muted-foreground leading-relaxed">
+              Anda bisa menilai runner, dan jika pesanan ini memakai merchant, ulasan toko akan ikut disimpan pada ulasan yang sama.
+            </p>
           </div>
-          <p v-if="existingReview.comment" class="text-xs text-slate-700 leading-relaxed">
-            "{{ existingReview.comment }}"
-          </p>
-          <p class="text-[10px] text-muted-foreground">
+
+          <div v-if="loadingReview" class="space-y-3">
+            <div class="h-4 w-24 bg-muted animate-pulse rounded" />
+            <div class="h-16 bg-slate-50 rounded-2xl animate-pulse" />
+          </div>
+
+          <template v-else-if="existingReview">
+          
+          <!-- Ulasan Driver -->
+          <div class="space-y-1.5">
+            <h4 class="text-[10px] font-extrabold uppercase text-slate-400">Rating Driver / Runner</h4>
+            <div class="flex items-center gap-2">
+              <div class="flex gap-0.5">
+                <span v-for="star in 5" :key="star" :class="star <= existingReview.runner_rating ? 'text-amber-400' : 'text-slate-200'" class="text-base">★</span>
+              </div>
+              <span class="text-[10px] text-muted-foreground font-semibold">{{ existingReview.runner_rating }}/5</span>
+            </div>
+            <p v-if="existingReview.runner_comment" class="text-xs text-slate-700 leading-relaxed italic">
+              "{{ existingReview.runner_comment }}"
+            </p>
+          </div>
+
+          <!-- Ulasan Toko (Merchant) -->
+          <div v-if="existingReview.merchant_rating !== null && existingReview.merchant_rating !== undefined" class="space-y-1.5 pt-2 border-t border-slate-100">
+            <h4 class="text-[10px] font-extrabold uppercase text-slate-400">Rating Toko Mitra</h4>
+            <div class="flex items-center gap-2">
+              <div class="flex gap-0.5">
+                <span v-for="star in 5" :key="star" :class="star <= existingReview.merchant_rating ? 'text-amber-400' : 'text-slate-200'" class="text-base">★</span>
+              </div>
+              <span class="text-[10px] text-muted-foreground font-semibold">{{ existingReview.merchant_rating }}/5</span>
+            </div>
+            <p v-if="existingReview.merchant_comment" class="text-xs text-slate-700 leading-relaxed italic">
+              "{{ existingReview.merchant_comment }}"
+            </p>
+          </div>
+
+          <p class="text-[9px] text-slate-400 pt-1">
             Diberikan pada {{ new Date(existingReview.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
           </p>
-        </div>
+          </template>
 
-        <!-- Loading Review -->
-        <div v-else-if="order.status === 'completed' && loadingReview" class="bg-white border border-border/30 rounded-3xl p-5 shadow-sm">
-          <div class="h-4 w-24 bg-muted animate-pulse rounded" />
+          <template v-else>
+            <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-4 space-y-2">
+              <p class="text-sm font-bold text-slate-800">Belum ada ulasan untuk pesanan ini</p>
+              <p class="text-xs text-muted-foreground leading-relaxed">
+                Setelah pesanan selesai, Anda bisa menilai runner. Jika order ini menggunakan merchant, bagian ulasan toko akan muncul otomatis saat Anda mengirim review.
+              </p>
+            </div>
+          </template>
         </div>
 
         <!-- Conditional Action Buttons -->
@@ -756,7 +804,7 @@ function openImage(url: string) {
             class="w-full bg-primary text-white text-xs font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-1.5 transition-all active:scale-[0.99] shadow-md shadow-primary/10" 
             @click="showReviewModal = true"
           >
-            Beri Ulasan & Feedback
+            Beri Ulasan Pesanan
           </button>
         </div>
       </div>
@@ -791,30 +839,60 @@ function openImage(url: string) {
 
       <!-- Review Modal -->
       <div v-if="showReviewModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
           <div class="text-center">
             <h3 class="text-base font-extrabold text-foreground">Beri Ulasan Pesanan</h3>
-            <p class="text-xs text-muted-foreground mt-1">Bagikan pengalaman bertransaksi Anda dengan Runner ini.</p>
+            <p class="text-xs text-muted-foreground mt-1">
+              Bagikan pengalaman transaksi Anda. Ulasan runner selalu wajib, dan ulasan toko hanya muncul untuk pesanan yang memakai merchant.
+            </p>
           </div>
 
-          <!-- Rating Stars -->
-          <div class="flex justify-center gap-2">
-            <button 
-              v-for="star in 5" 
-              :key="star" 
-              class="text-2xl transition-transform active:scale-90"
-              @click="rating = star"
-            >
-              <span :class="star <= rating ? 'text-amber-400' : 'text-slate-200'">★</span>
-            </button>
+          <!-- Section: Runner / Driver Rating -->
+          <div class="space-y-2 border border-slate-100 rounded-2xl p-3 bg-slate-50/50">
+            <h4 class="text-[10px] font-extrabold uppercase text-slate-500 text-center">Ulasan Driver / Runner</h4>
+            <!-- Rating Stars -->
+            <div class="flex justify-center gap-2">
+              <button 
+                v-for="star in 5" 
+                :key="star" 
+                class="text-2xl transition-transform active:scale-90"
+                @click="rating = star"
+              >
+                <span :class="star <= rating ? 'text-amber-400' : 'text-slate-200'">★</span>
+              </button>
+            </div>
+            <textarea 
+              v-model="comment" 
+              rows="2" 
+              placeholder="Tulis komentar untuk runner..."
+              class="w-full text-xs p-3 border border-slate-200 rounded-xl focus:outline-none focus:border-primary/50 bg-white resize-none"
+            />
           </div>
 
-          <textarea 
-            v-model="comment" 
-            rows="3" 
-            placeholder="Tulis komentar ulasan Anda..."
-            class="w-full text-xs p-3.5 border border-border/60 rounded-2xl focus:outline-none focus:border-primary/50 resize-none"
-          />
+          <!-- Section: Merchant Rating (Only if it's a food/merchant order) -->
+          <div v-if="order.merchant_id" class="space-y-2 border border-slate-100 rounded-2xl p-3 bg-slate-50/50">
+            <h4 class="text-[10px] font-extrabold uppercase text-slate-500 text-center">Ulasan Toko Mitra</h4>
+            <p class="text-[10px] text-muted-foreground text-center leading-relaxed">
+              Hanya tampil untuk pesanan merchant dan akan disimpan bersama ulasan runner.
+            </p>
+            <!-- Rating Stars -->
+            <div class="flex justify-center gap-2">
+              <button 
+                v-for="star in 5" 
+                :key="star" 
+                class="text-2xl transition-transform active:scale-90"
+                @click="merchantRating = star"
+              >
+                <span :class="star <= merchantRating ? 'text-amber-400' : 'text-slate-200'">★</span>
+              </button>
+            </div>
+            <textarea 
+              v-model="merchantComment" 
+              rows="2" 
+              placeholder="Tulis komentar untuk toko..."
+              class="w-full text-xs p-3 border border-slate-200 rounded-xl focus:outline-none focus:border-primary/50 bg-white resize-none"
+            />
+          </div>
 
           <div class="flex items-center gap-3 pt-2">
             <button class="flex-1 bg-slate-100 text-foreground text-xs font-bold py-2.5 rounded-xl" @click="showReviewModal = false">Batal</button>

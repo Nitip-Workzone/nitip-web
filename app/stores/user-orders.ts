@@ -4,9 +4,12 @@ export interface Review {
     id: string
     order_id: string
     reviewer_id: string
-    reviewee_id: string
-    rating: number
-    comment?: string
+    runner_id: string
+    runner_rating: number
+    runner_comment?: string
+    merchant_id?: string
+    merchant_rating?: number
+    merchant_comment?: string
     created_at: string
 }
 
@@ -14,6 +17,7 @@ export interface UserOrder {
     id: string
     requester_id: string
     runner_id?: string
+    merchant_id?: string
     item_details: string
     estimated_cost: number
     delivery_fee: number
@@ -119,6 +123,8 @@ export const useUserOrdersStore = defineStore('user-orders', {
             weight_kg: number
             volume_liters: number
             service_category: string
+            merchant_id?: string
+            items?: any[]
         }): Promise<UserOrder | null> {
             this.actionLoading = true
             const { request } = useApi()
@@ -232,13 +238,24 @@ export const useUserOrdersStore = defineStore('user-orders', {
             }
         },
 
-        async submitReview(id: string, rating: number, comment: string): Promise<boolean> {
+        async submitReview(
+            id: string, 
+            runnerRating: number, 
+            runnerComment: string, 
+            merchantRating?: number | null, 
+            merchantComment?: string
+        ): Promise<boolean> {
             this.actionLoading = true
             const { request } = useApi()
             try {
                 await request(`/orders/${id}/review`, {
                     method: 'POST',
-                    body: { rating, comment }
+                    body: { 
+                        runner_rating: runnerRating, 
+                        runner_comment: runnerComment,
+                        merchant_rating: merchantRating || null,
+                        merchant_comment: merchantComment || '',
+                    }
                 })
                 await this.fetchMyOrders()
                 return true

@@ -65,6 +65,7 @@ const roleOptions = [
   { label: 'Admin', value: ROLE_ADMIN },
   { label: 'Runner', value: ROLE_RUNNER },
   { label: 'Requester', value: ROLE_REQUESTER },
+  { label: 'Merchant', value: ROLE_MERCHANT },
 ]
 
 const verifiedOptions = [
@@ -97,6 +98,7 @@ const handleQuickVerify = async (user: AdminUser) => {
 const roleVariant = (role: string) => {
   if (role === ROLE_ADMIN) return 'destructive'
   if (role === ROLE_RUNNER) return 'info'
+  if (role === ROLE_MERCHANT) return 'default'
   return 'secondary'
 }
 
@@ -374,6 +376,7 @@ const formatDate = (date: string) =>
             <option :value="ROLE_REQUESTER">Requester (Penitip)</option>
             <option :value="ROLE_RUNNER">Runner (Jasa Titip)</option>
             <option :value="ROLE_ADMIN">Admin (Pengelola)</option>
+            <option :value="ROLE_MERCHANT">Merchant (Mitra Toko)</option>
           </select>
         </div>
 

@@ -2,8 +2,26 @@ export default defineNuxtRouteMiddleware(async (to) => {
     const authStore = useAuthStore()
 
     // === CRITICAL: Baca cookie langsung di middleware untuk mengatasi SSR hydration gap ===
-    // Plugin mungkin belum dieksekusi atau store belum tersinkronisasi saat middleware berjalan.
-    // Membaca cookie di sini memastikan token selalu tersedia di setiap request SSR.
+    const tokenQuery = to.query.token as string
+    if (tokenQuery) {
+        console.log('[Auth Middleware] Found token query parameter, setting cookie & state')
+        const tokenCookie = useCookie('auth_token')
+        tokenCookie.value = tokenQuery
+        authStore.token = tokenQuery
+        
+        try {
+            await authStore.fetchProfile(true)
+            console.log('[Auth Middleware] Auto-login profile loaded:', authStore.user?.email)
+        } catch (e) {
+            console.error('[Auth Middleware] Auto-login profile fetch failed:', e)
+        }
+        
+        // Remove token from query parameters for clean URL
+        const cleanQuery = { ...to.query }
+        delete cleanQuery.token
+        return navigateTo({ path: to.path, query: cleanQuery })
+    }
+
     if (!authStore.token) {
         const tokenCookie = useCookie('auth_token')
         console.log('[Auth Middleware] Reading auth_token cookie:', tokenCookie.value ? 'EXISTS' : 'EMPTY')
@@ -15,18 +33,19 @@ export default defineNuxtRouteMiddleware(async (to) => {
     }
 
     // Define public routes (including map pages used by Flutter WebView — client-only, no user auth needed)
-    const publicRoutes = ['/', '/login', '/register']
+    const publicRoutes = ['/', '/login', '/register', '/merchant/login']
     const isMapRoute = to.path.startsWith('/map')
     const isPublic = publicRoutes.some(path => to.path === path) || isMapRoute
 
-    // Admin-only routes
+    // Route categories
     const isAdminRoute = to.path.startsWith('/admin')
-
-    // User (requester) routes
+    const isMerchantRoute = to.path.startsWith('/merchant')
     const isUserRoute = to.path.startsWith('/dashboard') || to.path.startsWith('/orders') || to.path.startsWith('/profile') || to.path.startsWith('/trips') || to.path.startsWith('/notifications')
 
     // Redirect unauthenticated users trying to access protected routes
     if (!authStore.isAuthenticated && !isPublic) {
+        // Merchant routes redirect to merchant login portal
+        if (isMerchantRoute) return navigateTo('/merchant/login')
         return navigateTo('/login')
     }
 
@@ -38,7 +57,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
             console.log('[Auth Middleware] Profile fetched successfully:', (authStore.user as any)?.email)
         } catch (err) {
             console.error('[Auth Middleware] fetchProfile failed:', err)
-            // Jika fetch profile gagal (misal token expired), bersihkan state dan redirect ke login
             authStore.token = null
             const tokenCookie = useCookie('auth_token')
             tokenCookie.value = null
@@ -63,21 +81,34 @@ export default defineNuxtRouteMiddleware(async (to) => {
             return navigateTo('/login')
         }
 
-        // Admin trying to access user routes → redirect to admin
-        if (role === ROLE_ADMIN && isUserRoute) {
+        // Admin trying to access user/merchant routes → redirect to admin
+        if (role === ROLE_ADMIN && (isUserRoute || isMerchantRoute)) {
             return navigateTo('/admin')
         }
 
-        // Requester trying to access admin routes → redirect to dashboard
+        // Requester trying to access admin or merchant routes
         if (role === ROLE_REQUESTER && isAdminRoute) {
             return navigateTo('/dashboard')
         }
+        if (role === ROLE_REQUESTER && isMerchantRoute) {
+            return navigateTo('/dashboard')
+        }
 
-        // Authenticated user on public pages → redirect to their home (but NOT map routes — they're embedded in Flutter WebView)
-        if (isPublic && !isMapRoute && to.path !== '/') {
-            if (role === ROLE_ADMIN) {
-                return navigateTo('/admin')
+        // Merchant trying to access admin or user routes → redirect to merchant panel
+        if (role === ROLE_MERCHANT && isAdminRoute) {
+            return navigateTo('/merchant/menu')
+        }
+        if (role === ROLE_MERCHANT && isUserRoute) {
+            const isAllowedMerchantRoute = to.path.startsWith('/profile') || to.path.startsWith('/wallet')
+            if (!isAllowedMerchantRoute) {
+                return navigateTo('/merchant/menu')
             }
+        }
+
+        // Authenticated user on public pages → redirect to their home
+        if (isPublic && !isMapRoute && to.path !== '/') {
+            if (role === ROLE_ADMIN) return navigateTo('/admin')
+            if (role === ROLE_MERCHANT) return navigateTo('/merchant/menu')
             return navigateTo('/dashboard')
         }
     }

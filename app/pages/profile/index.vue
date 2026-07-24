@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { LogOut, ChevronRight, Lock, ShieldCheck, Mail, Phone, UserCheck, KeySquare, HelpCircle } from '@lucide/vue'
+import { LogOut, ChevronRight, Lock, ShieldCheck, Mail, Phone, UserCheck, KeySquare, HelpCircle, Store } from '@lucide/vue'
 import { useAuthStore } from '~/stores/auth'
 import { useToastStore } from '~/stores/toast'
 import { useUserOrdersStore } from '~/stores/user-orders'
 import { useUserWalletStore } from '~/stores/user-wallet'
+import { useMerchantsStore } from '~/stores/merchants'
 
 definePageMeta({
   layout: 'user',
@@ -13,6 +14,7 @@ const authStore = useAuthStore()
 const toastStore = useToastStore()
 const ordersStore = useUserOrdersStore()
 const walletStore = useUserWalletStore()
+const merchantsStore = useMerchantsStore()
 const { request } = useApi()
 
 const isEditing = ref(false)
@@ -30,13 +32,26 @@ const pinError = ref('')
 const pinSubmitting = ref(false)
 
 onMounted(async () => {
-  await Promise.all([
-    authStore.fetchProfile(),
-    ordersStore.fetchMyOrders(),
-    walletStore.fetchBalance(),
-  ])
+  try {
+    await authStore.fetchProfile()
+  } catch (e) {
+    console.error('Failed to fetch user profile:', e)
+  }
+
   editName.value = authStore.user?.name || ''
   editWhatsapp.value = authStore.user?.whatsapp_number || ''
+
+  const promises: Promise<any>[] = [
+    walletStore.fetchBalance().catch(err => console.error('Failed to fetch balance:', err))
+  ]
+
+  if (authStore.user?.role === 'merchant') {
+    promises.push(merchantsStore.fetchMerchantProfile().catch(err => console.error('Failed to fetch merchant profile:', err)))
+  } else {
+    promises.push(ordersStore.fetchMyOrders().catch(err => console.error('Failed to fetch my orders:', err)))
+  }
+
+  await Promise.all(promises)
   loading.value = false
 })
 
@@ -265,7 +280,7 @@ const openLink = (url: string) => {
             </div>
 
             <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-600">Nomor WhatsApp</label>
+              <label class="text-[11px] font-bold text-slate-600">Nomor WhatsApp</label>
               <input 
                 v-model="editWhatsapp" 
                 type="tel" 
@@ -292,6 +307,33 @@ const openLink = (url: string) => {
               </button>
             </div>
           </form>
+        </div>
+
+        <!-- Merchant Store Details -->
+        <div v-if="authStore.user?.role === 'merchant' && merchantsStore.currentMerchant" class="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-soft space-y-4">
+          <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+            <Store class="w-5 h-5 text-primary animate-pulse" />
+            Detail Toko Mitra
+          </h3>
+          <div class="space-y-3 pt-1">
+            <div class="text-xs">
+              <span class="text-slate-400 font-medium">Nama Toko</span>
+              <p class="font-extrabold text-slate-850 mt-0.5">{{ merchantsStore.currentMerchant.name }}</p>
+            </div>
+            <div class="text-xs">
+              <span class="text-slate-400 font-medium">Kategori</span>
+              <p class="font-bold text-slate-800 mt-0.5 uppercase">{{ merchantsStore.currentMerchant.category }}</p>
+            </div>
+            <div class="text-xs">
+              <span class="text-slate-400 font-medium">Alamat</span>
+              <p class="text-slate-600 leading-relaxed mt-0.5">{{ merchantsStore.currentMerchant.address }}</p>
+            </div>
+          </div>
+          <NuxtLink to="/merchant/menu" class="block pt-2">
+            <UiButton variant="secondary" class="w-full h-10 rounded-xl text-xs font-bold bg-slate-50 border border-slate-200">
+              Kelola Toko &amp; Menu
+            </UiButton>
+          </NuxtLink>
         </div>
 
         <!-- Stats (Aligned with Flutter) -->

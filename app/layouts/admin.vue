@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   History,
   Image,
+  Store,
 } from '@lucide/vue'
 import { useAuthStore } from '~/stores/auth'
 
@@ -25,6 +26,7 @@ const navigation = [
   { name: 'Users', href: '/admin/users', icon: Users },
   { name: 'KYC Submissions', href: '/admin/kyc', icon: ShieldCheck },
   { name: 'Banners', href: '/admin/banners', icon: Image },
+  { name: 'Merchants', href: '/admin/merchants', icon: Store },
   { name: 'Orders', href: '/admin/orders', icon: ShoppingBag },
   { name: 'Wallets', href: '/admin/wallets', icon: Wallet },
   { name: 'Audit Logs', href: '/admin/audit', icon: History },
