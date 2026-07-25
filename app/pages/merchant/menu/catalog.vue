@@ -400,7 +400,7 @@ onMounted(() => {
         <!-- Image Picker & Upload -->
         <div class="space-y-1">
           <label class="text-[10px] font-bold text-muted-foreground uppercase">Gambar Produk</label>
-          <div class="flex items-center gap-3">
+          <label class="flex items-center gap-3 cursor-pointer">
             <div class="w-16 h-16 rounded-xl border border-slate-200 bg-background overflow-hidden flex items-center justify-center flex-shrink-0">
               <img
                 v-if="menuForm.image_url"
@@ -410,8 +410,8 @@ onMounted(() => {
               >
               <Camera v-else class="w-6 h-6 text-muted-foreground opacity-60" />
             </div>
-            <label class="flex-1">
-              <span class="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-background px-4 text-xs font-bold cursor-pointer hover:bg-accent transition-all">
+            <div class="flex-1">
+              <span class="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-background px-4 text-xs font-bold hover:bg-accent transition-all">
                 {{ uploadProgress ? 'Mengunggah...' : 'Pilih Gambar Menu' }}
               </span>
               <input
@@ -421,8 +421,8 @@ onMounted(() => {
                 :disabled="uploadProgress"
                 @change="handleFileChange"
               >
-            </label>
-          </div>
+            </div>
+          </label>
         </div>
 
         <!-- Available status -->
@@ -486,7 +486,7 @@ onMounted(() => {
         <!-- Image Picker & Upload -->
         <div class="space-y-1">
           <label class="text-[10px] font-bold text-muted-foreground uppercase">Gambar Produk</label>
-          <div class="flex items-center gap-3">
+          <label class="flex items-center gap-3 cursor-pointer">
             <div class="w-16 h-16 rounded-xl border border-slate-200 bg-background overflow-hidden flex items-center justify-center flex-shrink-0">
               <img
                 v-if="menuForm.image_url"
@@ -496,8 +496,8 @@ onMounted(() => {
               >
               <Camera v-else class="w-6 h-6 text-muted-foreground opacity-60" />
             </div>
-            <label class="flex-1">
-              <span class="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-background px-4 text-xs font-bold cursor-pointer hover:bg-accent transition-all">
+            <div class="flex-1">
+              <span class="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-background px-4 text-xs font-bold hover:bg-accent transition-all">
                 {{ uploadProgress ? 'Mengunggah...' : 'Ubah Gambar' }}
               </span>
               <input
@@ -507,8 +507,8 @@ onMounted(() => {
                 :disabled="uploadProgress"
                 @change="handleFileChange"
               >
-            </label>
-          </div>
+            </div>
+          </label>
         </div>
 
         <!-- Available status -->
