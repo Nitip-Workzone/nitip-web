@@ -6,7 +6,7 @@ const deferredPrompt = ref<any>(null)
 
 // State untuk update prompt
 const showUpdateBanner = computed(() => {
-  return $pwa?.needRefresh
+  return unref($pwa?.needRefresh) ?? false
 })
 
 onMounted(() => {
@@ -68,9 +68,10 @@ const dismissInstallBanner = () => {
   localStorage.setItem('pwa-install-dismissed', Date.now().toString())
 }
 
-const updateApp = () => {
+const updateApp = async () => {
   if ($pwa?.updateServiceWorker) {
-    $pwa.updateServiceWorker(true)
+    await $pwa.updateServiceWorker(true)
+    window.location.reload()
   }
 }
 </script>
