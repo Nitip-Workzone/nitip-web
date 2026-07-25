@@ -351,7 +351,7 @@ onMounted(() => {
               <input
                 v-model="registrationForm.latitude"
                 type="number"
-                step="0.000000000000001"
+                step="any"
                 placeholder="-6.2088"
                 class="h-10 w-full rounded-xl border border-input bg-background px-3.5 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary transition-all"
                 required
@@ -362,7 +362,7 @@ onMounted(() => {
               <input
                 v-model="registrationForm.longitude"
                 type="number"
-                step="0.000000000000001"
+                step="any"
                 placeholder="106.8456"
                 class="h-10 w-full rounded-xl border border-input bg-background px-3.5 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary transition-all"
                 required
