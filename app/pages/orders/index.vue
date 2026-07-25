@@ -64,7 +64,7 @@ function getStatusLabel(order: any) {
     case 'pending': return order.merchant_id ? 'Menunggu Dapur Menerima' : 'Menunggu Runner'
     case 'cooking': return 'Sedang Dimasak'
     case 'ready': return 'Pesanan Siap Diambil'
-    case 'accepted': return 'Diterima Runner'
+    case 'accepted': return order.merchant_id ? 'Diterima Dapur' : 'Diterima Runner'
     case 'purchasing': return 'Sedang Belanja'
     case 'delivering': return 'Sedang Diantar'
     case 'completed': return 'Selesai'

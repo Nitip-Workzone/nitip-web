@@ -15,7 +15,7 @@ const showTotp = ref(false)
 const totpCode = ref('')
 
 const handleLogin = async () => {
-  const result = await authStore.login(email.value, password.value, showTotp.value ? totpCode.value : undefined)
+  const result = await authStore.login(email.value, password.value, showTotp.value ? totpCode.value : undefined, 'web')
   if (result?.requireTotp) {
     showTotp.value = true
     return

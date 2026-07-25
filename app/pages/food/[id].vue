@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ChevronLeft, Star, MapPin, Clock, Plus, Minus, ShoppingCart, ShoppingBag, X, FileText, CheckCircle, Flame, UtensilsCrossed, Package } from '@lucide/vue'
+import { ChevronLeft, Star, MapPin, Clock, Plus, Minus, ShoppingCart, ShoppingBag, X, FileText, CheckCircle, Flame, UtensilsCrossed, Package, Wallet, CreditCard } from '@lucide/vue'
 import { useMerchantsStore } from '~/stores/merchants'
 import { useCartStore } from '~/stores/cart'
+import { useUserWalletStore } from '~/stores/user-wallet'
 
 definePageMeta({
   layout: 'user',
@@ -11,6 +12,7 @@ const route = useRoute()
 const router = useRouter()
 const merchantsStore = useMerchantsStore()
 const cartStore = useCartStore()
+const walletStore = useUserWalletStore()
 const { success, error } = useToast()
 const { request } = useApi()
 
@@ -19,6 +21,7 @@ const showCartDrawer = ref(false)
 const showClearCartConfirm = ref(false)
 const checkoutLoading = ref(false)
 const pendingItem = ref<any>(null)
+const paymentSource = ref<'wallet' | 'qris'>('wallet')
 
 const merchant = computed(() =>
   merchantsStore.merchants.find(m => m.id === merchantId) || merchantsStore.currentMerchant
@@ -29,6 +32,7 @@ onMounted(async () => {
     await merchantsStore.fetchNearbyMerchants(0.876031736523683, 124.0118274994378, 15.0)
   }
   await merchantsStore.fetchMerchantMenuPublic(merchantId)
+  await walletStore.fetchBalance()
 })
 
 const handleAdd = (menuItem: any) => {
@@ -97,7 +101,7 @@ const handleCheckout = async () => {
         delivery_lat: 0.8760,
         delivery_lng: 124.0118,
         payment_method: 'escrow',
-        payment_source: 'wallet',
+        payment_source: paymentSource.value,
         weight_kg: 0.5,
         volume_liters: 1.0,
         merchant_id: merchant.value?.id,
@@ -484,6 +488,46 @@ const cartSubtotal = computed(() =>
 
           <!-- Checkout summary -->
           <div class="px-6 pb-6 pt-4 border-t border-slate-100 space-y-4 shrink-0 bg-white">
+            <!-- Payment Source Selection -->
+            <div class="space-y-2">
+              <label class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">Metode Pembayaran</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  :class="[
+                    'p-2.5 border rounded-2xl text-left transition-all flex flex-col justify-between h-[52px] select-none',
+                    paymentSource === 'wallet' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 bg-slate-50/50 text-slate-500'
+                  ]"
+                  @click="paymentSource = 'wallet'"
+                >
+                  <div class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
+                    <Wallet class="w-3.5 h-3.5" />
+                    Wallet
+                  </div>
+                  <div class="text-[11px] font-black mt-0.5 truncate">
+                    Rp {{ walletStore.balance.toLocaleString('id-ID') }}
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  :class="[
+                    'p-2.5 border rounded-2xl text-left transition-all flex flex-col justify-between h-[52px] select-none',
+                    paymentSource === 'qris' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 bg-slate-50/50 text-slate-500'
+                  ]"
+                  @click="paymentSource = 'qris'"
+                >
+                  <div class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
+                    <CreditCard class="w-3.5 h-3.5" />
+                    QRIS
+                  </div>
+                  <div class="text-[9px] font-bold text-slate-400 leading-none">
+                    Bayar langsung
+                  </div>
+                </button>
+              </div>
+            </div>
+
             <div class="space-y-2 text-xs">
               <div class="flex justify-between text-slate-500">
                 <span>Subtotal ({{ cartItemCount }} item)</span>
@@ -513,11 +557,11 @@ const cartSubtotal = computed(() =>
             >
               <span v-if="checkoutLoading" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               <ShoppingBag v-else class="w-4 h-4" />
-              {{ checkoutLoading ? 'Memproses...' : 'Pesan & Kunci Escrow' }}
+              {{ checkoutLoading ? 'Memproses...' : paymentSource === 'qris' ? 'Pesan & Bayar QRIS' : 'Pesan & Kunci Escrow' }}
             </button>
 
             <p class="text-[9px] text-slate-400 text-center font-medium">
-              🔒 Saldo dikunci via Escrow hingga pesanan selesai
+              {{ paymentSource === 'qris' ? '⚡️ Bayar langsung instan menggunakan QRIS' : '🔒 Saldo dikunci via Escrow hingga pesanan selesai' }}
             </p>
           </div>
         </div>
