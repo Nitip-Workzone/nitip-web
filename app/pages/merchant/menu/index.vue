@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Store, Plus, Edit, Trash2, Camera, RefreshCw, ToggleLeft, ToggleRight, Utensils, MapPin } from '@lucide/vue'
+import { Store, Plus, Edit, Trash2, Camera, RefreshCw, ToggleLeft, ToggleRight, Utensils, MapPin, ShoppingBag } from '@lucide/vue'
 import { useMerchantsStore, type Menu } from '~/stores/merchants'
 
 definePageMeta({
