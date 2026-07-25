@@ -52,8 +52,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     if (!authStore.isAuthenticated && !isPublic) {
         // Merchant routes redirect to merchant login portal
         if (isMerchantRoute) {
-            // Block standard browser login for merchants by redirecting to homepage
-            return navigateTo('/')
+            return navigateTo('/merchant/login')
         }
         return navigateTo('/login')
     }
