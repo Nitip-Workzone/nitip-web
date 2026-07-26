@@ -247,21 +247,45 @@ onMounted(() => {
           <!-- Toggle Open Status -->
           <button 
             @click="storeForm.is_open = !storeForm.is_open; toggleStoreOpen()" 
-            class="flex flex-col items-start gap-1 p-3.5 border rounded-2xl transition-all text-left"
-            :class="storeForm.is_open ? 'bg-emerald-50/20 border-emerald-100/50' : 'bg-slate-50 border-slate-100'"
+            class="flex items-center justify-between p-4 border rounded-2xl transition-all text-left active:scale-[0.98]"
+            :class="storeForm.is_open ? 'bg-emerald-50/20 border-emerald-100/50 shadow-[0_2px_8px_rgba(16,185,129,0.03)]' : 'bg-slate-50 border-slate-100'"
           >
-            <span class="text-[9px] font-black text-slate-400 uppercase">Status Toko</span>
-            <span class="text-xs font-bold text-slate-800">{{ storeForm.is_open ? 'Buka (Aktif)' : 'Tutup (Libur)' }}</span>
+            <div class="space-y-0.5">
+              <span class="text-[8px] font-extrabold text-slate-400 uppercase tracking-wider">Status Toko</span>
+              <p class="text-[11px] font-bold text-slate-800">{{ storeForm.is_open ? 'Buka' : 'Tutup' }}</p>
+            </div>
+            <!-- Toggle Knob -->
+            <div 
+              class="w-7 h-4.5 rounded-full p-0.5 transition-colors duration-200 flex-shrink-0 flex items-center"
+              :class="storeForm.is_open ? 'bg-emerald-500' : 'bg-slate-300'"
+            >
+              <div 
+                class="w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-200"
+                :style="{ transform: storeForm.is_open ? 'translateX(10px)' : 'translateX(0)' }"
+              />
+            </div>
           </button>
 
           <!-- Toggle Auto Confirm -->
           <button 
             @click="storeForm.auto_confirm = !storeForm.auto_confirm; toggleAutoConfirm()" 
-            class="flex flex-col items-start gap-1 p-3.5 border rounded-2xl transition-all text-left"
-            :class="storeForm.auto_confirm ? 'bg-primary/5 border-primary/10' : 'bg-slate-50 border-slate-100'"
+            class="flex items-center justify-between p-4 border rounded-2xl transition-all text-left active:scale-[0.98]"
+            :class="storeForm.auto_confirm ? 'bg-primary/5 border-primary/10 shadow-[0_2px_8px_rgba(0,98,204,0.03)]' : 'bg-slate-50 border-slate-100'"
           >
-            <span class="text-[9px] font-black text-slate-400 uppercase">Auto Confirm</span>
-            <span class="text-xs font-bold text-slate-800">{{ storeForm.auto_confirm ? 'Aktif' : 'Nonaktif' }}</span>
+            <div class="space-y-0.5">
+              <span class="text-[8px] font-extrabold text-slate-400 uppercase tracking-wider">Auto Confirm</span>
+              <p class="text-[11px] font-bold text-slate-800">{{ storeForm.auto_confirm ? 'Aktif' : 'Mati' }}</p>
+            </div>
+            <!-- Toggle Knob -->
+            <div 
+              class="w-7 h-4.5 rounded-full p-0.5 transition-colors duration-200 flex-shrink-0 flex items-center"
+              :class="storeForm.auto_confirm ? 'bg-primary' : 'bg-slate-300'"
+            >
+              <div 
+                class="w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-200"
+                :style="{ transform: storeForm.auto_confirm ? 'translateX(10px)' : 'translateX(0)' }"
+              />
+            </div>
           </button>
         </div>
 
