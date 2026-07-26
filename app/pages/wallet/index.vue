@@ -52,7 +52,7 @@ onMounted(() => {
           <CreditCard class="w-5 h-5 opacity-80" />
           <span class="text-xs font-semibold tracking-wide uppercase opacity-80">Nitip Pay Wallet</span>
         </div>
-        <button @click="refreshWallet" class="p-1 hover:bg-white/10 rounded-lg transition-all" :disabled="walletStore.loading">
+        <button class="p-1 hover:bg-white/10 rounded-lg transition-all" :disabled="walletStore.loading" @click="refreshWallet">
           <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': walletStore.loading }" />
         </button>
       </div>

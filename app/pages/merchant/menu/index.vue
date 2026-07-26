@@ -293,7 +293,7 @@ onMounted(() => {
           </p>
         </div>
 
-        <form @submit.prevent="handleRegisterProfile" class="space-y-4">
+        <form class="space-y-4" @submit.prevent="handleRegisterProfile">
           <!-- Store Name -->
           <div class="space-y-1.5">
             <label class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Nama Merchant/Toko</label>

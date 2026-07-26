@@ -286,9 +286,9 @@ onMounted(() => {
         <div class="grid grid-cols-2 gap-3.5">
           <!-- Toggle Open Status -->
           <button 
-            @click="storeForm.is_open = !storeForm.is_open; toggleStoreOpen()" 
-            class="flex items-center justify-between p-4 border rounded-2xl transition-all text-left active:scale-[0.98]"
+            class="flex items-center justify-between p-4 border rounded-2xl transition-all text-left active:scale-[0.98]" 
             :class="storeForm.is_open ? 'bg-emerald-50/20 border-emerald-100/50 shadow-[0_2px_8px_rgba(16,185,129,0.03)]' : 'bg-slate-50 border-slate-100'"
+            @click="storeForm.is_open = !storeForm.is_open; toggleStoreOpen()"
           >
             <div class="space-y-0.5">
               <span class="text-[8px] font-extrabold text-slate-400 uppercase tracking-wider">Status Toko</span>
@@ -308,9 +308,9 @@ onMounted(() => {
 
           <!-- Toggle Auto Confirm -->
           <button 
-            @click="storeForm.auto_confirm = !storeForm.auto_confirm; toggleAutoConfirm()" 
-            class="flex items-center justify-between p-4 border rounded-2xl transition-all text-left active:scale-[0.98]"
+            class="flex items-center justify-between p-4 border rounded-2xl transition-all text-left active:scale-[0.98]" 
             :class="storeForm.auto_confirm ? 'bg-primary/5 border-primary/10 shadow-[0_2px_8px_rgba(0,98,204,0.03)]' : 'bg-slate-50 border-slate-100'"
+            @click="storeForm.auto_confirm = !storeForm.auto_confirm; toggleAutoConfirm()"
           >
             <div class="space-y-0.5">
               <span class="text-[8px] font-extrabold text-slate-400 uppercase tracking-wider">Auto Confirm</span>
@@ -352,8 +352,8 @@ onMounted(() => {
           <p class="text-[10px] text-slate-400 font-medium">Tambahkan item baru langsung ke menu Anda.</p>
         </div>
         <button 
-          @click="openAddModal"
           class="flex items-center gap-1 h-9 px-4 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/95 active:scale-95 transition-all shadow-md shadow-primary/10"
+          @click="openAddModal"
         >
           <Plus class="w-4 h-4" />
           Tambah Item

@@ -153,8 +153,8 @@ const cartSubtotal = computed(() =>
         <!-- Cart bubble in header -->
         <button
           v-if="cartItemCount > 0"
-          @click="showCartDrawer = true"
           class="relative w-9 h-9 bg-primary rounded-xl flex items-center justify-center text-white shadow-sm shadow-primary/30 active:scale-95 transition-all"
+          @click="showCartDrawer = true"
         >
           <ShoppingCart class="w-4 h-4" />
           <span class="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-[8px] font-black rounded-full flex items-center justify-center border border-white shadow-sm">
@@ -282,20 +282,20 @@ const cartSubtotal = computed(() =>
                 <!-- Add button or qty counter -->
                 <div v-if="getItemQty(item.id) === 0">
                   <button
-                    @click="handleAdd(item)"
                     :disabled="!merchant?.is_open"
                     class="flex items-center gap-1 px-3 py-1.5 bg-primary text-white text-[11px] font-black rounded-xl active:scale-95 transition-all shadow-sm shadow-primary/25 disabled:opacity-40"
+                    @click="handleAdd(item)"
                   >
                     <Plus class="w-3.5 h-3.5" />
                     Tambah
                   </button>
                 </div>
                 <div v-else class="flex items-center bg-primary rounded-xl overflow-hidden shadow-sm">
-                  <button @click="handleDecrement(item.id)" class="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-primary-dark active:scale-90 transition-all">
+                  <button class="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-primary-dark active:scale-90 transition-all" @click="handleDecrement(item.id)">
                     <Minus class="w-3.5 h-3.5" />
                   </button>
                   <span class="text-xs font-black text-white px-1 min-w-[20px] text-center">{{ getItemQty(item.id) }}</span>
-                  <button @click="handleIncrement(item.id)" class="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white active:scale-90 transition-all">
+                  <button class="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white active:scale-90 transition-all" @click="handleIncrement(item.id)">
                     <Plus class="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -341,8 +341,8 @@ const cartSubtotal = computed(() =>
         class="fixed bottom-20 left-0 right-0 z-40 max-w-md mx-auto px-4"
       >
         <button
-          @click="showCartDrawer = true"
           class="w-full bg-primary text-white rounded-2xl px-4 py-3 flex items-center justify-between shadow-xl shadow-primary/30 active:scale-[0.99] transition-all"
+          @click="showCartDrawer = true"
         >
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center relative">
@@ -382,10 +382,10 @@ const cartSubtotal = computed(() =>
             </p>
           </div>
           <div class="flex gap-2.5">
-            <button @click="showClearCartConfirm = false" class="flex-1 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded-xl border border-slate-200 transition-all">
+            <button class="flex-1 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded-xl border border-slate-200 transition-all" @click="showClearCartConfirm = false">
               Batal
             </button>
-            <button @click="confirmClearCart" class="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-xl transition-all">
+            <button class="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-xl transition-all" @click="confirmClearCart">
               Ganti Toko
             </button>
           </div>
@@ -421,7 +421,7 @@ const cartSubtotal = computed(() =>
                   {{ cartStore.merchantName }} · {{ cartItemCount }}/10 item
                 </p>
               </div>
-              <button @click="showCartDrawer = false" class="w-8 h-8 border border-slate-200 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-all">
+              <button class="w-8 h-8 border border-slate-200 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-all" @click="showCartDrawer = false">
                 <X class="w-3.5 h-3.5 text-slate-500" />
               </button>
             </div>
@@ -462,11 +462,11 @@ const cartSubtotal = computed(() =>
                   </div>
                   <!-- Qty -->
                   <div class="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shrink-0">
-                    <button @click="handleDecrement(item.id)" class="w-7 h-7 flex items-center justify-center text-slate-500 hover:bg-slate-100 active:scale-90 transition-all">
+                    <button class="w-7 h-7 flex items-center justify-center text-slate-500 hover:bg-slate-100 active:scale-90 transition-all" @click="handleDecrement(item.id)">
                       <Minus class="w-3 h-3" />
                     </button>
                     <span class="text-xs font-black text-slate-800 px-1 min-w-[20px] text-center">{{ item.quantity }}</span>
-                    <button @click="handleIncrement(item.id)" class="w-7 h-7 flex items-center justify-center text-slate-500 hover:bg-slate-100 active:scale-90 transition-all">
+                    <button class="w-7 h-7 flex items-center justify-center text-slate-500 hover:bg-slate-100 active:scale-90 transition-all" @click="handleIncrement(item.id)">
                       <Plus class="w-3 h-3" />
                     </button>
                   </div>
@@ -476,10 +476,10 @@ const cartSubtotal = computed(() =>
                   <FileText class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-300" />
                   <input
                     :value="item.notes"
-                    @input="e => cartStore.updateNotes(item.id, (e.target as HTMLInputElement).value)"
                     type="text"
                     placeholder="Catatan... (contoh: tidak pedas)"
                     class="w-full h-8 pl-7 pr-3 rounded-lg border border-slate-100 text-[10px] font-medium focus:outline-none focus:border-primary/40 bg-slate-50 transition-all"
+                    @input="e => cartStore.updateNotes(item.id, (e.target as HTMLInputElement).value)"
                   >
                 </div>
               </div>
@@ -551,9 +551,9 @@ const cartSubtotal = computed(() =>
             </div>
 
             <button
-              @click="handleCheckout"
               :disabled="checkoutLoading || cartStore.items.length === 0"
               class="w-full h-12 bg-primary text-white font-black text-xs rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-primary/25 active:scale-[0.98] transition-all disabled:opacity-50"
+              @click="handleCheckout"
             >
               <span v-if="checkoutLoading" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               <ShoppingBag v-else class="w-4 h-4" />

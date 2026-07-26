@@ -177,15 +177,57 @@ async function loadOrder() {
   loading.value = false
 }
 
+const isStagnant = computed(() => {
+  if (!order.value?.updated_at) return false
+  const updated = new Date(order.value.updated_at).getTime()
+  const diff = Date.now() - updated
+  return diff > 30 * 60 * 1000
+})
+
+const canNormalCancel = computed(() => {
+  if (!order.value) return false
+  const ord = order.value
+  if (ord.merchant_id) { // Nitip Food
+    return ord.status === 'pending' || ord.status === 'merchant_accepted'
+  } else if (ord.service_category === 'kirim') { // Titip Kirim
+    return ord.status === 'pending' || ord.status === 'accepted'
+  } else { // Titip Beli
+    return ord.status === 'pending' || ord.status === 'accepted'
+  }
+})
+
+const showCancelBtn = computed(() => {
+  if (!order.value) return false
+  const status = order.value.status
+  return status !== 'completed' && status !== 'cancelled'
+})
+
+const cancelDisabled = computed(() => {
+  return !canNormalCancel.value && !isStagnant.value
+})
+
 async function handleCancel() {
-  if (confirm('Apakah Anda yakin ingin membatalkan pesanan ini?')) {
-    const success = await ordersStore.cancelOrder(orderId)
-    if (success) {
-      toastStore.add('Pesanan berhasil dibatalkan.')
-      await loadOrder()
-    } else {
-      toastStore.add('Gagal membatalkan pesanan.')
+  if (cancelDisabled.value) return
+
+  let reason = ''
+  if (!canNormalCancel.value) {
+    const input = prompt('Status pesanan stagnan > 30 menit. Silakan masukkan alasan pembatalan Anda:')
+    if (input === null) return
+    if (!input.trim()) {
+      toastStore.add('Alasan pembatalan wajib diisi.')
+      return
     }
+    reason = input.trim()
+  } else {
+    if (!confirm('Apakah Anda yakin ingin membatalkan pesanan ini?')) return
+  }
+
+  const success = await ordersStore.cancelOrder(orderId, reason)
+  if (success) {
+    toastStore.add('Pesanan berhasil dibatalkan.')
+    await loadOrder()
+  } else {
+    toastStore.add('Gagal membatalkan pesanan.')
   }
 }
 
@@ -286,6 +328,7 @@ async function handleReview() {
 function getStatusColor(status: string) {
   switch (status) {
     case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200'
+    case 'merchant_accepted': return 'bg-cyan-50 text-cyan-700 border-cyan-200'
     case 'cooking': return 'bg-blue-50 text-blue-700 border-blue-200'
     case 'ready': return 'bg-indigo-50 text-indigo-700 border-indigo-200'
     case 'accepted': return 'bg-sky-50 text-sky-700 border-sky-200'
@@ -301,9 +344,10 @@ function getStatusColor(status: string) {
 function getStatusLabel(status: string) {
   switch (status) {
     case 'pending': return order.value?.merchant_id ? 'Menunggu Dapur Menerima' : 'Mencari Runner'
+    case 'merchant_accepted': return 'Diterima Dapur'
     case 'cooking': return 'Sedang Dimasak'
     case 'ready': return 'Pesanan Siap Diambil'
-    case 'accepted': return order.value?.merchant_id ? 'Diterima Dapur' : 'Diterima Runner'
+    case 'accepted': return 'Diterima Runner'
     case 'purchasing': return 'Sedang Belanja'
     case 'delivering': return 'Sedang Diantar'
     case 'completed': return 'Selesai'
@@ -395,7 +439,7 @@ function openImage(url: string) {
 
           <!-- QRIS Image -->
           <div class="relative w-56 h-56 mx-auto bg-slate-50 border border-slate-100 rounded-2xl p-3 shadow-inner flex items-center justify-center">
-            <img v-if="order.qris_data" :src="order.qris_data" alt="QRIS Code" class="w-full h-full object-contain" />
+            <img v-if="order.qris_data" :src="order.qris_data" alt="QRIS Code" class="w-full h-full object-contain" >
             <div v-else class="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
             
             <!-- Expired overlay -->
@@ -464,12 +508,13 @@ function openImage(url: string) {
         </div>
 
         <button 
-          :disabled="ordersStore.actionLoading"
-          class="w-full bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 text-xs font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-1.5 transition-all"
+          v-if="showCancelBtn"
+          :disabled="cancelDisabled || ordersStore.actionLoading"
+          class="w-full bg-rose-50 border border-rose-200 hover:bg-rose-100 disabled:opacity-50 disabled:cursor-not-allowed text-rose-700 text-xs font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-1.5 transition-all"
           @click="handleCancel"
         >
           <span v-if="ordersStore.actionLoading" class="w-4 h-4 border-2 border-rose-300 border-t-rose-700 rounded-full animate-spin" />
-          Batalkan Pesanan
+          {{ !canNormalCancel ? 'Batalkan Pesanan (Stagnan > 30m)' : 'Batalkan Pesanan' }}
         </button>
       </div>
 
@@ -806,18 +851,18 @@ function openImage(url: string) {
         <div class="space-y-3">
           <!-- Batalkan Order -->
           <button 
-            v-if="order.status === 'pending'"
-            :disabled="ordersStore.actionLoading" 
-            class="w-full bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 text-xs font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-1.5 transition-all"
+            v-if="showCancelBtn"
+            :disabled="cancelDisabled || ordersStore.actionLoading" 
+            class="w-full bg-rose-50 border border-rose-200 hover:bg-rose-100 disabled:opacity-50 disabled:cursor-not-allowed text-rose-700 text-xs font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-1.5 transition-all"
             @click="handleCancel"
           >
             <span v-if="ordersStore.actionLoading" class="w-4 h-4 border-2 border-rose-300 border-t-rose-700 rounded-full animate-spin" />
-            Batalkan Pesanan
+            {{ !canNormalCancel ? 'Batalkan Pesanan (Stagnan > 30m)' : 'Batalkan Pesanan' }}
           </button>
 
           <!-- Ajukan Sengketa (Dispute) -->
           <button 
-            v-if="order.status === 'delivering'"
+            v-if="order.status === 'completed'"
             class="w-full bg-slate-100 hover:bg-slate-200 text-foreground text-xs font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-1.5 transition-all" 
             @click="showDisputeModal = true"
           >

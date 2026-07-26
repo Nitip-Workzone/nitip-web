@@ -166,11 +166,14 @@ export const useUserOrdersStore = defineStore('user-orders', {
             }
         },
 
-        async cancelOrder(id: string): Promise<boolean> {
+        async cancelOrder(id: string, reason?: string): Promise<boolean> {
             this.actionLoading = true
             const { request } = useApi()
             try {
-                await request(`/orders/${id}/cancel`, { method: 'POST' })
+                await request(`/orders/${id}/cancel`, { 
+                    method: 'POST',
+                    body: reason ? { reason } : undefined
+                })
                 await this.fetchMyOrders()
                 return true
             } catch (error) {

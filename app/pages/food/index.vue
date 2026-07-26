@@ -163,8 +163,8 @@ const getRatingColor = (rating: number) => {
         >
         <button
           v-if="searchQuery"
-          @click="searchQuery = ''; currentPage = 1"
           class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 bg-slate-200 rounded-full flex items-center justify-center hover:bg-slate-300 transition-all"
+          @click="searchQuery = ''; currentPage = 1"
         >
           <X class="w-3 h-3 text-slate-500" />
         </button>
@@ -177,11 +177,11 @@ const getRatingColor = (rating: number) => {
           <button
             v-for="opt in radiusOptions"
             :key="opt.value"
-            @click="setRadius(opt.value)"
             class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold border transition-all"
             :class="searchRadius === opt.value
               ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25'
               : 'bg-white text-slate-500 border-slate-200 hover:border-primary/40'"
+            @click="setRadius(opt.value)"
           >
             {{ opt.label }}
           </button>
@@ -245,8 +245,8 @@ const getRatingColor = (rating: number) => {
           <br>Coba perluas radius pencarian.
         </p>
         <button
-          @click="loadLocationAndMerchants"
           class="mt-5 inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-[11px] font-bold rounded-xl active:scale-95 transition-all shadow-sm shadow-primary/25"
+          @click="loadLocationAndMerchants"
         >
           <RefreshCw class="w-3.5 h-3.5" />
           Coba Lagi
@@ -348,9 +348,9 @@ const getRatingColor = (rating: number) => {
       <!-- ── PAGINATION ── -->
       <div v-if="totalPages > 1" class="flex items-center justify-center gap-3 pt-2">
         <button
-          @click="currentPage--; scrollTo(0, 0)"
           :disabled="currentPage === 1"
           class="w-9 h-9 border border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-all"
+          @click="currentPage--; scrollTo(0, 0)"
         >
           <ChevronLeft class="w-4 h-4" />
         </button>
@@ -359,20 +359,20 @@ const getRatingColor = (rating: number) => {
           <button
             v-for="p in totalPages"
             :key="p"
-            @click="currentPage = p; scrollTo(0, 0)"
             class="w-7 h-7 rounded-lg text-[11px] font-extrabold transition-all"
             :class="currentPage === p
               ? 'bg-primary text-white shadow-sm shadow-primary/25'
               : 'text-slate-400 hover:bg-slate-100'"
+            @click="currentPage = p; scrollTo(0, 0)"
           >
             {{ p }}
           </button>
         </div>
 
         <button
-          @click="currentPage++; scrollTo(0, 0)"
           :disabled="currentPage === totalPages"
           class="w-9 h-9 border border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-all"
+          @click="currentPage++; scrollTo(0, 0)"
         >
           <ChevronRight class="w-4 h-4" />
         </button>

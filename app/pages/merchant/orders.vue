@@ -107,9 +107,9 @@ onUnmounted(() => {
         <p class="text-[10px] text-muted-foreground">Proses antrean pesanan aktif toko Anda.</p>
       </div>
       <button 
-        @click="fetchOrders" 
-        class="p-2 border border-slate-100 rounded-xl bg-white hover:bg-slate-50 transition-all text-slate-600 shadow-sm"
+        class="p-2 border border-slate-100 rounded-xl bg-white hover:bg-slate-50 transition-all text-slate-600 shadow-sm" 
         :disabled="merchantsStore.loading"
+        @click="fetchOrders"
       >
         <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': merchantsStore.loading }" />
       </button>
@@ -119,9 +119,9 @@ onUnmounted(() => {
     <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-2xl">
       <!-- Pending Tab -->
       <button 
-        @click="activeTab = 'pending'"
         class="py-2.5 rounded-xl text-center transition-all flex flex-col items-center justify-center relative"
         :class="activeTab === 'pending' ? 'bg-white shadow-sm text-primary font-bold' : 'text-slate-500'"
+        @click="activeTab = 'pending'"
       >
         <span class="text-[10px] font-bold">Masuk</span>
         <span class="text-xs font-black" :class="pendingOrders.length > 0 ? 'text-amber-600 font-extrabold' : ''">
@@ -132,9 +132,9 @@ onUnmounted(() => {
 
       <!-- Processing Tab (Cooking + Ready) -->
       <button 
-        @click="activeTab = 'processing'"
         class="py-2.5 rounded-xl text-center transition-all flex flex-col items-center justify-center"
         :class="activeTab === 'processing' ? 'bg-white shadow-sm text-primary font-bold' : 'text-slate-500'"
+        @click="activeTab = 'processing'"
       >
         <span class="text-[10px] font-bold">Diproses</span>
         <span class="text-xs font-black">{{ processingOrders.length }}</span>
@@ -142,9 +142,9 @@ onUnmounted(() => {
 
       <!-- Completed Tab -->
       <button 
-        @click="activeTab = 'completed'"
         class="py-2.5 rounded-xl text-center transition-all flex flex-col items-center justify-center"
         :class="activeTab === 'completed' ? 'bg-white shadow-sm text-primary font-bold' : 'text-slate-500'"
+        @click="activeTab = 'completed'"
       >
         <span class="text-[10px] font-bold">Selesai</span>
         <span class="text-xs font-black">{{ completedOrders.length }}</span>
@@ -168,11 +168,11 @@ onUnmounted(() => {
 
       <!-- Orders loop -->
       <div 
-        v-else
         v-for="order in (
           activeTab === 'pending' ? pendingOrders : 
           activeTab === 'processing' ? processingOrders : completedOrders
-        )" 
+        )"
+        v-else 
         :key="order.id"
         class="bg-white border border-slate-100 rounded-3xl p-5 space-y-4 shadow-[0_4px_25px_rgb(0,0,0,0.015)]"
       >
@@ -229,12 +229,12 @@ onUnmounted(() => {
           <!-- Accept Button -->
           <button 
             v-if="order.status === 'pending'"
-            @click="handleAccept(order.id)"
             class="flex-1 h-10 rounded-xl text-xs flex items-center justify-center gap-1.5 font-bold bg-primary text-white hover:bg-primary/95 active:scale-95 transition-all shadow-md shadow-primary/10"
             :disabled="actionLoadingId === order.id"
+            @click="handleAccept(order.id)"
           >
-            <Play class="w-3.5 h-3.5" v-if="actionLoadingId !== order.id" />
-            <RefreshCw class="w-3.5 h-3.5 animate-spin" v-else />
+            <Play v-if="actionLoadingId !== order.id" class="w-3.5 h-3.5" />
+            <RefreshCw v-else class="w-3.5 h-3.5 animate-spin" />
             Terima Pesanan
           </button>
 
@@ -251,12 +251,12 @@ onUnmounted(() => {
           <!-- Mark Ready Button -->
           <button 
             v-if="order.status === 'cooking'"
-            @click="handleReady(order.id)"
             class="flex-1 h-10 rounded-xl text-xs flex items-center justify-center gap-1.5 font-bold bg-emerald-500 hover:bg-emerald-600 text-white active:scale-95 transition-all shadow-md shadow-emerald-500/10"
             :disabled="actionLoadingId === order.id"
+            @click="handleReady(order.id)"
           >
-            <PackageCheck class="w-3.5 h-3.5" v-if="actionLoadingId !== order.id" />
-            <RefreshCw class="w-3.5 h-3.5 animate-spin" v-else />
+            <PackageCheck v-if="actionLoadingId !== order.id" class="w-3.5 h-3.5" />
+            <RefreshCw v-else class="w-3.5 h-3.5 animate-spin" />
             Tandai Siap Diambil
           </button>
         </div>
