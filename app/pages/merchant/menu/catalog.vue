@@ -30,6 +30,7 @@ const menuForm = ref({
 
 const editMenuId = ref('')
 const selectedFile = ref<File | null>(null)
+const previewUrl = ref('')
 const uploadProgress = ref(false)
 
 const fetchProfile = async () => {
@@ -95,16 +96,13 @@ const handleFileChange = async (event: Event) => {
     const file = target.files[0]
     if (!file) return
     selectedFile.value = file
-    uploadProgress.value = true
-    try {
-      const url = await merchantsStore.uploadMenuImage(file)
-      menuForm.value.image_url = url
-      success('Gambar menu berhasil diupload.')
-    } catch {
-      error('Gagal mengupload gambar menu.')
-    } finally {
-      uploadProgress.value = false
+    
+    // Revoke previous local object URL if exists
+    if (previewUrl.value) {
+      URL.revokeObjectURL(previewUrl.value)
     }
+    // Create new local preview URL
+    previewUrl.value = URL.createObjectURL(file)
   }
 }
 
@@ -117,6 +115,7 @@ const openAddModal = () => {
     is_available: true,
   }
   selectedFile.value = null
+  previewUrl.value = ''
   showAddModal.value = true
 }
 
@@ -131,16 +130,36 @@ const handleAddMenu = async () => {
   }
 
   actionLoading.value = true
+  
+  let finalImageUrl = menuForm.value.image_url
+  if (selectedFile.value) {
+    uploadProgress.value = true
+    try {
+      finalImageUrl = await merchantsStore.uploadMenuImage(selectedFile.value)
+    } catch {
+      error('Gagal mengupload gambar menu.')
+      actionLoading.value = false
+      uploadProgress.value = false
+      return
+    } finally {
+      uploadProgress.value = false
+    }
+  }
+
   try {
     await merchantsStore.createMenuItem({
       name: menuForm.value.name,
       description: menuForm.value.description,
       price: Number(menuForm.value.price),
-      image_url: menuForm.value.image_url,
+      image_url: finalImageUrl,
       is_available: menuForm.value.is_available,
     })
     success('Menu baru berhasil ditambahkan.')
     showAddModal.value = false
+    if (previewUrl.value) {
+      URL.revokeObjectURL(previewUrl.value)
+      previewUrl.value = ''
+    }
   } catch {
     error('Gagal menambahkan menu.')
   } finally {
@@ -158,6 +177,7 @@ const openEditModal = (menu: Menu) => {
     is_available: menu.is_available,
   }
   selectedFile.value = null
+  previewUrl.value = ''
   showEditModal.value = true
 }
 
@@ -172,16 +192,36 @@ const handleEditMenu = async () => {
   }
 
   actionLoading.value = true
+  
+  let finalImageUrl = menuForm.value.image_url
+  if (selectedFile.value) {
+    uploadProgress.value = true
+    try {
+      finalImageUrl = await merchantsStore.uploadMenuImage(selectedFile.value)
+    } catch {
+      error('Gagal mengupload gambar menu.')
+      actionLoading.value = false
+      uploadProgress.value = false
+      return
+    } finally {
+      uploadProgress.value = false
+    }
+  }
+
   try {
     await merchantsStore.updateMenuItem(editMenuId.value, {
       name: menuForm.value.name,
       description: menuForm.value.description,
       price: Number(menuForm.value.price),
-      image_url: menuForm.value.image_url,
+      image_url: finalImageUrl,
       is_available: menuForm.value.is_available,
     })
     success('Menu berhasil diperbarui.')
     showEditModal.value = false
+    if (previewUrl.value) {
+      URL.revokeObjectURL(previewUrl.value)
+      previewUrl.value = ''
+    }
   } catch {
     error('Gagal memperbarui menu.')
   } finally {
@@ -427,8 +467,8 @@ onMounted(() => {
           <label class="flex items-center gap-3 cursor-pointer">
             <div class="w-16 h-16 rounded-xl border border-slate-200 bg-background overflow-hidden flex items-center justify-center flex-shrink-0">
               <img
-                v-if="menuForm.image_url"
-                :src="menuForm.image_url"
+                v-if="previewUrl || menuForm.image_url"
+                :src="previewUrl || menuForm.image_url"
                 alt="Upload Preview"
                 class="w-full h-full object-cover"
               >
@@ -513,8 +553,8 @@ onMounted(() => {
           <label class="flex items-center gap-3 cursor-pointer">
             <div class="w-16 h-16 rounded-xl border border-slate-200 bg-background overflow-hidden flex items-center justify-center flex-shrink-0">
               <img
-                v-if="menuForm.image_url"
-                :src="menuForm.image_url"
+                v-if="previewUrl || menuForm.image_url"
+                :src="previewUrl || menuForm.image_url"
                 alt="Upload Preview"
                 class="w-full h-full object-cover"
               >
