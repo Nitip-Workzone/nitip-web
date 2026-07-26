@@ -57,6 +57,8 @@ export interface UserOrder {
     cod_handling_fee?: number
     runner_name?: string
     runner_phone?: string
+    runner_last_lat?: number
+    runner_last_lng?: number
 }
 
 export const useUserOrdersStore = defineStore('user-orders', {
@@ -232,7 +234,7 @@ export const useUserOrdersStore = defineStore('user-orders', {
             try {
                 const res = await request<{ data: Review }>(`/orders/${orderId}/review`)
                 return res.data || null
-            } catch (error) {
+            } catch {
                 // 404 means no review yet — not an error
                 return null
             }

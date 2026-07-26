@@ -66,9 +66,28 @@ function startPollingStatus() {
   }, 5000)
 }
 
+let activeOrderPollInterval: any = null
+
+function startActiveOrderPolling() {
+  if (activeOrderPollInterval) return
+  activeOrderPollInterval = setInterval(async () => {
+    const res = await ordersStore.fetchOrderDetail(orderId)
+    if (res) {
+      order.value = res
+      if (!['accepted', 'cooking', 'ready', 'purchasing', 'delivering'].includes(res.status)) {
+        if (activeOrderPollInterval) {
+          clearInterval(activeOrderPollInterval)
+          activeOrderPollInterval = null
+        }
+      }
+    }
+  }, 10000) // Poll location and order status every 10 seconds
+}
+
 onUnmounted(() => {
   if (countdownInterval) clearInterval(countdownInterval)
   if (pollInterval) clearInterval(pollInterval)
+  if (activeOrderPollInterval) clearInterval(activeOrderPollInterval)
 })
 
 // Dispute modal state
@@ -146,6 +165,10 @@ async function loadOrder() {
     if (res.payment_status === 'unpaid' && res.payment_method === 'escrow' && res.payment_source === 'qris') {
       startCountdown(res.created_at)
       startPollingStatus()
+    }
+    // Start active order location/status polling if active
+    if (['accepted', 'cooking', 'ready', 'purchasing', 'delivering'].includes(res.status)) {
+      startActiveOrderPolling()
     }
   } else {
     toastStore.add('Pesanan tidak ditemukan.')
@@ -589,7 +612,7 @@ function openImage(url: string) {
           <!-- Map Routing Iframe -->
           <div v-if="order.pickup_lat && order.pickup_lng && order.delivery_lat && order.delivery_lng" class="w-full h-44 rounded-2xl overflow-hidden border border-slate-100 mt-2 relative z-0">
             <iframe 
-              :src="`/map/route?origin_lat=${order.pickup_lat}&origin_lng=${order.pickup_lng}&dest_lat=${order.delivery_lat}&dest_lng=${order.delivery_lng}`" 
+              :src="`/map/route?origin_lat=${order.runner_last_lat || order.pickup_lat}&origin_lng=${order.runner_last_lng || order.pickup_lng}&dest_lat=${order.status === 'delivering' ? order.delivery_lat : order.pickup_lat}&dest_lng=${order.status === 'delivering' ? order.delivery_lng : order.pickup_lng}`" 
               class="w-full h-full border-none"
               title="Peta Rute Pengiriman"
             />
