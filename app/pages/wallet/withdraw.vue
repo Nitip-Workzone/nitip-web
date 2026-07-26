@@ -147,6 +147,15 @@ function formatCurrency(val: number) {
         <h1 class="text-lg font-black text-slate-900 tracking-tight">Tarik Saldo</h1>
       </div>
 
+      <!-- Manual Transfer Notice Banner -->
+      <div class="bg-amber-50 rounded-2xl p-4 border border-amber-200/60 flex items-start gap-3 text-amber-800 text-xs">
+        <AlertCircle class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+        <div class="space-y-1">
+          <p class="font-bold text-amber-950">Metode Pencairan Manual Transfer</p>
+          <p class="leading-relaxed font-semibold">Pencairan dana menggunakan transfer manual ke rekening Anda dengan estimasi waktu maksimal 1x12 jam.</p>
+        </div>
+      </div>
+
       <!-- Balance Card -->
       <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center justify-between">
         <div class="space-y-1">
