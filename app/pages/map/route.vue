@@ -116,6 +116,15 @@ onMounted(() => {
 
 watch(() => route.query, () => {
   if (import.meta.client) {
+    if (map) {
+      try {
+        map.remove()
+      } catch (e) {
+        console.error('Error removing map:', e)
+      }
+      map = null
+      isInitialized = false
+    }
     initMap()
   }
 }, { deep: true })
