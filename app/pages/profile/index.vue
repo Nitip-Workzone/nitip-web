@@ -20,8 +20,12 @@ const { request } = useApi()
 const isEditing = ref(false)
 const editName = ref('')
 const editWhatsapp = ref('')
+const editHomeAddress = ref('')
+const editAvatarFile = ref<File | null>(null)
+const editAvatarPreview = ref<string | null>(null)
 const saving = ref(false)
 const loading = ref(true)
+const profileErrors = ref<Record<string, string>>({})
 
 // Modals state
 const showPinModal = ref(false)
@@ -40,6 +44,11 @@ onMounted(async () => {
 
   editName.value = authStore.user?.name || ''
   editWhatsapp.value = authStore.user?.whatsapp_number || ''
+  editHomeAddress.value = authStore.user?.home_address || ''
+
+  // Reset avatar preview
+  editAvatarFile.value = null
+  editAvatarPreview.value = null
 
   const promises: Promise<any>[] = [
     walletStore.fetchBalance().catch(err => console.error('Failed to fetch balance:', err))
@@ -59,22 +68,77 @@ const totalOrders = computed(() => {
   return (ordersStore.activeOrders?.length || 0) + (ordersStore.pastOrders?.length || 0)
 })
 
+function sanitizeWhatsapp(phone: string) {
+  let p = phone.replace(/[^0-9]/g, '')
+  if (p.startsWith('0')) p = '62' + p.slice(1)
+  if (p.startsWith('8')) p = '62' + p
+  return p
+}
+
+function validateProfile() {
+  profileErrors.value = {}
+  if (!editName.value || editName.value.trim().length < 2) {
+    profileErrors.value.name = 'Nama minimal 2 karakter'
+  }
+  const wa = editWhatsapp.value.replace(/[^0-9]/g, '')
+  if (!wa || wa.length < 9 || wa.length > 15) {
+    profileErrors.value.whatsapp = 'Nomor WhatsApp 9-15 digit'
+  }
+  if (editHomeAddress.value && editHomeAddress.value.length > 500) {
+    profileErrors.value.home = 'Alamat maksimal 500 karakter'
+  }
+  return Object.keys(profileErrors.value).length === 0
+}
+
+function onAvatarChange(e: Event) {
+  const target = e.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+  if (file.size > 5 * 1024 * 1024) {
+    toastStore.add('Ukuran avatar maksimal 5MB')
+    return
+  }
+  if (!file.type.startsWith('image/')) {
+    toastStore.add('Avatar harus berupa gambar')
+    return
+  }
+  editAvatarFile.value = file
+  editAvatarPreview.value = URL.createObjectURL(file)
+}
+
 async function saveProfile() {
+  if (!validateProfile()) {
+    const firstErr = Object.values(profileErrors.value)[0]
+    toastStore.add(firstErr)
+    return
+  }
+
   saving.value = true
   try {
     const formData = new FormData()
-    formData.append('name', editName.value)
-    formData.append('whatsapp_number', editWhatsapp.value)
+    formData.append('name', editName.value.trim())
+    formData.append('whatsapp_number', sanitizeWhatsapp(editWhatsapp.value))
+    formData.append('home_address', editHomeAddress.value.trim())
+    if (editAvatarFile.value) {
+      formData.append('avatar', editAvatarFile.value)
+    }
     await request('/users/profile', {
       method: 'PUT',
       body: formData,
     })
     await authStore.fetchProfile(true)
+    // Resync edit fields after fetch
+    editName.value = authStore.user?.name || ''
+    editWhatsapp.value = authStore.user?.whatsapp_number || ''
+    editHomeAddress.value = authStore.user?.home_address || ''
+    editAvatarFile.value = null
+    editAvatarPreview.value = null
     isEditing.value = false
     toastStore.add('Profil berhasil diperbarui!')
   } catch (error: unknown) {
-    const err = error as { data?: { message?: string } }
-    toastStore.add(err.data?.message || 'Gagal menyimpan profil.')
+    const err = error as { data?: { message?: string, errors?: any[] } }
+    const msg = err.data?.message || (err.data?.errors?.[0]?.message) || 'Gagal menyimpan profil.'
+    toastStore.add(msg)
   } finally {
     saving.value = false
   }
@@ -231,9 +295,10 @@ const openLink = (url: string) => {
         <div class="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-soft space-y-5">
           <div v-if="!isEditing" class="space-y-4">
             <div class="flex items-center gap-4">
-              <!-- Avatar Circle -->
-              <div class="w-16 h-16 bg-primary/10 text-primary text-2xl font-black rounded-full flex items-center justify-center border-2 border-primary/20 shadow-inner">
-                {{ authStore.user?.name?.charAt(0)?.toUpperCase() || '?' }}
+              <!-- Avatar Circle with image if available -->
+              <div class="w-16 h-16 bg-primary/10 text-primary text-2xl font-black rounded-full flex items-center justify-center border-2 border-primary/20 shadow-inner overflow-hidden">
+                <img v-if="authStore.user?.avatar_url" :src="authStore.user.avatar_url" alt="Avatar" class="w-full h-full object-cover">
+                <span v-else>{{ authStore.user?.name?.charAt(0)?.toUpperCase() || '?' }}</span>
               </div>
               
               <div class="flex-1 min-w-0">
@@ -242,6 +307,7 @@ const openLink = (url: string) => {
                     {{ authStore.user?.name }}
                   </h2>
                   <ShieldCheck v-if="authStore.user?.is_verified" class="w-4.5 h-4.5 text-emerald-500 shrink-0" />
+                  <span v-if="!authStore.user?.is_verified" class="text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">Unverified</span>
                 </div>
                 
                 <p class="text-xs text-slate-400 truncate mt-0.5 flex items-center gap-1">
@@ -252,6 +318,9 @@ const openLink = (url: string) => {
                 <p v-if="authStore.user?.whatsapp_number" class="text-xs text-slate-400 truncate mt-1 flex items-center gap-1">
                   <Phone class="w-3.5 h-3.5 text-slate-400" />
                   {{ authStore.user?.whatsapp_number }}
+                </p>
+                <p v-if="authStore.user?.home_address" class="text-[11px] text-slate-500 mt-1 line-clamp-1">
+                  {{ authStore.user.home_address }}
                 </p>
               </div>
             </div>
@@ -267,16 +336,37 @@ const openLink = (url: string) => {
 
           <!-- Edit Profile Form -->
           <form v-else class="space-y-4" @submit.prevent="saveProfile">
-            <h3 class="text-sm font-extrabold text-slate-800">Edit Data Diri</h3>
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-extrabold text-slate-800">Edit Data Diri</h3>
+              <span v-if="authStore.user?.is_verified" class="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full">
+                <ShieldCheck class="w-3 h-3" /> Verified
+              </span>
+              <span v-else class="inline-flex items-center gap-1 text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full">Belum Verifikasi</span>
+            </div>
+
+            <!-- Avatar Upload -->
+            <div class="flex items-center gap-4 bg-slate-50 border border-slate-200 rounded-xl p-3">
+              <div class="w-14 h-14 rounded-full bg-white border border-slate-200 overflow-hidden flex items-center justify-center">
+                <img v-if="editAvatarPreview" :src="editAvatarPreview" class="w-full h-full object-cover" alt="Preview Avatar">
+                <img v-else-if="authStore.user?.avatar_url" :src="authStore.user.avatar_url" class="w-full h-full object-cover" alt="Avatar">
+                <span v-else class="text-lg font-black text-primary">{{ authStore.user?.name?.charAt(0)?.toUpperCase() }}</span>
+              </div>
+              <div class="flex-1">
+                <label class="text-[11px] font-bold text-slate-600 block mb-1">Foto Profil (Avatar)</label>
+                <input type="file" accept="image/*" class="block w-full text-[11px] text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-bold file:bg-primary file:text-white hover:file:bg-primary/90" @change="onAvatarChange">
+                <p class="text-[9px] text-slate-400 mt-1">Max 5MB, JPG/PNG/WebP</p>
+              </div>
+            </div>
             
             <div class="space-y-1.5">
               <label class="text-xs font-bold text-slate-600">Nama Lengkap</label>
               <input 
                 v-model="editName" 
                 type="text" 
-                class="w-full h-11 rounded-xl border border-slate-200 px-4 text-xs font-semibold focus:outline-none focus:border-primary/50 bg-slate-50/50 focus:bg-white transition-all"
+                :class="['w-full h-11 rounded-xl border px-4 text-xs font-semibold focus:outline-none focus:border-primary/50 bg-slate-50/50 focus:bg-white transition-all', profileErrors.name ? 'border-red-300' : 'border-slate-200']"
                 placeholder="Nama Lengkap" 
               >
+              <p v-if="profileErrors.name" class="text-[10px] text-red-500 font-semibold">{{ profileErrors.name }}</p>
             </div>
 
             <div class="space-y-1.5">
@@ -284,9 +374,21 @@ const openLink = (url: string) => {
               <input 
                 v-model="editWhatsapp" 
                 type="tel" 
-                class="w-full h-11 rounded-xl border border-slate-200 px-4 text-xs font-semibold focus:outline-none focus:border-primary/50 bg-slate-50/50 focus:bg-white transition-all"
+                :class="['w-full h-11 rounded-xl border px-4 text-xs font-semibold focus:outline-none focus:border-primary/50 bg-slate-50/50 focus:bg-white transition-all', profileErrors.whatsapp ? 'border-red-300' : 'border-slate-200']"
                 placeholder="Contoh: 081234567890" 
               >
+              <p v-if="profileErrors.whatsapp" class="text-[10px] text-red-500 font-semibold">{{ profileErrors.whatsapp }}</p>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-[11px] font-bold text-slate-600">Alamat Rumah (Opsional)</label>
+              <textarea 
+                v-model="editHomeAddress" 
+                rows="2"
+                :class="['w-full rounded-xl border px-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-primary/50 bg-slate-50/50 focus:bg-white transition-all resize-none', profileErrors.home ? 'border-red-300' : 'border-slate-200']"
+                placeholder="Jl. Contoh No. 123, Kota" 
+              />
+              <p v-if="profileErrors.home" class="text-[10px] text-red-500 font-semibold">{{ profileErrors.home }}</p>
             </div>
 
             <div class="flex gap-2.5 pt-2">

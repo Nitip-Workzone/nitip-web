@@ -11,6 +11,9 @@ interface User {
     avatar_url?: string
     has_pin?: boolean
     totp_enabled?: boolean
+    home_address?: string
+    home_lat?: number
+    home_lng?: number
 }
 
 export const useAuthStore = defineStore('auth', {

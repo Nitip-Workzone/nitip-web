@@ -414,6 +414,7 @@ onMounted(() => {
         <div class="space-y-0.5">
           <p class="text-[10px] font-extrabold text-primary uppercase tracking-widest">Dashboard Mitra</p>
           <h2 class="text-xl font-black text-slate-900 tracking-tight">{{ merchantsStore.currentMerchant?.name }}</h2>
+          <NuxtLink to="/merchant/profile" class="text-[11px] font-bold text-primary hover:underline">Edit Profil Toko →</NuxtLink>
         </div>
         <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 text-[10px] font-bold">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />

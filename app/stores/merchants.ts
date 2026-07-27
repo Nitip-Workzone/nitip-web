@@ -219,6 +219,30 @@ export const useMerchantsStore = defineStore('merchants', {
       }
     },
 
+    async updateMerchantProfile(payload: {
+      name: string
+      description?: string
+      address: string
+      latitude: number
+      longitude: number
+      category: string
+    }) {
+      const { request } = useApi()
+      try {
+        const res = await request<{ data: Merchant }>('/merchant/profile', {
+          method: 'PUT',
+          body: payload,
+        })
+        if (res.data) {
+          this.currentMerchant = res.data
+        }
+        return res.data
+      } catch (error) {
+        console.error('Failed to update merchant profile:', error)
+        throw error
+      }
+    },
+
     async fetchMerchantMenu() {
       this.loading = true
       const { request } = useApi()
