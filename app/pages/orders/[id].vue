@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ArrowLeft, AlertCircle, AlertTriangle, ShieldAlert, Check, ShoppingBag, Truck, CheckCircle2, Package } from '@lucide/vue'
+import QrcodeVue from 'qrcode.vue'
 import { useUserOrdersStore, type UserOrder, type Review } from '~/stores/user-orders'
 import { useToastStore } from '~/stores/toast'
 
@@ -780,11 +781,29 @@ function openImage(url: string) {
         </div>
 
         <!-- Completion Code QR/Display (if delivering) -->
-        <div v-if="order.status === 'delivering' && order.completion_code" class="bg-white border border-border/30 rounded-3xl p-5 shadow-sm text-center space-y-3">
+        <div v-if="order.status === 'delivering' && order.completion_code" class="bg-white border border-border/30 rounded-3xl p-5 shadow-sm text-center space-y-4">
           <h3 class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Kode Konfirmasi Pengiriman</h3>
-          <p class="text-[11px] text-muted-foreground">Berikan kode unik ini kepada Runner hanya saat barang sudah Anda terima dengan baik.</p>
-          <div class="inline-block bg-primary/5 text-primary text-2xl font-extrabold tracking-widest px-6 py-3 rounded-2xl border border-primary/20">
-            {{ order.completion_code }}
+          <p class="text-[11px] text-muted-foreground px-2">Berikan kode unik ini kepada Runner hanya saat barang sudah Anda terima dengan baik.</p>
+          
+          <!-- QR Code Display -->
+          <div class="flex flex-col items-center gap-3">
+            <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+              <ClientOnly>
+                <QrcodeVue :value="order.completion_code" :size="200" level="M" render-as="svg" class="w-[200px] h-[200px]" />
+                <template #fallback>
+                  <div class="w-[200px] h-[200px] flex items-center justify-center bg-slate-50">
+                    <span class="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  </div>
+                </template>
+              </ClientOnly>
+            </div>
+            <div class="inline-flex flex-col items-center gap-1">
+              <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Kode</span>
+              <div class="bg-primary/5 text-primary text-2xl font-extrabold tracking-[0.2em] px-6 py-3 rounded-2xl border border-primary/20">
+                {{ order.completion_code }}
+              </div>
+              <p class="text-[10px] text-slate-400 mt-1 max-w-[260px]">Tunjukkan kode QR ini kepada Runner untuk dipindai saat barang telah Anda terima.</p>
+            </div>
           </div>
         </div>
 

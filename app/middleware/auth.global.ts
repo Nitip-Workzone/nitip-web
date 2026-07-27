@@ -38,6 +38,21 @@ export default defineNuxtRouteMiddleware(async (to) => {
         console.log('[Auth Middleware] authStore.token already exists.')
     }
 
+    // Mobile WebView bridge helper: trigger native logout when session expired inside WebView
+    const triggerNativeLogoutIfInWebView = (reason: string) => {
+        if (typeof window !== 'undefined') {
+            try {
+                const win = window as any
+                // WebView mobile injects NitipLogout channel + window.triggerNativeLogout
+                if (win.NitipLogout && typeof win.NitipLogout.postMessage === 'function') {
+                    win.NitipLogout.postMessage(reason)
+                } else if (typeof win.triggerNativeLogout === 'function') {
+                    win.triggerNativeLogout(reason)
+                }
+            } catch (_) {}
+        }
+    }
+
     // Define public routes (including map pages used by Flutter WebView — client-only, no user auth needed)
     const publicRoutes = ['/', '/login', '/register', '/merchant/login']
     const isMapRoute = to.path.startsWith('/map')
@@ -50,10 +65,13 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
     // Redirect unauthenticated users trying to access protected routes
     if (!authStore.isAuthenticated && !isPublic) {
-        // Merchant routes redirect to merchant login portal
+        // If we are inside Flutter WebView, trigger native logout instead of showing web login form
+        // This prevents merchant portal showing web login page inside WebView
         if (isMerchantRoute) {
+            triggerNativeLogoutIfInWebView('middleware_merchant_401')
             return navigateTo('/merchant/login')
         }
+        triggerNativeLogoutIfInWebView('middleware_401')
         return navigateTo('/login')
     }
 
@@ -68,6 +86,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
             authStore.token = null
             const tokenCookie = useCookie('auth_token')
             tokenCookie.value = null
+            // Trigger native logout if inside WebView (merchant portal)
+            if (!isPublic && isMerchantRoute) {
+                triggerNativeLogoutIfInWebView('fetchProfile_failed_merchant')
+            }
             if (!isPublic) {
                 console.log('[Auth Middleware] Redirecting to login due to fetchProfile failure.')
                 return navigateTo('/')
