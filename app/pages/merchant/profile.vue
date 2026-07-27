@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useMerchantsStore } from '~/stores/merchants'
 import { useToastStore } from '~/stores/toast'
-import { Store, MapPin, Save, ArrowLeft } from '@lucide/vue'
+import { Store, MapPin, Save, ArrowLeft, Clock } from '@lucide/vue'
 
 definePageMeta({
   layout: 'user',
@@ -17,9 +17,23 @@ const address = ref('')
 const latitude = ref<number | null>(null)
 const longitude = ref<number | null>(null)
 const category = ref('food')
+const imageUrl = ref('')
 const loading = ref(true)
 const saving = ref(false)
 const showLocationPicker = ref(false)
+
+interface DayHours { open: string; close: string; closed?: boolean }
+const openingHours = ref<Record<string, DayHours>>({
+  monday: { open: '08:00', close: '22:00' },
+  tuesday: { open: '08:00', close: '22:00' },
+  wednesday: { open: '08:00', close: '22:00' },
+  thursday: { open: '08:00', close: '22:00' },
+  friday: { open: '08:00', close: '22:00' },
+  saturday: { open: '08:00', close: '22:00' },
+  sunday: { open: '08:00', close: '22:00' },
+})
+
+const dayLabels: Record<string,string> = { monday:'Senin', tuesday:'Selasa', wednesday:'Rabu', thursday:'Kamis', friday:'Jumat', saturday:'Sabtu', sunday:'Minggu' }
 
 const categories = [
   { value: 'food', label: 'Makanan & Minuman' },
@@ -37,6 +51,14 @@ onMounted(async () => {
       latitude.value = m.latitude
       longitude.value = m.longitude
       category.value = m.category
+      imageUrl.value = (m as any).image_url || ''
+      const oh = (m as any).opening_hours
+      if (oh && typeof oh === 'object' && Object.keys(oh).length > 0) {
+        // merge
+        for (const k of Object.keys(oh)) {
+          if (dayLabels[k]) openingHours.value[k] = oh[k]
+        }
+      }
     }
   } catch (e) {
     console.error('Failed to fetch merchant profile:', e)
@@ -75,7 +97,9 @@ async function handleSave() {
       latitude: latitude.value,
       longitude: longitude.value,
       category: category.value,
-    })
+      image_url: imageUrl.value.trim() || undefined,
+      opening_hours: openingHours.value,
+    } as any)
     toastStore.add('Profil toko berhasil diperbarui!')
     router.push('/merchant/menu')
   } catch (error: any) {
@@ -149,6 +173,39 @@ async function handleSave() {
                 <p v-if="latitude && longitude" class="text-[10px] text-slate-400 mt-0.5">{{ latitude.toFixed(6) }}, {{ longitude.toFixed(6) }}</p>
               </div>
             </button>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-600">URL Gambar Toko (Opsional)</label>
+            <input v-model="imageUrl" type="url" class="w-full h-11 rounded-xl border border-slate-200 px-4 text-xs font-medium focus:outline-none focus:border-primary/50 bg-slate-50/50 focus:bg-white transition-all" placeholder="https://.../toko.jpg">
+          </div>
+        </div>
+
+        <!-- Opening Hours -->
+        <div class="bg-white border border-border/30 rounded-3xl p-5 shadow-sm space-y-4">
+          <div class="flex items-center gap-2">
+            <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200/50 flex items-center justify-center">
+              <Clock class="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Jam Buka Toko</h3>
+              <p class="text-[11px] text-slate-500">Atur jam operasional per hari</p>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <div v-for="(label, key) in dayLabels" :key="key" class="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
+              <span class="text-[11px] font-bold text-slate-700 w-[52px]">{{ label }}</span>
+              <label class="flex items-center gap-1 text-[10px]">
+                <input type="checkbox" :checked="!!openingHours[key]?.closed" @change="(e:any)=>{ openingHours[key] = openingHours[key] || {open:'08:00', close:'22:00'}; openingHours[key].closed = e.target.checked }">
+                <span>Tutup</span>
+              </label>
+              <template v-if="!openingHours[key]?.closed">
+                <input v-model="openingHours[key].open" type="time" class="ml-auto w-[76px] h-7 text-[11px] rounded-lg border border-slate-200 px-1">
+                <span class="text-[10px] text-slate-400">-</span>
+                <input v-model="openingHours[key].close" type="time" class="w-[76px] h-7 text-[11px] rounded-lg border border-slate-200 px-1">
+              </template>
+              <span v-else class="ml-auto text-[10px] text-slate-400">Libur</span>
+            </div>
           </div>
         </div>
 

@@ -97,6 +97,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
         }
     }
 
+    // Support / CS routes — only cs & admin can access /admin/support, cs redirects to support
+    const isSupportCSRoute = to.path.startsWith('/admin/support')
+
     // Role-based access control
     if (authStore.isAuthenticated && authStore.user) {
         const role = authStore.user.role
@@ -119,6 +122,20 @@ export default defineNuxtRouteMiddleware(async (to) => {
         // Admin trying to access user/merchant routes → redirect to admin
         if (role === ROLE_ADMIN && (isUserRoute || isMerchantRoute)) {
             return navigateTo('/admin')
+        }
+
+        // CS role: allow /admin/support, block all other admin/user/merchant routes except profile
+        if (role === ROLE_CS) {
+            if (isSupportCSRoute) {
+                // allow
+            } else if (isAdminRoute && !isSupportCSRoute) {
+                return navigateTo('/admin/support')
+            } else if (isUserRoute) {
+                const allowed = to.path.startsWith('/profile')
+                if (!allowed) return navigateTo('/admin/support')
+            } else if (isMerchantRoute) {
+                return navigateTo('/admin/support')
+            }
         }
 
         // Requester trying to access admin or merchant routes
@@ -144,6 +161,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
         if (isPublic && !isMapRoute && to.path !== '/') {
             if (role === ROLE_ADMIN) return navigateTo('/admin')
             if (role === ROLE_MERCHANT) return navigateTo('/merchant/menu')
+            if (role === ROLE_CS) return navigateTo('/admin/support')
             return navigateTo('/dashboard')
         }
     }

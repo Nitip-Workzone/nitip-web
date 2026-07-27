@@ -12,6 +12,7 @@ import {
   History,
   Image,
   Store,
+  Headset,
 } from '@lucide/vue'
 import { useAuthStore } from '~/stores/auth'
 
@@ -21,17 +22,27 @@ const route = useRoute()
 
 const showTotpModal = ref(false)
 
-const navigation = [
-  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { name: 'Users', href: '/admin/users', icon: Users },
-  { name: 'KYC Submissions', href: '/admin/kyc', icon: ShieldCheck },
-  { name: 'Banners', href: '/admin/banners', icon: Image },
-  { name: 'Merchants', href: '/admin/merchants', icon: Store },
-  { name: 'Orders', href: '/admin/orders', icon: ShoppingBag },
-  { name: 'Wallets', href: '/admin/wallets', icon: Wallet },
-  { name: 'Audit Logs', href: '/admin/audit', icon: History },
-  { name: 'Settings', href: '/admin/settings', icon: Settings },
+const baseNavigation = [
+  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard, roles: ['admin'] },
+  { name: 'Users', href: '/admin/users', icon: Users, roles: ['admin'] },
+  { name: 'KYC Submissions', href: '/admin/kyc', icon: ShieldCheck, roles: ['admin'] },
+  { name: 'Banners', href: '/admin/banners', icon: Image, roles: ['admin'] },
+  { name: 'Merchants', href: '/admin/merchants', icon: Store, roles: ['admin'] },
+  { name: 'Orders', href: '/admin/orders', icon: ShoppingBag, roles: ['admin'] },
+  { name: 'Wallets', href: '/admin/wallets', icon: Wallet, roles: ['admin'] },
+  { name: 'Support', href: '/admin/support', icon: Headset, roles: ['admin','cs'] },
+  { name: 'Audit Logs', href: '/admin/audit', icon: History, roles: ['admin'] },
+  { name: 'Settings', href: '/admin/settings', icon: Settings, roles: ['admin'] },
 ]
+
+const navigation = computed(() => {
+  const role = authStore.user?.role || 'admin'
+  // CS sees only Support
+  if (role === 'cs') {
+    return baseNavigation.filter(n => n.roles.includes('cs'))
+  }
+  return baseNavigation
+})
 
 // Fetch profile on mount
 onMounted(async () => {

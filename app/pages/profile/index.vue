@@ -27,6 +27,9 @@ const saving = ref(false)
 const loading = ref(true)
 const profileErrors = ref<Record<string, string>>({})
 
+// KYC status for pending/rejected display
+const kycStatus = ref<any>(null)
+
 // Modals state
 const showPinModal = ref(false)
 const isSetupFlow = ref(true) // true for Setup PIN, false for Change PIN
@@ -34,6 +37,15 @@ const pinValue1 = ref('')
 const pinValue2 = ref('') // Used as new_pin in Change PIN flow
 const pinError = ref('')
 const pinSubmitting = ref(false)
+
+async function fetchKycStatus() {
+  try {
+    const res = await request<{ data: any }>('/kyc/me')
+    if (res.data) kycStatus.value = res.data
+  } catch (_) {
+    kycStatus.value = null
+  }
+}
 
 onMounted(async () => {
   try {
@@ -51,7 +63,8 @@ onMounted(async () => {
   editAvatarPreview.value = null
 
   const promises: Promise<any>[] = [
-    walletStore.fetchBalance().catch(err => console.error('Failed to fetch balance:', err))
+    walletStore.fetchBalance().catch(err => console.error('Failed to fetch balance:', err)),
+    fetchKycStatus().catch(err => console.error('Failed to fetch KYC:', err)),
   ]
 
   if (authStore.user?.role === 'merchant') {
@@ -307,7 +320,18 @@ const openLink = (url: string) => {
                     {{ authStore.user?.name }}
                   </h2>
                   <ShieldCheck v-if="authStore.user?.is_verified" class="w-4.5 h-4.5 text-emerald-500 shrink-0" />
-                  <span v-if="!authStore.user?.is_verified" class="text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">Unverified</span>
+                  <span v-if="authStore.user?.is_verified" class="text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">Verified</span>
+                  <span v-else-if="kycStatus?.status==='pending'" class="text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">KYC Pending</span>
+                  <span v-else-if="kycStatus?.status==='rejected'" class="text-[9px] font-bold bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-full">KYC Ditolak</span>
+                  <span v-else class="text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-full">Belum Verifikasi</span>
+                </div>
+                <div v-if="kycStatus && kycStatus.status!=='approved'" class="mt-1.5">
+                  <p v-if="kycStatus.status==='pending'" class="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">Dokumen KYC Anda sedang ditinjau admin.</p>
+                  <div v-else-if="kycStatus.status==='rejected'" class="text-[10px] text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded-lg space-y-1">
+                    <p class="font-bold">KYC Ditolak{{ kycStatus.admin_note ? ':' : '' }}</p>
+                    <p v-if="kycStatus.admin_note">{{ kycStatus.admin_note }}</p>
+                    <p class="font-semibold mt-1">Silakan ajukan ulang verifikasi KYC.</p>
+                  </div>
                 </div>
                 
                 <p class="text-xs text-slate-400 truncate mt-0.5 flex items-center gap-1">
@@ -551,18 +575,33 @@ const openLink = (url: string) => {
         <!-- Help Section -->
         <div class="space-y-3">
           <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">Dukungan</p>
-          <div class="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-soft">
+          <div class="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-soft divide-y divide-slate-100">
+            <NuxtLink
+              to="/support"
+              class="flex items-center justify-between px-5 py-4 w-full text-left hover:bg-slate-50 transition-colors group"
+            >
+              <div class="flex items-center gap-3.5">
+                <div class="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20">
+                  <HelpCircle class="w-5 h-5" />
+                </div>
+                <div>
+                  <span class="text-xs font-bold text-slate-800">Pusat Bantuan</span>
+                  <p class="text-[10px] text-slate-400 mt-0.5">Tiket bantuan & live chat CS (antrian)</p>
+                </div>
+              </div>
+              <ChevronRight class="w-4 h-4 text-slate-300 group-hover:translate-x-0.5 transition-transform" />
+            </NuxtLink>
             <button
               class="flex items-center justify-between px-5 py-4 w-full text-left hover:bg-slate-50 transition-colors group"
               @click="openLink('https://wa.me/628123456789')"
             >
               <div class="flex items-center gap-3.5">
                 <div class="p-2.5 rounded-xl bg-slate-50 text-slate-500 border border-slate-200/50">
-                  <HelpCircle class="w-5 h-5" />
+                  <Phone class="w-5 h-5" />
                 </div>
                 <div>
                   <span class="text-xs font-bold text-slate-800">Hubungi CS WhatsApp</span>
-                  <p class="text-[10px] text-slate-400 mt-0.5">Pertanyaan, bantuan kendala &amp; verifikasi KYC</p>
+                  <p class="text-[10px] text-slate-400 mt-0.5">Pertanyaan cepat via WhatsApp</p>
                 </div>
               </div>
               <ChevronRight class="w-4 h-4 text-slate-300 group-hover:translate-x-0.5 transition-transform" />

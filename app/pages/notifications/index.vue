@@ -46,7 +46,7 @@ function formatDate(dateStr: string) {
 function getNotifCategory(notif: { title: string, message: string, type?: string }) {
   const type = (notif.type || '').toLowerCase()
   // Type-based (backend consistent)
-  if (type === 'wallet') {
+  if (type === 'wallet' || type === 'payment') {
     return { icon: Wallet, bg: 'bg-amber-50 border-amber-200/50', color: 'text-amber-500' }
   }
   if (type === 'order') {
@@ -58,6 +58,9 @@ function getNotifCategory(notif: { title: string, message: string, type?: string
   if (type === 'kyc') {
     return { icon: Check, bg: 'bg-purple-50 border-purple-200/50', color: 'text-purple-500' }
   }
+  if (type === 'support') {
+    return { icon: Bell, bg: 'bg-teal-50 border-teal-200/50', color: 'text-teal-600' }
+  }
   if (type === 'system') {
     return { icon: Bell, bg: 'bg-slate-50 border-slate-200/50', color: 'text-slate-500' }
   }
@@ -66,6 +69,9 @@ function getNotifCategory(notif: { title: string, message: string, type?: string
   const t = (notif.title + ' ' + notif.message).toLowerCase()
   if (t.includes('saldo') || t.includes('wallet') || t.includes('top up') || t.includes('tarik') || t.includes('pay')) {
     return { icon: Wallet, bg: 'bg-amber-50 border-amber-200/50', color: 'text-amber-500' }
+  }
+  if (t.includes('bantuan') || t.includes('tiket') || t.includes('support') || t.includes('cs')) {
+    return { icon: Bell, bg: 'bg-teal-50 border-teal-200/50', color: 'text-teal-600' }
   }
   if (t.includes('order') || t.includes('pesanan') || t.includes('titip') || t.includes('belanja') || t.includes('antar') || t.includes('status')) {
     return { icon: Package, bg: 'bg-primary/10 border-primary/15', color: 'text-primary' }
@@ -76,7 +82,14 @@ function getNotifCategory(notif: { title: string, message: string, type?: string
 function handleNotifClick(notif: { id: string, metadata?: Record<string, any>, type?: string }) {
   // Mark read
   readNotif(notif.id)
-  // Deep link based on metadata
+  // Deep link support ticket_id first
+  if (notif.metadata?.ticket_id) {
+    return navigateTo(`/support/${notif.metadata.ticket_id}`)
+  }
+  if (notif.type === 'support') {
+    if (notif.metadata?.ticket_id) return navigateTo(`/support/${notif.metadata.ticket_id}`)
+    return navigateTo('/support')
+  }
   if (notif.metadata?.order_id) {
     return navigateTo(`/orders/${notif.metadata.order_id}`)
   }

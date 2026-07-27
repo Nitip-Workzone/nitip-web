@@ -27,6 +27,7 @@ export const useAuthStore = defineStore('auth', {
         isAuthenticated: (state) => !!state.token,
         isAdmin: (state) => state.user?.role === ROLE_ADMIN,
         isRequester: (state) => state.user?.role === ROLE_REQUESTER,
+        isCS: (state) => state.user?.role === ROLE_CS,
     },
 
     actions: {

@@ -22,8 +22,11 @@ const handleLogin = async () => {
   }
   if (result?.success) {
     await authStore.fetchProfile()
-    if (authStore.isAdmin) {
+    const role = authStore.user?.role
+    if (role === 'admin') {
       navigateTo('/admin')
+    } else if (role === 'cs') {
+      navigateTo('/admin/support')
     } else {
       navigateTo('/dashboard')
     }
