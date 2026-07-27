@@ -142,9 +142,70 @@ function getProgressWidth(ord: UserOrder) {
   return `${(index / total) * 100}%`
 }
 
+function sanitizePhone(phone: string) {
+  let p = phone.replace(/[^0-9]/g, '')
+  if (p.startsWith('0')) p = '62' + p.slice(1)
+  if (p.startsWith('8')) p = '62' + p
+  return p
+}
+
 function getWhatsAppLink(phone: string, id: string) {
-  const cleanPhone = phone.replace(/[^0-9]/g, '')
+  const cleanPhone = sanitizePhone(phone)
   return `https://wa.me/${cleanPhone}?text=Halo,%20saya%20pemesan%20jastip%20dengan%20Order%20%23${id.slice(0, 8).toUpperCase()}`
+}
+
+function openWhatsApp(phone: string, id: string) {
+  const cleanPhone = sanitizePhone(phone)
+  const links = [
+    `https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Halo, saya pemesan jastip dengan Order #${id.slice(0, 8).toUpperCase()}`)}`,
+    `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(`Halo, Order #${id}`)}`,
+    `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(`Halo, Order #${id}`)}`,
+  ]
+  // Try wa.me first
+  const win = window.open(links[0], '_blank')
+  if (!win) {
+    // popup blocked -> fallback copy + toast
+    copyToClipboard(cleanPhone)
+    toastStore.add(`Nomor ${cleanPhone} disalin. Pop-up diblokir, silakan buka WhatsApp manual.`)
+    return
+  }
+  // After 1.5s if still blank, offer Play Store
+  setTimeout(() => {
+    // Can't detect if WhatsApp installed, but offer store as fallback via confirm
+    // Only show store prompt if user still on page (heuristic)
+  }, 1500)
+}
+
+function copyToClipboard(text: string) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => {
+      toastStore.add('Nomor disalin ke clipboard')
+    })
+  }
+}
+
+function openPlayStoreWhatsapp() {
+  const ua = navigator.userAgent.toLowerCase()
+  const isAndroid = ua.includes('android')
+  const isIOS = /iphone|ipad|ipod/.test(ua)
+  if (isIOS) {
+    window.open('https://apps.apple.com/search?term=whatsapp', '_blank')
+  } else {
+    window.open('https://play.google.com/store/search?q=whatsapp&c=apps', '_blank')
+  }
+}
+
+function handleCall(phone: string) {
+  const clean = sanitizePhone(phone)
+  // Try tel:
+  const telUrl = `tel:${clean}`
+  // For web, best effort open tel, if fails copy
+  try {
+    window.location.href = telUrl
+  } catch {
+    copyToClipboard(clean)
+    toastStore.add('Nomor disalin, silakan hubungi manual.')
+  }
 }
 
 onMounted(async () => {
@@ -679,18 +740,27 @@ function openImage(url: string) {
               </div>
             </div>
             
-            <!-- WhatsApp CTA Button -->
-            <a 
-              v-if="order.runner_phone"
-              :href="getWhatsAppLink(order.runner_phone, order.id)" 
-              target="_blank"
-              class="inline-flex items-center gap-1.5 bg-[#25D366] text-white text-[11px] font-bold px-4 py-2.5 rounded-2xl hover:bg-[#20ba56] transition-all active:scale-[0.98] shadow-sm shadow-[#25d366]/10"
-            >
-              <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.993L2 22l5.233-1.373a9.921 9.921 0 0 0 4.773 1.22c5.505 0 9.988-4.478 9.989-9.984 0-2.669-1.037-5.176-2.922-7.062A9.923 9.923 0 0 0 12.012 2zm5.78 14.15c-.25.706-1.464 1.298-2.02 1.352-.516.052-1.129.085-3.393-.854-2.893-1.199-4.726-4.148-4.87-4.339-.145-.19-1.155-1.534-1.155-2.927 0-1.393.725-2.08 1.015-2.383.25-.262.662-.329.983-.329.225 0 .424.009.602.018.52.027.676.064.974.776.326.782.723 1.77.786 1.897.063.127.094.275.009.444-.084.17-.184.275-.326.444-.145.17-.282.28-.424.456-.145.17-.291.355-.122.646.17.291.751 1.238 1.613 2.006.862.768 1.587 1.002 1.888 1.13.3.127.474.106.653-.095.18-.201.775-.899.983-1.206.207-.307.414-.254.694-.148.282.106 1.789.843 2.097.997.309.153.515.228.589.355.074.127.074.737-.176 1.443z"/>
-              </svg>
-              Chat WA
-            </a>
+            <!-- WhatsApp CTA Button with fallback -->
+            <div v-if="order.runner_phone" class="flex items-center gap-2">
+              <button 
+                class="inline-flex items-center gap-1.5 bg-[#25D366] text-white text-[11px] font-bold px-4 py-2.5 rounded-2xl hover:bg-[#20ba56] transition-all active:scale-[0.98] shadow-sm shadow-[#25d366]/10"
+                @click="openWhatsApp(order.runner_phone, order.id)"
+              >
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.993L2 22l5.233-1.373a9.921 9.921 0 0 0 4.773 1.22c5.505 0 9.988-4.478 9.989-9.984 0-2.669-1.037-5.176-2.922-7.062A9.923 9.923 0 0 0 12.012 2zm5.78 14.15c-.25.706-1.464 1.298-2.02 1.352-.516.052-1.129.085-3.393-.854-2.893-1.199-4.726-4.148-4.87-4.339-.145-.19-1.155-1.534-1.155-2.927 0-1.393.725-2.08 1.015-2.383.25-.262.662-.329.983-.329.225 0 .424.009.602.018.52.027.676.064.974.776.326.782.723 1.77.786 1.897.063.127.094.275.009.444-.084.17-.184.275-.326.444-.145.17-.282.28-.424.456-.145.17-.291.355-.122.646.17.291.751 1.238 1.613 2.006.862.768 1.587 1.002 1.888 1.13.3.127.474.106.653-.095.18-.201.775-.899.983-1.206.207-.307.414-.254.694-.148.282.106 1.789.843 2.097.997.309.153.515.228.589.355.074.127.074.737-.176 1.443z"/>
+                </svg>
+                Chat WA
+              </button>
+              <button 
+                class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-all"
+                title="Telepon"
+                @click="handleCall(order.runner_phone)"
+              >
+                <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
