@@ -56,6 +56,34 @@ const showDeliveryPicker = ref(false)
 const deliveryFee = ref(0)
 const estimatingFee = ref(false)
 
+// COD feature flag from public config
+const codEnabled = ref(true)
+const publicConfigLoaded = ref(false)
+
+async function fetchPublicConfig() {
+  try {
+    const res = await request<{ data: { cod_enabled?: boolean } }>('/configs/public')
+    if (res.data) {
+      if (typeof res.data.cod_enabled === 'boolean') {
+        codEnabled.value = res.data.cod_enabled
+      }
+      // If COD disabled but user had selected it, force back to escrow
+      if (!codEnabled.value && paymentMethod.value === 'cod') {
+        paymentMethod.value = 'escrow'
+      }
+    }
+  } catch (err) {
+    // Fail-open: keep COD enabled if public config fails (dev fallback)
+    codEnabled.value = true
+  } finally {
+    publicConfigLoaded.value = true
+  }
+}
+
+onMounted(() => {
+  fetchPublicConfig()
+})
+
 // Auto-detect current location for delivery on first load
 const locationDetected = ref(false)
 
@@ -159,6 +187,12 @@ function prevStep() {
 }
 
 async function submitOrder() {
+  // Guard: COD disabled
+  if (paymentMethod.value === 'cod' && !codEnabled.value) {
+    toastStore.add('Metode COD sedang dinonaktifkan oleh admin. Silakan gunakan Nitip Pay.')
+    return
+  }
+
   const totalTip = tipInput.numericValue.value || 0
   const cost = estimatedCostInput.numericValue.value || 0
   const payload = {
@@ -363,6 +397,13 @@ function formatCurrency(amount: number) {
       <!-- Metode Pembayaran -->
       <div class="bg-white border border-border/40 rounded-3xl p-5 shadow-sm space-y-4">
         <label class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Metode Pembayaran</label>
+
+        <div v-if="!codEnabled" class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+          <span class="text-amber-600 text-[11px]">⚠️</span>
+          <p class="text-[11px] text-amber-800 leading-relaxed">
+            Metode <strong>Bayar di Tempat (COD)</strong> sedang dinonaktifkan oleh admin. Silakan gunakan Nitip Pay (Escrow) untuk melanjutkan.
+          </p>
+        </div>
         
         <div class="grid grid-cols-2 gap-3">
           <button 
@@ -377,6 +418,7 @@ function formatCurrency(amount: number) {
           </button>
 
           <button 
+            v-if="codEnabled"
             :class="[
               'p-4 border rounded-2xl text-center transition-all flex flex-col items-center gap-1.5',
               paymentMethod === 'cod' ? 'border-primary bg-primary/5 text-primary' : 'border-border/60 text-muted-foreground'
@@ -386,6 +428,10 @@ function formatCurrency(amount: number) {
             <ShoppingBag class="w-5 h-5" />
             <span class="text-xs font-bold">Bayar di Tempat (COD)</span>
           </button>
+          <div v-else class="p-4 border border-dashed border-slate-200 rounded-2xl text-center flex flex-col items-center gap-1.5 bg-slate-50/50">
+            <ShoppingBag class="w-5 h-5 text-slate-300" />
+            <span class="text-[10px] font-bold text-slate-400">COD Dinonaktifkan</span>
+          </div>
         </div>
 
         <!-- Sumber Dana Escrow (Wallet / QRIS) -->

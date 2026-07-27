@@ -125,14 +125,39 @@ const groupedConfigs = computed(() => {
                 </span>
               </div>
 
-              <div class="space-y-1">
-                <label class="text-[10px] font-bold text-muted-foreground uppercase">Nilai Konfigurasi</label>
-                <input
-                  v-model="editedValues[cfg.key]"
-                  type="text"
-                  class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all"
-                >
-              </div>
+              <!-- Boolean toggle for cod_enabled -->
+              <template v-if="cfg.key === 'cod_enabled'">
+                <div class="space-y-2">
+                  <label class="text-[10px] font-bold text-muted-foreground uppercase">Status COD (Toggle)</label>
+                  <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-3">
+                    <div class="space-y-0.5">
+                      <p class="text-xs font-bold text-slate-800">
+                        {{ editedValues[cfg.key] === 'true' ? 'COD Aktif' : 'COD Nonaktif' }}
+                      </p>
+                      <p class="text-[10px] text-slate-500 leading-relaxed max-w-[180px]">
+                        Jika nonaktif, requester tidak bisa memilih COD saat buat pesanan.
+                      </p>
+                    </div>
+                    <button
+                      :class="['relative inline-flex h-6 w-11 items-center rounded-full transition-all', editedValues[cfg.key]==='true' ? 'bg-primary' : 'bg-slate-300']"
+                      @click="editedValues[cfg.key] = editedValues[cfg.key]==='true' ? 'false' : 'true'"
+                    >
+                      <span :class="['inline-block h-4 w-4 transform rounded-full bg-white transition', editedValues[cfg.key]==='true' ? 'translate-x-6' : 'translate-x-1']"/>
+                    </button>
+                  </div>
+                  <div v-if="editedValues[cfg.key] !== cfg.value" class="text-[10px] text-amber-600 font-semibold">Perubahan belum disimpan — klik Simpan</div>
+                </div>
+              </template>
+              <template v-else>
+                <div class="space-y-1">
+                  <label class="text-[10px] font-bold text-muted-foreground uppercase">Nilai Konfigurasi</label>
+                  <input
+                    v-model="editedValues[cfg.key]"
+                    type="text"
+                    class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all"
+                  >
+                </div>
+              </template>
 
               <div class="space-y-1">
                 <label class="text-[10px] font-bold text-muted-foreground uppercase">Deskripsi</label>
