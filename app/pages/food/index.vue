@@ -117,6 +117,12 @@ const getRatingColor = (rating: number) => {
   if (rating >= 3.5) return 'text-amber-500'
   return 'text-slate-400'
 }
+
+const scrollToTop = () => {
+  if (typeof window !== 'undefined') {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
 </script>
 
 <template>
@@ -350,7 +356,7 @@ const getRatingColor = (rating: number) => {
         <button
           :disabled="currentPage === 1"
           class="w-9 h-9 border border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-all"
-          @click="currentPage--; scrollTo(0, 0)"
+          @click="currentPage--; scrollToTop()"
         >
           <ChevronLeft class="w-4 h-4" />
         </button>
@@ -363,7 +369,7 @@ const getRatingColor = (rating: number) => {
             :class="currentPage === p
               ? 'bg-primary text-white shadow-sm shadow-primary/25'
               : 'text-slate-400 hover:bg-slate-100'"
-            @click="currentPage = p; scrollTo(0, 0)"
+            @click="currentPage = p; scrollToTop()"
           >
             {{ p }}
           </button>
@@ -372,7 +378,7 @@ const getRatingColor = (rating: number) => {
         <button
           :disabled="currentPage === totalPages"
           class="w-9 h-9 border border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-all"
-          @click="currentPage++; scrollTo(0, 0)"
+          @click="currentPage++; scrollToTop()"
         >
           <ChevronRight class="w-4 h-4" />
         </button>

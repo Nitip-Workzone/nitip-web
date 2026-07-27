@@ -32,6 +32,14 @@ export interface InquiryResponse {
     status: string
 }
 
+export interface UserBankAccount {
+    id: string
+    user_id: string
+    bank_name: string
+    account_no: string
+    account_name: string
+}
+
 export const useUserWalletStore = defineStore('user-wallet', {
     state: () => ({
         balance: 0,
@@ -152,6 +160,17 @@ export const useUserWalletStore = defineStore('user-wallet', {
                 throw error
             } finally {
                 this.actionLoading = false
+            }
+        },
+
+        async fetchRegisteredBankAccount() {
+            const { request } = useApi()
+            try {
+                const res = await request<{ data: UserBankAccount }>('/users/me/bank-account')
+                return res.data
+            } catch (error) {
+                console.warn('Failed to fetch registered bank account or none found:', error)
+                return null
             }
         }
     }

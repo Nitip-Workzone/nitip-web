@@ -20,6 +20,10 @@ const verifiedAccountName = ref('')
 const inquiryLoading = ref(false)
 const errorMsg = ref('')
 
+const registeredAccount = ref<any>(null)
+const hasCheckedAccount = ref(false)
+const withdrawalSchedule = ref('Setiap hari pukul 09:00 WITA')
+
 // Step 2 PIN
 const pin = ref('')
 const pinError = ref('')
@@ -28,6 +32,24 @@ const submitting = ref(false)
 onMounted(async () => {
   await walletStore.fetchBalance()
   await walletStore.fetchWithdrawalChannels()
+  
+  // Fetch dynamic withdrawal schedule configuration
+  try {
+    const { request } = useApi()
+    const configRes = await request<{ data: Record<string, any> }>('/configs/public')
+    if (configRes.data && configRes.data.withdrawal_schedule) {
+      withdrawalSchedule.value = configRes.data.withdrawal_schedule
+    }
+  } catch (e) {}
+
+  // Fetch registered bank account
+  registeredAccount.value = await walletStore.fetchRegisteredBankAccount()
+  hasCheckedAccount.value = true
+
+  if (registeredAccount.value) {
+    accountNo.value = registeredAccount.value.account_no
+    verifiedAccountName.value = registeredAccount.value.account_name
+  }
 })
 
 const selectedChannel = computed(() => {
@@ -48,30 +70,16 @@ const totalDeduction = computed(() => {
   return amount.value + adminFee.value
 })
 
-watch([selectedChannelId, accountNo], () => {
-  // Reset verification if user changes channel or account no
-  verifiedAccountName.value = ''
-  errorMsg.value = ''
-})
-
-const handleVerifyAccount = async () => {
-  if (!selectedChannel.value || !accountNo.value) return
-  inquiryLoading.value = true
-  errorMsg.value = ''
-  try {
-    const res = await walletStore.inquiryAccount(selectedChannel.value.code, accountNo.value)
-    if (res && res.account_name) {
-      verifiedAccountName.value = res.account_name
-    } else {
-      errorMsg.value = 'Rekening tidak terverifikasi'
+watch(() => walletStore.withdrawalChannels, (channels) => {
+  if (channels.length > 0 && registeredAccount.value && !selectedChannelId.value) {
+    const matched = channels.find(c => c.code.toLowerCase() === registeredAccount.value.bank_name.toLowerCase())
+    if (matched) {
+      selectedChannelId.value = matched.id
+    } else if (channels[0]) {
+      selectedChannelId.value = channels[0].id
     }
-  } catch (err: unknown) {
-    const error = err as { data?: { message?: string } }
-    errorMsg.value = error.data?.message || 'Gagal memverifikasi nomor rekening. Periksa kembali input Anda.'
-  } finally {
-    inquiryLoading.value = false
   }
-}
+}, { immediate: true })
 
 const proceedToPin = () => {
   errorMsg.value = ''
@@ -80,7 +88,7 @@ const proceedToPin = () => {
     return
   }
   if (!verifiedAccountName.value) {
-    errorMsg.value = 'Nomor rekening harus diverifikasi terlebih dahulu'
+    errorMsg.value = 'Rekening tujuan belum didaftarkan'
     return
   }
   const minAmount = selectedChannel.value?.min_amount ?? 0
@@ -119,7 +127,6 @@ const handleWithdraw = async () => {
   } catch (err: unknown) {
     const error = err as { data?: { message?: string } }
     pinError.value = error.data?.message || 'Gagal memproses penarikan. Pastikan PIN Anda benar.'
-    // If PIN is wrong, stay on step 2, but allow user to try again
   } finally {
     submitting.value = false
   }
@@ -153,6 +160,7 @@ function formatCurrency(val: number) {
         <div class="space-y-1">
           <p class="font-bold text-amber-950">Metode Pencairan Manual Transfer</p>
           <p class="leading-relaxed font-semibold">Pencairan dana menggunakan transfer manual ke rekening Anda dengan estimasi waktu maksimal 1x12 jam.</p>
+          <p class="leading-relaxed font-bold mt-1 text-[10px] uppercase tracking-wider text-amber-900">Jadwal Pencairan: {{ withdrawalSchedule }}</p>
         </div>
       </div>
 
@@ -172,8 +180,33 @@ function formatCurrency(val: number) {
       <!-- Main Step Container -->
       <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft space-y-5">
         
-        <!-- STEP 1: Main Form -->
-        <div v-if="step === 1" class="space-y-4">
+        <!-- Loading State -->
+        <div v-if="!hasCheckedAccount" class="py-12 flex flex-col items-center justify-center space-y-3">
+          <span class="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+          <p class="text-xs text-slate-400 font-bold">Memeriksa rekening terdaftar...</p>
+        </div>
+
+        <!-- Account Not Registered Warning -->
+        <div v-else-if="!registeredAccount" class="py-6 text-center space-y-4">
+          <div class="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto border border-amber-100">
+            <AlertCircle class="w-8 h-8 text-amber-600" />
+          </div>
+          <div class="space-y-1">
+            <h3 class="text-base font-extrabold text-slate-900">Rekening Belum Terdaftar</h3>
+            <p class="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+              Pendaftaran rekening tujuan pencairan dana hanya dapat dilakukan oleh admin demi alasan keamanan. Silakan hubungi admin atau CS untuk mendaftarkan rekening Anda.
+            </p>
+          </div>
+          <button 
+            class="w-full h-11 bg-slate-900 text-white text-xs font-bold rounded-xl transition-all active:scale-[0.98]"
+            @click="router.push('/dashboard')"
+          >
+            Kembali ke Dashboard
+          </button>
+        </div>
+
+        <!-- STEP 1: Main Form (Only shown if account is registered) -->
+        <div v-else-if="step === 1" class="space-y-4">
           <!-- 1. Select Method -->
           <div class="space-y-2">
             <label class="text-xs font-bold text-slate-700 tracking-wide">Pilih Metode Penarikan</label>
@@ -197,41 +230,21 @@ function formatCurrency(val: number) {
             </div>
           </div>
 
-          <!-- 2. Account No -->
+          <!-- 2. Account Details Card (Read Only) -->
           <div v-if="selectedChannelId" class="space-y-2">
-            <label class="text-xs font-bold text-slate-700 tracking-wide">Nomor Rekening / ID Akun</label>
-            <div class="flex gap-2">
-              <input
-                v-model="accountNo"
-                type="text"
-                placeholder="Masukkan nomor rekening"
-                class="flex-1 h-12 rounded-xl border border-slate-200 bg-slate-50/50 px-4 text-sm font-semibold placeholder:text-slate-400 focus:border-primary focus:bg-white focus:outline-none transition-all"
-              >
-              <button
-                :disabled="!accountNo || inquiryLoading"
-                class="px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center min-w-[90px]"
-                @click="handleVerifyAccount"
-              >
-                <span v-if="inquiryLoading" class="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-                <span v-else>Verifikasi</span>
-              </button>
-            </div>
-
-            <!-- Verified Name Alert -->
-            <div 
-              v-if="verifiedAccountName" 
-              class="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100/50 animate-in fade-in duration-300"
-            >
-              <ShieldCheck class="w-4.5 h-4.5 text-emerald-600 shrink-0" />
-              <div class="text-xs">
-                <span class="font-bold">Pemilik Rekening:</span>
-                <p class="font-extrabold uppercase mt-0.5 tracking-wide">{{ verifiedAccountName }}</p>
+            <label class="text-xs font-bold text-slate-700 tracking-wide">Rekening Tujuan Terdaftar</label>
+            <div class="flex items-center gap-3 p-4 bg-slate-50 text-slate-800 rounded-2xl border border-slate-100">
+              <ShieldCheck class="w-5 h-5 text-emerald-600 shrink-0" />
+              <div class="text-xs space-y-0.5">
+                <p class="font-black text-slate-900 uppercase tracking-wide">{{ registeredAccount.bank_name }}</p>
+                <p class="font-bold text-slate-600">{{ registeredAccount.account_no }}</p>
+                <p class="font-extrabold text-emerald-700 uppercase">{{ registeredAccount.account_name }}</p>
               </div>
             </div>
           </div>
 
           <!-- 3. Amount -->
-          <div v-if="verifiedAccountName" class="space-y-2 animate-in fade-in slide-in-from-top-3 duration-300">
+          <div v-if="selectedChannelId" class="space-y-2 animate-in fade-in slide-in-from-top-3 duration-300">
             <div class="flex justify-between items-baseline">
               <label class="text-xs font-bold text-slate-700 tracking-wide">Nominal Penarikan</label>
               <span class="text-[10px] text-slate-400 font-bold">Min. {{ formatCurrency(selectedChannel?.min_amount || 10000) }}</span>
@@ -269,7 +282,7 @@ function formatCurrency(val: number) {
 
           <!-- Continue Button -->
           <button
-            v-if="verifiedAccountName"
+            v-if="selectedChannelId && amount >= (selectedChannel?.min_amount || 10000)"
             class="w-full h-12 bg-primary text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 hover-lift transition-all active:scale-[0.98] shadow-sm shadow-primary/20"
             @click="proceedToPin"
           >
