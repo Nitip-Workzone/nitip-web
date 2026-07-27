@@ -77,13 +77,13 @@ export const useSupportStore = defineStore('support', {
         const res = await request<{ data: { tickets: SupportTicket[], total: number } }>('/cs/support/queue?limit=50')
         if (res.data) {
           // backend returns {tickets, total} inside data
-          const data: any = res.data
+          const data = res.data as { tickets?: SupportTicket[]; total?: number }
           if (data.tickets) {
             this.queueTickets = data.tickets
             this.queueTotal = data.total || data.tickets.length
           } else if (Array.isArray(res.data)) {
             // fallback if direct
-            this.queueTickets = res.data as any
+            this.queueTickets = res.data as unknown as SupportTicket[]
             this.queueTotal = this.queueTickets.length
           }
         }
@@ -104,12 +104,12 @@ export const useSupportStore = defineStore('support', {
         if (search) params.set('search', search)
         params.set('limit', '50')
         const res = await request<{ data: { tickets: SupportTicket[], total: number } }>(`/cs/support/tickets?${params.toString()}`)
-        const data: any = res.data
+        const data = res.data as { tickets?: SupportTicket[]; total?: number }
         if (data?.tickets) {
           this.allTickets = data.tickets
-          this.allTotal = data.total
+          this.allTotal = data.total || 0
         } else if (Array.isArray(res.data)) {
-          this.allTickets = res.data as any
+          this.allTickets = res.data as unknown as SupportTicket[]
         }
       } catch (e) {
         console.error('Failed fetch all tickets', e)

@@ -28,7 +28,7 @@ const loading = ref(true)
 const profileErrors = ref<Record<string, string>>({})
 
 // KYC status for pending/rejected display
-const kycStatus = ref<any>(null)
+const kycStatus = ref<Record<string, unknown> | null>(null)
 
 // Modals state
 const showPinModal = ref(false)
@@ -40,12 +40,14 @@ const pinSubmitting = ref(false)
 
 async function fetchKycStatus() {
   try {
-    const res = await request<{ data: any }>('/kyc/me')
+    const res = await request<{ data: Record<string, unknown> }>('/kyc/me')
     if (res.data) kycStatus.value = res.data
-  } catch (_) {
+  } catch {
     kycStatus.value = null
   }
 }
+// preserve line for lint _ variable not needed
+
 
 onMounted(async () => {
   try {
@@ -62,15 +64,15 @@ onMounted(async () => {
   editAvatarFile.value = null
   editAvatarPreview.value = null
 
-  const promises: Promise<any>[] = [
-    walletStore.fetchBalance().catch(err => console.error('Failed to fetch balance:', err)),
-    fetchKycStatus().catch(err => console.error('Failed to fetch KYC:', err)),
+  const promises: Promise<void>[] = [
+    walletStore.fetchBalance().catch((err: unknown) => console.error('Failed to fetch balance:', err)),
+    fetchKycStatus().catch((err: unknown) => console.error('Failed to fetch KYC:', err)),
   ]
 
   if (authStore.user?.role === 'merchant') {
-    promises.push(merchantsStore.fetchMerchantProfile().catch(err => console.error('Failed to fetch merchant profile:', err)))
+    promises.push(merchantsStore.fetchMerchantProfile().then(() => {}).catch((err: unknown) => console.error('Failed to fetch merchant profile:', err)))
   } else {
-    promises.push(ordersStore.fetchMyOrders().catch(err => console.error('Failed to fetch my orders:', err)))
+    promises.push(ordersStore.fetchMyOrders().then(() => {}).catch((err: unknown) => console.error('Failed to fetch my orders:', err)))
   }
 
   await Promise.all(promises)
@@ -122,7 +124,7 @@ function onAvatarChange(e: Event) {
 async function saveProfile() {
   if (!validateProfile()) {
     const firstErr = Object.values(profileErrors.value)[0]
-    toastStore.add(firstErr)
+    toastStore.add(firstErr || 'Form tidak valid')
     return
   }
 
@@ -149,7 +151,7 @@ async function saveProfile() {
     isEditing.value = false
     toastStore.add('Profil berhasil diperbarui!')
   } catch (error: unknown) {
-    const err = error as { data?: { message?: string, errors?: any[] } }
+    const err = error as { data?: { message?: string, errors?: Array<{ message?: string }> } }
     const msg = err.data?.message || (err.data?.errors?.[0]?.message) || 'Gagal menyimpan profil.'
     toastStore.add(msg)
   } finally {
@@ -321,15 +323,15 @@ const openLink = (url: string) => {
                   </h2>
                   <ShieldCheck v-if="authStore.user?.is_verified" class="w-4.5 h-4.5 text-emerald-500 shrink-0" />
                   <span v-if="authStore.user?.is_verified" class="text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">Verified</span>
-                  <span v-else-if="kycStatus?.status==='pending'" class="text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">KYC Pending</span>
-                  <span v-else-if="kycStatus?.status==='rejected'" class="text-[9px] font-bold bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-full">KYC Ditolak</span>
+                  <span v-else-if="(kycStatus as { status?: string; admin_note?: string })?.status==='pending'" class="text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">KYC Pending</span>
+                  <span v-else-if="(kycStatus as { status?: string; admin_note?: string })?.status==='rejected'" class="text-[9px] font-bold bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-full">KYC Ditolak</span>
                   <span v-else class="text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-full">Belum Verifikasi</span>
                 </div>
-                <div v-if="kycStatus && kycStatus.status!=='approved'" class="mt-1.5">
-                  <p v-if="kycStatus.status==='pending'" class="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">Dokumen KYC Anda sedang ditinjau admin.</p>
-                  <div v-else-if="kycStatus.status==='rejected'" class="text-[10px] text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded-lg space-y-1">
-                    <p class="font-bold">KYC Ditolak{{ kycStatus.admin_note ? ':' : '' }}</p>
-                    <p v-if="kycStatus.admin_note">{{ kycStatus.admin_note }}</p>
+                <div v-if="kycStatus && (kycStatus as { status?: string; admin_note?: string }).status!=='approved'" class="mt-1.5">
+                  <p v-if="(kycStatus as { status?: string; admin_note?: string }).status==='pending'" class="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">Dokumen KYC Anda sedang ditinjau admin.</p>
+                  <div v-else-if="(kycStatus as { status?: string; admin_note?: string }).status==='rejected'" class="text-[10px] text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded-lg space-y-1">
+                    <p class="font-bold">KYC Ditolak{{ (kycStatus as { status?: string; admin_note?: string }).admin_note ? ':' : '' }}</p>
+                    <p v-if="(kycStatus as { status?: string; admin_note?: string }).admin_note">{{ (kycStatus as { status?: string; admin_note?: string }).admin_note }}</p>
                     <p class="font-semibold mt-1">Silakan ajukan ulang verifikasi KYC.</p>
                   </div>
                 </div>

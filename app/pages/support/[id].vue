@@ -41,7 +41,7 @@ function startPolling() {
       const last = supportStore.messages[supportStore.messages.length - 1]
       await supportStore.fetchMessages(ticketId, false, last?.id)
       scrollToBottom()
-    } catch {}
+    } catch { /* noop */ }
   }, 5000)
 }
 
@@ -58,8 +58,9 @@ async function handleSend() {
     await supportStore.sendMessage(ticketId, messageText.value.trim(), false, false)
     messageText.value = ''
     scrollToBottom()
-  } catch (e: any) {
-    toastStore.add(e?.data?.message || 'Gagal mengirim pesan')
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string } }
+    toastStore.add(err?.data?.message || 'Gagal mengirim pesan')
   } finally {
     sending.value = false
   }
@@ -71,8 +72,9 @@ async function handleClose() {
     await supportStore.closeTicket(ticketId, false)
     toastStore.add('Tiket ditutup')
     await supportStore.fetchTicketDetail(ticketId, false)
-  } catch (e: any) {
-    toastStore.add(e?.data?.message || 'Gagal menutup tiket')
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string } }
+    toastStore.add(err?.data?.message || 'Gagal menutup tiket')
   }
 }
 
@@ -115,7 +117,7 @@ function getStatusLabel(s: string) {
       </div>
 
       <div class="bg-white border-t border-slate-100 p-4 flex gap-2 safe-bottom">
-        <textarea v-model="messageText" rows="1" placeholder="Ketik pesan..." class="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-xs focus:outline-none focus:border-primary/50 resize-none max-h-24" @keydown.enter.exact.prevent="handleSend"></textarea>
+        <textarea v-model="messageText" rows="1" placeholder="Ketik pesan..." class="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-xs focus:outline-none focus:border-primary/50 resize-none max-h-24" @keydown.enter.exact.prevent="handleSend"/>
         <button :disabled="sending || !messageText.trim()" class="w-11 h-11 bg-primary text-white rounded-2xl flex items-center justify-center disabled:opacity-50 active:scale-95 transition-all" @click="handleSend">
           <Send class="w-5 h-5" />
         </button>

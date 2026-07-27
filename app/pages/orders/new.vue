@@ -72,7 +72,7 @@ async function fetchPublicConfig() {
         paymentMethod.value = 'escrow'
       }
     }
-  } catch (err) {
+  } catch {
     // Fail-open: keep COD enabled if public config fails (dev fallback)
     codEnabled.value = true
   } finally {

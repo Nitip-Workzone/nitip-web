@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, Star, MapPin, Clock, Plus, Minus, ShoppingCart, ShoppingBag, X, FileText, CheckCircle, Flame, UtensilsCrossed, Package, Wallet, CreditCard } from '@lucide/vue'
+import { ChevronLeft, Star, MapPin, Plus, Minus, ShoppingCart, ShoppingBag, X, FileText, Flame, UtensilsCrossed, Wallet, CreditCard } from '@lucide/vue'
 import { useMerchantsStore } from '~/stores/merchants'
 import { useCartStore } from '~/stores/cart'
 import { useUserWalletStore } from '~/stores/user-wallet'
@@ -20,7 +20,7 @@ const merchantId = route.params.id as string
 const showCartDrawer = ref(false)
 const showClearCartConfirm = ref(false)
 const checkoutLoading = ref(false)
-const pendingItem = ref<any>(null)
+const pendingItem = ref<{ id: string; name: string; price: number; image_url?: string } | null>(null)
 const paymentSource = ref<'wallet' | 'qris'>('wallet')
 
 const merchant = computed(() =>
@@ -35,18 +35,18 @@ onMounted(async () => {
   await walletStore.fetchBalance()
 })
 
-const handleAdd = (menuItem: any) => {
+const handleAdd = (menuItem: { id: string; name: string; price: number; image_url?: string }) => {
   try {
     cartStore.addToCart(
       { id: menuItem.id, name: menuItem.name, price: menuItem.price, image_url: menuItem.image_url || '' },
       { id: merchant.value?.id || merchantId, name: merchant.value?.name || 'Toko' }
     )
     success(`'${menuItem.name}' ditambahkan!`)
-  } catch (err: any) {
-    if (err.message === 'DIFFERENT_MERCHANT') {
+  } catch (err: unknown) {
+    if ((err as Error).message === 'DIFFERENT_MERCHANT') {
       pendingItem.value = menuItem
       showClearCartConfirm.value = true
-    } else if (err.message === 'MAX_ITEMS_LIMIT') {
+    } else if ((err as Error).message === 'MAX_ITEMS_LIMIT') {
       error('Batas maksimal 10 item per pesanan.')
     }
   }
@@ -69,8 +69,8 @@ const getItemQty = (itemId: string) => {
 const handleIncrement = (itemId: string) => {
   try {
     cartStore.updateQuantity(itemId, getItemQty(itemId) + 1)
-  } catch (err: any) {
-    if (err.message === 'MAX_ITEMS_LIMIT') {
+  } catch (err: unknown) {
+    if ((err as Error).message === 'MAX_ITEMS_LIMIT') {
       error('Batas maksimal 10 item per pesanan.')
     }
   }
@@ -114,8 +114,8 @@ const handleCheckout = async () => {
       showCartDrawer.value = false
       router.push(`/orders/${res.data.id}`)
     }
-  } catch (err: any) {
-    error(err?.data?.message || 'Gagal mengirimkan pesanan.')
+  } catch (err: unknown) {
+    error((err as { data?: { message?: string } })?.data?.message || 'Gagal mengirimkan pesanan.')
   } finally {
     checkoutLoading.value = false
   }

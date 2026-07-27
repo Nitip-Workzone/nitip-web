@@ -126,7 +126,7 @@ export const useUserOrdersStore = defineStore('user-orders', {
             volume_liters: number
             service_category: string
             merchant_id?: string
-            items?: any[]
+            items?: Array<Record<string, unknown>>
         }): Promise<UserOrder | null> {
             this.actionLoading = true
             const { request } = useApi()

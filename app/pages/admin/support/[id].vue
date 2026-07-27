@@ -40,7 +40,7 @@ function startPolling() {
       const last = supportStore.messages[supportStore.messages.length - 1]
       await supportStore.fetchMessages(ticketId, true, last?.id)
       scrollToBottom()
-    } catch {}
+    } catch { /* noop */ }
   }, 5000)
 }
 
@@ -55,8 +55,9 @@ async function handleSend() {
     await supportStore.sendMessage(ticketId, messageText.value.trim(), true, isInternal.value)
     messageText.value = ''
     scrollToBottom()
-  } catch (e: any) {
-    toastStore.add(e?.data?.message || 'Gagal kirim pesan')
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string } }
+    toastStore.add(err?.data?.message || 'Gagal kirim pesan')
   } finally {
     sending.value = false
   }
@@ -72,8 +73,9 @@ async function handleAction(action: 'resolve' | 'release' | 'close') {
     await supportStore.fetchTicketDetail(ticketId, true)
     await supportStore.fetchMyActiveCsTicket()
     if (action === 'close') router.push('/admin/support')
-  } catch (e: any) {
-    toastStore.add(e?.data?.message || `Gagal ${action}`)
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string } }
+    toastStore.add(err?.data?.message || `Gagal ${action}`)
   }
 }
 </script>
@@ -122,9 +124,9 @@ async function handleAction(action: 'resolve' | 'release' | 'close') {
         </div>
 
         <div class="bg-white border-t p-3 flex flex-col gap-2">
-          <label class="flex items-center gap-2 text-[11px]"><input type="checkbox" v-model="isInternal"> Catatan internal (tidak dilihat user)</label>
+          <label class="flex items-center gap-2 text-[11px]"><input v-model="isInternal" type="checkbox"> Catatan internal (tidak dilihat user)</label>
           <div class="flex gap-2">
-            <textarea v-model="messageText" rows="2" placeholder="Ketik balasan..." class="flex-1 rounded-xl border px-4 py-2.5 text-xs focus:outline-none focus:border-primary/50 resize-none" @keydown.enter.exact.prevent="handleSend"></textarea>
+            <textarea v-model="messageText" rows="2" placeholder="Ketik balasan..." class="flex-1 rounded-xl border px-4 py-2.5 text-xs focus:outline-none focus:border-primary/50 resize-none" @keydown.enter.exact.prevent="handleSend"/>
             <button :disabled="sending || !messageText.trim()" class="w-12 h-12 bg-primary text-white rounded-xl flex items-center justify-center disabled:opacity-50" @click="handleSend"><Send class="w-5 h-5" /></button>
           </div>
         </div>

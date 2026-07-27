@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Store, Plus, Edit, Trash2, Camera, RefreshCw, ToggleLeft, ToggleRight, Utensils, MapPin, ShoppingBag } from '@lucide/vue'
-import { useMerchantsStore, type Menu } from '~/stores/merchants'
+import { Store, RefreshCw, Utensils, MapPin, ShoppingBag } from '@lucide/vue'
+import { useMerchantsStore } from '~/stores/merchants'
 
 definePageMeta({
   layout: 'user',
@@ -12,26 +12,6 @@ const { success, error } = useToast()
 const hasMerchant = ref(false)
 const checkLoading = ref(true)
 const actionLoading = ref(false)
-const showAddModal = ref(false)
-const showEditModal = ref(false)
-
-const storeForm = ref({
-  is_open: true,
-  auto_confirm: false,
-  max_active_orders: 5,
-})
-
-const menuForm = ref({
-  name: '',
-  description: '',
-  price: 0,
-  image_url: '',
-  is_available: true,
-})
-
-const editMenuId = ref('')
-const selectedFile = ref<File | null>(null)
-const uploadProgress = ref(false)
 
 const registrationForm = ref({
   name: '',
@@ -56,9 +36,6 @@ const fetchProfile = async () => {
     const profile = await merchantsStore.fetchMerchantProfile()
     if (profile) {
       hasMerchant.value = true
-      storeForm.value.is_open = profile.is_open
-      storeForm.value.auto_confirm = profile.auto_confirm
-      storeForm.value.max_active_orders = profile.max_active_orders
       await merchantsStore.fetchMerchantMenu()
     } else {
       hasMerchant.value = false
@@ -100,166 +77,7 @@ const handleRegisterProfile = async () => {
   }
 }
 
-const toggleStoreOpen = async () => {
-  try {
-    await merchantsStore.updateMerchantStatus({
-      is_open: storeForm.value.is_open,
-      auto_confirm: storeForm.value.auto_confirm,
-      max_active_orders: Number(storeForm.value.max_active_orders),
-    })
-    success(storeForm.value.is_open ? 'Toko sekarang BUKA.' : 'Toko sekarang TUTUP.')
-  } catch {
-    storeForm.value.is_open = !storeForm.value.is_open
-    error('Gagal memperbarui status toko.')
-  }
-}
 
-const toggleAutoConfirm = async () => {
-  try {
-    await merchantsStore.updateMerchantStatus({
-      is_open: storeForm.value.is_open,
-      auto_confirm: storeForm.value.auto_confirm,
-      max_active_orders: Number(storeForm.value.max_active_orders),
-    })
-    success(storeForm.value.auto_confirm ? 'Auto Confirm diaktifkan.' : 'Auto Confirm dinonaktifkan.')
-  } catch {
-    storeForm.value.auto_confirm = !storeForm.value.auto_confirm
-    error('Gagal memperbarui opsi Auto Confirm.')
-  }
-}
-
-const updateQueueLimit = async () => {
-  try {
-    await merchantsStore.updateMerchantStatus({
-      is_open: storeForm.value.is_open,
-      auto_confirm: storeForm.value.auto_confirm,
-      max_active_orders: Number(storeForm.value.max_active_orders),
-    })
-    success('Batas antrean maksimal berhasil diperbarui.')
-  } catch {
-    error('Gagal memperbarui batas antrean.')
-  }
-}
-
-const handleFileChange = async (event: Event) => {
-  const target = event.target as HTMLInputElement
-  if (target.files && target.files.length > 0) {
-    const file = target.files[0]
-    if (!file) return
-    selectedFile.value = file
-    uploadProgress.value = true
-    try {
-      const url = await merchantsStore.uploadMenuImage(file)
-      menuForm.value.image_url = url
-      success('Gambar menu berhasil diupload.')
-    } catch {
-      error('Gagal mengupload gambar menu.')
-    } finally {
-      uploadProgress.value = false
-    }
-  }
-}
-
-const openAddModal = () => {
-  menuForm.value = {
-    name: '',
-    description: '',
-    price: 0,
-    image_url: '',
-    is_available: true,
-  }
-  selectedFile.value = null
-  showAddModal.value = true
-}
-
-const handleAddMenu = async () => {
-  if (!menuForm.value.name) {
-    error('Nama menu wajib diisi.')
-    return
-  }
-  if (menuForm.value.price <= 0) {
-    error('Harga menu harus lebih besar dari Rp 0.')
-    return
-  }
-
-  actionLoading.value = true
-  try {
-    await merchantsStore.createMenuItem({
-      name: menuForm.value.name,
-      description: menuForm.value.description,
-      price: Number(menuForm.value.price),
-      image_url: menuForm.value.image_url,
-      is_available: menuForm.value.is_available,
-    })
-    success('Menu baru berhasil ditambahkan.')
-    showAddModal.value = false
-  } catch {
-    error('Gagal menambahkan menu.')
-  } finally {
-    actionLoading.value = false
-  }
-}
-
-const openEditModal = (menu: Menu) => {
-  editMenuId.value = menu.id
-  menuForm.value = {
-    name: menu.name,
-    description: menu.description || '',
-    price: menu.price,
-    image_url: menu.image_url || '',
-    is_available: menu.is_available,
-  }
-  selectedFile.value = null
-  showEditModal.value = true
-}
-
-const handleEditMenu = async () => {
-  if (!menuForm.value.name) {
-    error('Nama menu wajib diisi.')
-    return
-  }
-  if (menuForm.value.price <= 0) {
-    error('Harga menu harus lebih besar dari Rp 0.')
-    return
-  }
-
-  actionLoading.value = true
-  try {
-    await merchantsStore.updateMenuItem(editMenuId.value, {
-      name: menuForm.value.name,
-      description: menuForm.value.description,
-      price: Number(menuForm.value.price),
-      image_url: menuForm.value.image_url,
-      is_available: menuForm.value.is_available,
-    })
-    success('Menu berhasil diperbarui.')
-    showEditModal.value = false
-  } catch {
-    error('Gagal memperbarui menu.')
-  } finally {
-    actionLoading.value = false
-  }
-}
-
-const handleDeleteMenu = async (id: string) => {
-  if (!confirm('Apakah Anda yakin ingin menghapus menu ini?')) return
-
-  try {
-    await merchantsStore.deleteMenuItem(id)
-    success('Menu berhasil dihapus.')
-  } catch {
-    error('Gagal menghapus menu.')
-  }
-}
-
-const toggleMenuAvailable = async (menu: Menu) => {
-  try {
-    await merchantsStore.toggleMenuAvailability(menu.id, !menu.is_available)
-    success(menu.is_available ? `Menu '${menu.name}' dinonaktifkan.` : `Menu '${menu.name}' diaktifkan.`)
-  } catch {
-    error('Gagal mengubah ketersediaan menu.')
-  }
-}
 
 const isWebView = ref(false)
 

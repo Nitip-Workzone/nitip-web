@@ -51,12 +51,12 @@ onMounted(async () => {
       latitude.value = m.latitude
       longitude.value = m.longitude
       category.value = m.category
-      imageUrl.value = (m as any).image_url || ''
-      const oh = (m as any).opening_hours
+      imageUrl.value = (m as { image_url?: string }).image_url || ''
+      const oh = (m as { opening_hours?: Record<string, unknown> }).opening_hours
       if (oh && typeof oh === 'object' && Object.keys(oh).length > 0) {
         // merge
         for (const k of Object.keys(oh)) {
-          if (dayLabels[k]) openingHours.value[k] = oh[k]
+          if (dayLabels[k]) (openingHours.value as Record<string, DayHours>)[k] = { open: (oh[k] as DayHours).open, close: (oh[k] as DayHours).close, closed: (oh[k] as DayHours).closed }
         }
       }
     }
@@ -99,11 +99,11 @@ async function handleSave() {
       category: category.value,
       image_url: imageUrl.value.trim() || undefined,
       opening_hours: openingHours.value,
-    } as any)
+    } as unknown as { name: string; description: string; address: string; latitude: number; longitude: number; category: string; image_url?: string; opening_hours: Record<string, unknown> })
     toastStore.add('Profil toko berhasil diperbarui!')
     router.push('/merchant/menu')
-  } catch (error: any) {
-    const msg = error?.data?.message || error?.message || 'Gagal memperbarui profil toko'
+  } catch (error: unknown) {
+    const msg = (error as { data?: { message?: string }, message?: string })?.data?.message || (error as { message?: string }).message || 'Gagal memperbarui profil toko'
     toastStore.add(msg)
   } finally {
     saving.value = false
@@ -151,7 +151,7 @@ async function handleSave() {
 
           <div class="space-y-1.5">
             <label class="text-xs font-bold text-slate-600">Deskripsi (Opsional)</label>
-            <textarea v-model="description" rows="3" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-xs font-medium focus:outline-none focus:border-primary/50 bg-slate-50/50 focus:bg-white transition-all resize-none" placeholder="Makanan enak, harga terjangkau..."></textarea>
+            <textarea v-model="description" rows="3" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-xs font-medium focus:outline-none focus:border-primary/50 bg-slate-50/50 focus:bg-white transition-all resize-none" placeholder="Makanan enak, harga terjangkau..."/>
           </div>
 
           <div class="space-y-1.5">
@@ -193,16 +193,16 @@ async function handleSave() {
             </div>
           </div>
           <div class="space-y-2">
-            <div v-for="(label, key) in dayLabels" :key="key" class="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
+            <div v-for="(label, k) in dayLabels" :key="k" class="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
               <span class="text-[11px] font-bold text-slate-700 w-[52px]">{{ label }}</span>
               <label class="flex items-center gap-1 text-[10px]">
-                <input type="checkbox" :checked="!!openingHours[key]?.closed" @change="(e:any)=>{ openingHours[key] = openingHours[key] || {open:'08:00', close:'22:00'}; openingHours[key].closed = e.target.checked }">
+                <input type="checkbox" :checked="!!openingHours[k]?.closed" @change="(e: Event)=>{ const _el = e.target as HTMLInputElement; openingHours[k] = openingHours[k] || {open:'08:00', close:'22:00'}; openingHours[k]!.closed = _el.checked }">
                 <span>Tutup</span>
               </label>
-              <template v-if="!openingHours[key]?.closed">
-                <input v-model="openingHours[key].open" type="time" class="ml-auto w-[76px] h-7 text-[11px] rounded-lg border border-slate-200 px-1">
+              <template v-if="!openingHours[k]?.closed">
+                <input v-model="openingHours[k]!.open" type="time" class="ml-auto w-[76px] h-7 text-[11px] rounded-lg border border-slate-200 px-1">
                 <span class="text-[10px] text-slate-400">-</span>
-                <input v-model="openingHours[key].close" type="time" class="w-[76px] h-7 text-[11px] rounded-lg border border-slate-200 px-1">
+                <input v-model="openingHours[k]!.close" type="time" class="w-[76px] h-7 text-[11px] rounded-lg border border-slate-200 px-1">
               </template>
               <span v-else class="ml-auto text-[10px] text-slate-400">Libur</span>
             </div>
@@ -226,6 +226,6 @@ async function handleSave() {
     </div>
 
     <!-- Location Picker Modal -->
-    <CommonLocationPickerModal v-if="showLocationPicker" @close="showLocationPicker = false" @select="onLocationSelected" />
+    <CommonLocationPickerModal v-if="showLocationPicker" title="Pilih Lokasi" :initial-lat="latitude ?? -6.2088" :initial-lng="longitude ?? 106.8456" @close="showLocationPicker = false" @select="onLocationSelected" />
   </div>
 </template>

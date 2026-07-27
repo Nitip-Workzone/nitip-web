@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useSupportStore } from '~/stores/support'
-import { Headset, Clock, AlertTriangle } from '@lucide/vue'
 
 definePageMeta({ layout: 'admin' })
 
@@ -32,8 +31,9 @@ async function handleClaim(id: string) {
   try {
     await supportStore.claimTicket(id)
     toastStore.add('Tiket berhasil diambil! Anda sekarang menangani 1 sesi.')
-  } catch (e: any) {
-    toastStore.add(e?.data?.message || 'Gagal mengambil tiket (mungkin sudah punya sesi aktif)')
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string } }
+    toastStore.add(err?.data?.message || 'Gagal mengambil tiket (mungkin sudah punya sesi aktif)')
   }
 }
 </script>

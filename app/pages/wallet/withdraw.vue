@@ -17,10 +17,9 @@ const selectedChannelId = ref('')
 const accountNo = ref('')
 const amountInput = useCurrencyInput()
 const verifiedAccountName = ref('')
-const inquiryLoading = ref(false)
 const errorMsg = ref('')
 
-const registeredAccount = ref<any>(null)
+const registeredAccount = ref<{ account_no: string; account_name: string; bank_name: string } | null>(null)
 const hasCheckedAccount = ref(false)
 const withdrawalSchedule = ref('Setiap hari pukul 09:00 WITA')
 
@@ -36,19 +35,22 @@ onMounted(async () => {
   // Fetch dynamic withdrawal schedule configuration
   try {
     const { request } = useApi()
-    const configRes = await request<{ data: Record<string, any> }>('/configs/public')
-    if (configRes.data && configRes.data.withdrawal_schedule) {
-      withdrawalSchedule.value = configRes.data.withdrawal_schedule
+    const configRes = await request<{ data: Record<string, unknown> }>('/configs/public')
+    if (configRes.data && (configRes.data as { withdrawal_schedule?: string }).withdrawal_schedule) {
+      {
+        const _data = configRes.data as { withdrawal_schedule?: string }
+        if (_data.withdrawal_schedule) withdrawalSchedule.value = _data.withdrawal_schedule
+      }
     }
-  } catch (e) {}
+  } catch { /* noop */ }
 
   // Fetch registered bank account
-  registeredAccount.value = await walletStore.fetchRegisteredBankAccount()
+  registeredAccount.value = (await walletStore.fetchRegisteredBankAccount()) as { account_no: string; account_name: string; bank_name: string } | null
   hasCheckedAccount.value = true
 
   if (registeredAccount.value) {
-    accountNo.value = registeredAccount.value.account_no
-    verifiedAccountName.value = registeredAccount.value.account_name
+    accountNo.value = registeredAccount.value!.account_no
+      verifiedAccountName.value = registeredAccount.value!.account_name
   }
 })
 
@@ -72,7 +74,7 @@ const totalDeduction = computed(() => {
 
 watch(() => walletStore.withdrawalChannels, (channels) => {
   if (channels.length > 0 && registeredAccount.value && !selectedChannelId.value) {
-    const matched = channels.find(c => c.code.toLowerCase() === registeredAccount.value.bank_name.toLowerCase())
+    const matched = channels.find(c => c.code.toLowerCase() === (registeredAccount.value as { bank_name: string }).bank_name.toLowerCase())
     if (matched) {
       selectedChannelId.value = matched.id
     } else if (channels[0]) {

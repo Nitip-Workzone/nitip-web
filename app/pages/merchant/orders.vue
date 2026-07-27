@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ShoppingBag, RefreshCw, Check, Clock, Utensils, Play, PackageCheck, AlertCircle } from '@lucide/vue'
+import { ShoppingBag, RefreshCw, Clock, Utensils, Play, PackageCheck } from '@lucide/vue'
 import { useMerchantsStore } from '~/stores/merchants'
 
 definePageMeta({
@@ -13,6 +13,8 @@ const activeTab = ref<'pending' | 'processing' | 'completed'>('pending')
 const pollingTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const actionLoadingId = ref('')
 
+interface MerchantOrder { id: string; status: string; created_at: string; item_details?: string; estimated_cost?: number; [key: string]: unknown }
+
 const fetchOrders = async () => {
   try {
     const prevPendingCount = pendingOrders.value.length
@@ -23,7 +25,7 @@ const fetchOrders = async () => {
       success('Ada pesanan baru masuk!')
       // Play a quick alert sound if supported
       try {
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+        const audioCtx = new (window.AudioContext || ((window as unknown) as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
         const oscillator = audioCtx.createOscillator()
         const gainNode = audioCtx.createGain()
         oscillator.connect(gainNode)
@@ -33,7 +35,7 @@ const fetchOrders = async () => {
         gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime)
         oscillator.start()
         oscillator.stop(audioCtx.currentTime + 0.15)
-      } catch (e) {
+      } catch (e: unknown) {
         console.warn('AudioContext not supported or allowed yet', e)
       }
     }
@@ -43,11 +45,11 @@ const fetchOrders = async () => {
 }
 
 // Group orders by status
-const pendingOrders = computed(() => 
-  merchantsStore.merchantOrders.filter(o => o.status === 'pending')
+const pendingOrders = computed<MerchantOrder[]>(() => 
+  (merchantsStore.merchantOrders as MerchantOrder[]).filter(o => o.status === 'pending')
 )
-const processingOrders = computed(() => 
-  merchantsStore.merchantOrders.filter(o => 
+const processingOrders = computed<MerchantOrder[]>(() => 
+  (merchantsStore.merchantOrders as MerchantOrder[]).filter(o => 
     o.status === 'cooking' || 
     o.status === 'ready' || 
     o.status === 'accepted' || 
@@ -56,8 +58,8 @@ const processingOrders = computed(() =>
     o.status === 'on_progress'
   )
 )
-const completedOrders = computed(() => 
-  merchantsStore.merchantOrders.filter(o => o.status === 'completed')
+const completedOrders = computed<MerchantOrder[]>(() => 
+  (merchantsStore.merchantOrders as MerchantOrder[]).filter(o => o.status === 'completed')
 )
 
 const handleAccept = async (orderId: string) => {
@@ -179,7 +181,7 @@ onUnmounted(() => {
         <!-- Header: Order ID & Time -->
         <div class="flex justify-between items-start">
           <div class="min-w-0">
-            <p class="text-[10px] font-black text-slate-800 tracking-wide uppercase">ID: {{ order.id.slice(0, 8) }}...</p>
+            <p class="text-[10px] font-black text-slate-800 tracking-wide uppercase">ID: {{ order.id.slice(0,8) }}...</p>
             <div class="flex items-center gap-1 mt-0.5 text-[9px] text-slate-400 font-semibold">
               <Clock class="w-3 h-3" />
               <span>{{ new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }} WIB</span>
@@ -217,9 +219,9 @@ onUnmounted(() => {
             <Utensils class="w-4 h-4" />
           </div>
           <div class="min-w-0 flex-1">
-            <p class="text-xs font-bold text-slate-800 leading-relaxed">{{ order.item_details }}</p>
+            <p class="text-xs font-bold text-slate-800 leading-relaxed">{{ order.item_details || '' }}</p>
             <p class="text-[10px] text-slate-400 mt-1 font-semibold">
-              Estimasi: <span class="text-slate-800 font-extrabold">Rp {{ order.estimated_cost?.toLocaleString('id-ID') || 0 }}</span>
+              Estimasi: <span class="text-slate-800 font-extrabold">Rp {{ (order.estimated_cost as number)?.toLocaleString('id-ID') || 0 }}</span>
             </p>
           </div>
         </div>

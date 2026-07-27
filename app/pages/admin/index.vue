@@ -5,7 +5,6 @@ import {
   Wallet, 
   ArrowUpRight, 
   ArrowDownRight,
-  TrendingUp,
   Clock,
   Banknote
 } from '@lucide/vue'

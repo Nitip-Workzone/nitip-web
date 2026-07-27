@@ -16,7 +16,7 @@ const title = ref('')
 const description = ref('')
 const orderId = ref<string | undefined>(route.query.order_id as string | undefined)
 const searchQuery = ref('')
-const searchResults = ref<any[]>([])
+const searchResults = ref<Array<Record<string, unknown>>>([])
 const showFaq = ref(true)
 const submitting = ref(false)
 
@@ -34,16 +34,16 @@ onMounted(async () => {
     orderId.value = route.query.order_id as string
   }
   // Fetch orders for select
-  try { await ordersStore.fetchMyOrders() } catch {}
+  try { await ordersStore.fetchMyOrders() } catch { /* noop */ }
 })
 
 async function handleSearch() {
   if (!searchQuery.value.trim()) {
-    searchResults.value = await supportStore.fetchFaqs(true) as any
+    searchResults.value = await supportStore.fetchFaqs(true) as unknown as Array<Record<string, unknown>>
     return
   }
   const res = await supportStore.searchFaq(searchQuery.value, category.value)
-  searchResults.value = res as any
+  searchResults.value = res as unknown as Array<Record<string, unknown>>
 }
 
 async function handleSubmit() {
@@ -64,9 +64,10 @@ async function handleSubmit() {
       order_id: orderId.value,
     })
     toastStore.add('Tiket berhasil dibuat! Menunggu CS.')
-    router.push(`/support/${ticket?.id}`)
-  } catch (e: any) {
-    toastStore.add(e?.data?.message || 'Gagal membuat tiket')
+    router.push(`/support/${ticket?.id as string}`)
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string } }
+    toastStore.add(err?.data?.message || 'Gagal membuat tiket')
   } finally {
     submitting.value = false
   }
@@ -100,7 +101,7 @@ async function handleSubmit() {
             <button class="h-10 px-4 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold" @click="handleSearch">Cari</button>
           </div>
           <div class="max-h-[200px] overflow-y-auto space-y-2">
-            <div v-for="faq in (searchResults.length ? searchResults : supportStore.faqs)" :key="faq.id" class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+            <div v-for="faq in ((searchResults.length ? searchResults : supportStore.faqs) as Array<{ id: string; question: string; answer: string }>)" :key="faq.id" class="p-3 rounded-xl bg-slate-50 border border-slate-100">
               <p class="text-xs font-bold text-slate-800">{{ faq.question }}</p>
               <p class="text-[11px] text-slate-600 mt-1 line-clamp-3">{{ faq.answer }}</p>
             </div>
@@ -132,7 +133,7 @@ async function handleSubmit() {
 
         <div class="space-y-1.5">
           <label class="text-[11px] font-bold text-slate-600">Deskripsi</label>
-          <textarea v-model="description" rows="4" placeholder="Jelaskan detail masalah..." class="w-full rounded-xl border border-slate-200 px-4 py-3 text-xs focus:outline-none focus:border-primary/50 resize-none"></textarea>
+          <textarea v-model="description" rows="4" placeholder="Jelaskan detail masalah..." class="w-full rounded-xl border border-slate-200 px-4 py-3 text-xs focus:outline-none focus:border-primary/50 resize-none"/>
         </div>
 
         <button :disabled="submitting" class="w-full h-11 bg-primary text-white font-bold text-xs rounded-xl disabled:opacity-50 flex items-center justify-center gap-2" @click="handleSubmit">

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const props = withDefaults(
+withDefaults(
   defineProps<{
     size?: number
     showText?: boolean
@@ -9,6 +9,8 @@ const props = withDefaults(
   {
     size: 28,
     showText: true,
+    fontSize: 18,
+    darkMode: false,
   }
 )
 </script>
@@ -17,7 +19,7 @@ const props = withDefaults(
   <div class="flex items-center gap-2.5">
     <img
       :src="darkMode ? '/logo-white.png' : '/logo.webp'"
-      alt="Nihtip"
+      alt="Nitip"
       class="object-contain"
       :style="{
         width: `${(size || 24) * 1.5}px`,
@@ -33,7 +35,7 @@ const props = withDefaults(
       }"
       :class="!darkMode ? 'text-primary' : ''"
     >
-      NIHTIP
+      NITIP
     </span>
   </div>
 </template>

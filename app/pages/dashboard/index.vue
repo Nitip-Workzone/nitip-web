@@ -137,7 +137,7 @@ onUnmounted(() => {
 
 
 
-function getStatusColor(order: any) {
+function getStatusColor(order: UserOrder) {
   if (order.status === 'pending' && order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris') {
     return { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', icon: 'text-amber-500' }
   }
@@ -152,7 +152,7 @@ function getStatusColor(order: any) {
   }
 }
 
-function getStatusLabel(order: any) {
+function getStatusLabel(order: UserOrder) {
   if (order.status === 'pending' && order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris') {
     return 'Menunggu Pembayaran'
   }
@@ -163,7 +163,7 @@ function getStatusLabel(order: any) {
     case 'delivering': return 'Antar'
     case 'completed': return 'Selesai'
     case 'cancelled': return 'Batal'
-    default: return order.status
+    default: return order.status as string
   }
 }
 

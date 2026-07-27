@@ -79,7 +79,7 @@ function getNotifCategory(notif: { title: string, message: string, type?: string
   return { icon: Bell, bg: 'bg-slate-50 border-slate-200/50', color: 'text-slate-500' }
 }
 
-function handleNotifClick(notif: { id: string, metadata?: Record<string, any>, type?: string }) {
+function handleNotifClick(notif: { id: string, metadata?: Record<string, unknown>, type?: string }) {
   // Mark read
   readNotif(notif.id)
   // Deep link support ticket_id first

@@ -42,14 +42,16 @@ export default defineNuxtRouteMiddleware(async (to) => {
     const triggerNativeLogoutIfInWebView = (reason: string) => {
         if (typeof window !== 'undefined') {
             try {
-                const win = window as any
+                const win = window as unknown as { NitipLogout?: { postMessage: (r: string) => void }, triggerNativeLogout?: (r: string) => void }
                 // WebView mobile injects NitipLogout channel + window.triggerNativeLogout
                 if (win.NitipLogout && typeof win.NitipLogout.postMessage === 'function') {
                     win.NitipLogout.postMessage(reason)
                 } else if (typeof win.triggerNativeLogout === 'function') {
                     win.triggerNativeLogout(reason)
                 }
-            } catch (_) {}
+            } catch {
+                // ignore bridge errors
+            }
         }
     }
 
@@ -80,7 +82,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
         try {
             console.log('[Auth Middleware] Fetching profile...')
             await authStore.fetchProfile()
-            console.log('[Auth Middleware] Profile fetched successfully:', (authStore.user as any)?.email)
+            console.log('[Auth Middleware] Profile fetched successfully:', (authStore.user as unknown as { email?: string })?.email)
         } catch (err) {
             console.error('[Auth Middleware] fetchProfile failed:', err)
             authStore.token = null

@@ -35,7 +35,7 @@ export const useMerchantsStore = defineStore('merchants', {
     adminMerchants: [] as Merchant[],
     currentMerchant: null as Merchant | null,
     merchantMenus: [] as Menu[],
-    merchantOrders: [] as any[],
+    merchantOrders: [] as Array<Record<string, unknown> & { id?: string; status?: string }>,
     loading: false,
   }),
 
@@ -337,7 +337,7 @@ export const useMerchantsStore = defineStore('merchants', {
       this.loading = true
       const { request } = useApi()
       try {
-        const res = await request<{ data: any[] }>('/orders/merchant/orders')
+        const res = await request<{ data: Array<Record<string, unknown>> }>('/orders/merchant/orders')
         if (res.data) {
           this.merchantOrders = res.data
         }

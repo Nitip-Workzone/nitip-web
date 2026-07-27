@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useSupportStore } from '~/stores/support'
-import { MessageCircle, Plus, Search, Clock, AlertCircle } from '@lucide/vue'
+import { MessageCircle, Plus, Clock } from '@lucide/vue'
 
 definePageMeta({ layout: 'user' })
 

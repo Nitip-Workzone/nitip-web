@@ -21,8 +21,8 @@ const loading = ref(true)
 const timeLeft = ref('15:00')
 const isExpired = ref(false)
 const checkingPayment = ref(false)
-let countdownInterval: any = null
-let pollInterval: any = null
+let countdownInterval: ReturnType<typeof setInterval> | null = null
+let pollInterval: ReturnType<typeof setInterval> | null = null
 
 function startCountdown(createdAtStr: string) {
   if (countdownInterval) clearInterval(countdownInterval)
@@ -67,7 +67,7 @@ function startPollingStatus() {
   }, 5000)
 }
 
-let activeOrderPollInterval: any = null
+let activeOrderPollInterval: ReturnType<typeof setInterval> | null = null
 
 function startActiveOrderPolling() {
   if (activeOrderPollInterval) return
@@ -149,11 +149,6 @@ function sanitizePhone(phone: string) {
   return p
 }
 
-function getWhatsAppLink(phone: string, id: string) {
-  const cleanPhone = sanitizePhone(phone)
-  return `https://wa.me/${cleanPhone}?text=Halo,%20saya%20pemesan%20jastip%20dengan%20Order%20%23${id.slice(0, 8).toUpperCase()}`
-}
-
 function openWhatsApp(phone: string, id: string) {
   const cleanPhone = sanitizePhone(phone)
   const links = [
@@ -181,17 +176,6 @@ function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text).then(() => {
       toastStore.add('Nomor disalin ke clipboard')
     })
-  }
-}
-
-function openPlayStoreWhatsapp() {
-  const ua = navigator.userAgent.toLowerCase()
-  const isAndroid = ua.includes('android')
-  const isIOS = /iphone|ipad|ipod/.test(ua)
-  if (isIOS) {
-    window.open('https://apps.apple.com/search?term=whatsapp', '_blank')
-  } else {
-    window.open('https://play.google.com/store/search?q=whatsapp&c=apps', '_blank')
   }
 }
 

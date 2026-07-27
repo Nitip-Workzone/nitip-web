@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Store, Star, Search, MapPin, ChevronLeft, ChevronRight, Compass, UtensilsCrossed, ArrowRight, Flame, Clock, ChevronDown, X, LocateFixed, RefreshCw } from '@lucide/vue'
+import { Star, Search, MapPin, ChevronLeft, ChevronRight, UtensilsCrossed, ArrowRight, Flame, X, LocateFixed, RefreshCw } from '@lucide/vue'
 import { useMerchantsStore } from '~/stores/merchants'
 
 definePageMeta({

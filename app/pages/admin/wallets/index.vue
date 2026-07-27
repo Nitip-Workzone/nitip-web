@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { 
-  Wallet, 
-  CheckCircle, 
   Clock, 
   RefreshCw,
   Search,

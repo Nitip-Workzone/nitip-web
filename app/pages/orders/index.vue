@@ -38,7 +38,7 @@ async function loadMore() {
   loadingMore.value = false
 }
 
-function getStatusColor(order: any) {
+function getStatusColor(order: Record<string, unknown>) {
   if (order.status !== 'cancelled' && order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris') {
     return 'bg-amber-50 text-amber-700 border-amber-200'
   }
@@ -56,7 +56,7 @@ function getStatusColor(order: any) {
   }
 }
 
-function getStatusLabel(order: any) {
+function getStatusLabel(order: Record<string, unknown>) {
   if (order.status === 'pending' && order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris') {
     return 'Menunggu Pembayaran'
   }
