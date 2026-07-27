@@ -5,8 +5,10 @@ export interface Notification {
     user_id: string
     title: string
     message: string
+    type?: string
     is_read: boolean
     created_at: string
+    metadata?: Record<string, any>
 }
 
 export const useNotificationsStore = defineStore('notifications', {

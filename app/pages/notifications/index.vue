@@ -42,27 +42,49 @@ function formatDate(dateStr: string) {
   })
 }
 
-// Helper to determine notification category icon
-function getNotifCategory(title: string, message: string) {
-  const t = (title + ' ' + message).toLowerCase()
+// Helper to determine notification category icon - prioritize type field, fallback to heuristic
+function getNotifCategory(notif: { title: string, message: string, type?: string }) {
+  const type = (notif.type || '').toLowerCase()
+  // Type-based (backend consistent)
+  if (type === 'wallet') {
+    return { icon: Wallet, bg: 'bg-amber-50 border-amber-200/50', color: 'text-amber-500' }
+  }
+  if (type === 'order') {
+    return { icon: Package, bg: 'bg-primary/10 border-primary/15', color: 'text-primary' }
+  }
+  if (type === 'chat') {
+    return { icon: Bell, bg: 'bg-orange-50 border-orange-200/50', color: 'text-orange-500' }
+  }
+  if (type === 'kyc') {
+    return { icon: Check, bg: 'bg-purple-50 border-purple-200/50', color: 'text-purple-500' }
+  }
+  if (type === 'system') {
+    return { icon: Bell, bg: 'bg-slate-50 border-slate-200/50', color: 'text-slate-500' }
+  }
+
+  // Fallback heuristic for legacy notifications
+  const t = (notif.title + ' ' + notif.message).toLowerCase()
   if (t.includes('saldo') || t.includes('wallet') || t.includes('top up') || t.includes('tarik') || t.includes('pay')) {
-    return {
-      icon: Wallet,
-      bg: 'bg-amber-50 border-amber-200/50',
-      color: 'text-amber-500'
-    }
+    return { icon: Wallet, bg: 'bg-amber-50 border-amber-200/50', color: 'text-amber-500' }
   }
   if (t.includes('order') || t.includes('pesanan') || t.includes('titip') || t.includes('belanja') || t.includes('antar') || t.includes('status')) {
-    return {
-      icon: Package,
-      bg: 'bg-primary/10 border-primary/15',
-      color: 'text-primary'
-    }
+    return { icon: Package, bg: 'bg-primary/10 border-primary/15', color: 'text-primary' }
   }
-  return {
-    icon: Bell,
-    bg: 'bg-slate-50 border-slate-200/50',
-    color: 'text-slate-500'
+  return { icon: Bell, bg: 'bg-slate-50 border-slate-200/50', color: 'text-slate-500' }
+}
+
+function handleNotifClick(notif: { id: string, metadata?: Record<string, any>, type?: string }) {
+  // Mark read
+  readNotif(notif.id)
+  // Deep link based on metadata
+  if (notif.metadata?.order_id) {
+    return navigateTo(`/orders/${notif.metadata.order_id}`)
+  }
+  if (notif.type === 'wallet' || notif.type === 'payment') {
+    return navigateTo('/wallet')
+  }
+  if (notif.type === 'chat' && notif.metadata?.order_id) {
+    return navigateTo(`/orders/${notif.metadata.order_id}`)
   }
 }
 </script>
@@ -149,7 +171,7 @@ function getNotifCategory(title: string, message: string) {
                 ? 'bg-white/80 border-slate-100 text-slate-500 hover:bg-white hover:border-slate-200' 
                 : 'bg-white border-primary/10 text-slate-900 font-medium hover:border-primary/25 shadow-primary/5 shadow-md'
             ]"
-            @click="readNotif(notif.id)"
+            @click="handleNotifClick(notif)"
           >
             <!-- Unread Indicator Dot -->
             <span v-if="!notif.is_read" class="absolute top-4 right-4 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
@@ -157,12 +179,12 @@ function getNotifCategory(title: string, message: string) {
             <!-- Dynamic Category Icon -->
             <div 
               class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border shadow-inner"
-              :class="getNotifCategory(notif.title, notif.message).bg"
+              :class="getNotifCategory(notif).bg"
             >
               <component 
-                :is="getNotifCategory(notif.title, notif.message).icon" 
+                :is="getNotifCategory(notif).icon" 
                 class="w-5.5 h-5.5" 
-                :class="getNotifCategory(notif.title, notif.message).color" 
+                :class="getNotifCategory(notif).color" 
               />
             </div>
 
