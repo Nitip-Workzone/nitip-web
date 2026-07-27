@@ -59,6 +59,7 @@ export default defineNuxtConfig({
       // REMOVED: navigateFallback: '/' — Ini menyebabkan SW mengintervensi semua
       // navigasi dan mengembalikan cache '/' untuk rute yang belum dicache,
       // sehingga route baru (misal /merchant/menu) tampil 404 di Android WebView.
+      navigateFallbackDenylist: [/^\/map/],
       globPatterns: ['**/*.{js,css,html,svg,ico}'],
       maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MiB
     },

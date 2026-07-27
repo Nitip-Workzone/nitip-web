@@ -1,17 +1,42 @@
 <script setup lang="ts">
+const route = useRoute()
 const { $pwa } = useNuxtApp()
 const showInstallBanner = ref(false)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const deferredPrompt = ref<any>(null)
 
-// State untuk update prompt
+const isMapRoute = computed(() => route.path.startsWith('/map'))
+const isWebView = computed(() => {
+  if (!import.meta.client) return false
+  const ua = navigator.userAgent.toLowerCase()
+  return ua.includes('wv') || (ua.includes('android') && ua.includes('version/'))
+})
+
+// State untuk update prompt - exclude map routes & webview
 const showUpdateBanner = computed(() => {
+  if (isMapRoute.value || isWebView.value) return false
   return unref($pwa?.needRefresh) ?? false
+})
+
+const shouldShowInstall = computed(() => {
+  if (isMapRoute.value || isWebView.value) return false
+  return showInstallBanner.value
 })
 
 onMounted(() => {
   // Hanya jalankan di client-side
   if (!import.meta.client) return
+
+  // Jangan inisialisasi PWA logic sama sekali jika di map route atau webview
+  if (route.path.startsWith('/map')) {
+    console.log('[PWA] Skipped on map route')
+    return
+  }
+  const ua = navigator.userAgent.toLowerCase()
+  if (ua.includes('wv') || (ua.includes('android') && ua.includes('version/'))) {
+    console.log('[PWA] Skipped inside WebView')
+    return
+  }
 
   // Periksa pembaruan secara berkala ke server setiap 1 jam
   const updateInterval = 60 * 60 * 1000
@@ -88,7 +113,7 @@ const updateApp = async () => {
       leave-to-class="transform translate-y-10 opacity-0"
     >
       <div
-        v-if="showInstallBanner"
+        v-if="shouldShowInstall"
         class="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white/90 p-5 shadow-2xl backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/90"
       >
         <div class="flex items-start gap-4">
