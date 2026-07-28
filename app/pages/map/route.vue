@@ -7,7 +7,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-definePageMeta({ ssr: false })
 
 const route = useRoute()
 const mapContainer = ref<HTMLElement | null>(null)
@@ -18,7 +17,6 @@ let L: any = null
 let isInitialized = false
 
 const initMap = async () => {
-  try {
   if (isInitialized) return
 
   const originLat = route.query.origin_lat ? parseFloat(route.query.origin_lat as string) : null
@@ -33,13 +31,8 @@ const initMap = async () => {
 
   isInitialized = true
 
-  try {
-    L = await import('leaflet')
-    await import('leaflet/dist/leaflet.css')
-  } catch (e) {
-    console.warn('[Map Route] Leaflet failed on old WebView:', e)
-    return
-  }
+  L = await import('leaflet')
+  await import('leaflet/dist/leaflet.css')
 
   // Fix marker icons
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -106,17 +99,12 @@ const initMap = async () => {
     }
   } catch (e) {
     console.warn('Failed to fetch routing, falling back to straight line:', e)
-    try {
-      L.polyline([[originLat, originLng], [destLat, destLng]], {
-        color: '#6366f1',
-        weight: 4,
-        dashArray: '5, 10',
-        opacity: 0.8
-      }).addTo(map)
-    } catch {}
-  }
-  } catch (outerErr) {
-    console.warn('[Map Route] initMap outer error (old WebView):', outerErr)
+    L.polyline([[originLat, originLng], [destLat, destLng]], {
+      color: '#6366f1',
+      weight: 4,
+      dashArray: '5, 10',
+      opacity: 0.8
+    }).addTo(map)
   }
 }
 
@@ -128,15 +116,6 @@ onMounted(() => {
 
 watch(() => route.query, () => {
   if (import.meta.client) {
-    if (map) {
-      try {
-        map.remove()
-      } catch (e) {
-        console.error('Error removing map:', e)
-      }
-      map = null
-      isInitialized = false
-    }
     initMap()
   }
 }, { deep: true })

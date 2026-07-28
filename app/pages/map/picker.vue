@@ -7,7 +7,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-definePageMeta({ ssr: false })
 
 const route = useRoute()
 const mapContainer = ref<HTMLElement | null>(null)
@@ -20,7 +19,6 @@ let L: any = null
 let isInitialized = false
 
 const initMap = async () => {
-  try {
   const lat = route.query.lat ? parseFloat(route.query.lat as string) : null
   const lng = route.query.lng ? parseFloat(route.query.lng as string) : null
 
@@ -30,13 +28,8 @@ const initMap = async () => {
 
   if (!isInitialized) {
     isInitialized = true
-    try {
-      L = await import('leaflet')
-      await import('leaflet/dist/leaflet.css')
-    } catch (e) {
-      console.warn('[Map Picker] Leaflet failed on old WebView:', e)
-      return
-    }
+    L = await import('leaflet')
+    await import('leaflet/dist/leaflet.css')
 
     // Fix marker icons
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -108,15 +101,10 @@ const initMap = async () => {
     }
   } else {
     if (map && marker) {
-      try {
-        const newLatLng = new L.LatLng(lat, lng)
-        map.setView(newLatLng, 16)
-        marker.setLatLng(newLatLng)
-      } catch {}
+      const newLatLng = new L.LatLng(lat, lng)
+      map.setView(newLatLng, 16)
+      marker.setLatLng(newLatLng)
     }
-  }
-  } catch (outerErr) {
-    console.warn('[Map Picker] outer error old WebView:', outerErr)
   }
 }
 

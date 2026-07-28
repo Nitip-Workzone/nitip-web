@@ -7,7 +7,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-definePageMeta({ ssr: false })
 
 const route = useRoute()
 const mapContainer = ref<HTMLElement | null>(null)
@@ -20,7 +19,6 @@ let L: any = null
 let isInitialized = false
 
 const initMap = async () => {
-  try {
   const lat = route.query.lat ? parseFloat(route.query.lat as string) : null
   const lng = route.query.lng ? parseFloat(route.query.lng as string) : null
 
@@ -30,13 +28,8 @@ const initMap = async () => {
 
   if (!isInitialized) {
     isInitialized = true
-    try {
-      L = await import('leaflet')
-      await import('leaflet/dist/leaflet.css')
-    } catch (e) {
-      console.warn('[Map Viewer] Leaflet load failed on old WebView (expected on Chrome <80):', e)
-      return
-    }
+    L = await import('leaflet')
+    await import('leaflet/dist/leaflet.css')
 
     // Fix marker icons
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,8 +48,7 @@ const initMap = async () => {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map)
 
-    let markerColor = '#6366f1'
-    try { markerColor = route.query.color ? `#${route.query.color}` : '#6366f1' } catch { markerColor = '#6366f1' }
+    const markerColor = route.query.color ? `#${route.query.color}` : '#6366f1'
     const pulseIcon = L.divIcon({
       html: `
         <div class="relative flex items-center justify-center" style="width: 40px; height: 40px;">
@@ -82,15 +74,10 @@ const initMap = async () => {
     }
   } else {
     if (map && marker) {
-      try {
-        const newLatLng = new L.LatLng(lat, lng)
-        map.setView(newLatLng, 16)
-        marker.setLatLng(newLatLng)
-      } catch {}
+      const newLatLng = new L.LatLng(lat, lng)
+      map.setView(newLatLng, 16)
+      marker.setLatLng(newLatLng)
     }
-  }
-  } catch (outerErr) {
-    console.warn('[Map Viewer] outer error old WebView:', outerErr)
   }
 }
 
