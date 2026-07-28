@@ -65,16 +65,29 @@ export default defineNuxtRouteMiddleware(async (to) => {
     const isMerchantRoute = to.path.startsWith('/merchant')
     const isUserRoute = to.path.startsWith('/dashboard') || to.path.startsWith('/orders') || to.path.startsWith('/profile') || to.path.startsWith('/trips') || to.path.startsWith('/notifications')
 
+    // Detect Flutter WebView via custom UserAgent (NitipMerchant / NitipApp) to allow token injection via JS after load
+    // Prod mobile WebView tidak memenuhi syarat auth di awal karena cookie belum ada, tapi akan diinject via JS localStorage+cookie
+    // Jadi untuk WebView, jangan redirect keras ke login, biarkan page load, nanti JS akan redirect ke /merchant/orders
+    const isFlutterWebView = typeof navigator !== 'undefined' && /NitipMerchant|NitipApp|wv/.test(navigator.userAgent)
+
     // Redirect unauthenticated users trying to access protected routes
-    if (!authStore.isAuthenticated && !isPublic) {
+    // Exception: Flutter WebView untuk merchant route diberi kelonggaran (isPublic override) agar tidak 500
+    const isPublicForWebView = isPublic || (isFlutterWebView && isMerchantRoute)
+
+    if (!authStore.isAuthenticated && !isPublicForWebView) {
         // If we are inside Flutter WebView, trigger native logout instead of showing web login form
         // This prevents merchant portal showing web login page inside WebView
         if (isMerchantRoute) {
-            triggerNativeLogoutIfInWebView('middleware_merchant_401')
-            return navigateTo('/merchant/login')
+            if (!isFlutterWebView) {
+                triggerNativeLogoutIfInWebView('middleware_merchant_401')
+                return navigateTo('/merchant/login')
+            }
+            // Untuk WebView, jangan redirect keras, biarkan load dan nanti JS inject token akan handle
+            console.log('[Auth Middleware] Flutter WebView detected, allowing merchant route without auth (token will be injected via JS)')
+        } else {
+            triggerNativeLogoutIfInWebView('middleware_401')
+            return navigateTo('/login')
         }
-        triggerNativeLogoutIfInWebView('middleware_401')
-        return navigateTo('/login')
     }
 
     // Fetch profile if authenticated but user data not loaded
