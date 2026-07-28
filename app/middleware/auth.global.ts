@@ -1,254 +1,233 @@
+/**
+ * Auth Middleware - Simple, Deterministic, No Flutter/WebView Logic
+ * 
+ * Principles:
+ * - Cookie-only auth (auth_token), no ?token= or ?t= query support
+ * - No navigator.userAgent detection
+ * - No isFlutterWebView / isPublicForWebView
+ * - No native bridge (NitipLogout, triggerNativeLogout, postMessage)
+ * - No throw, no createError(500), only navigateTo or return
+ * - fetchProfile failures handled locally, never bubble to 500
+ * 
+ * Flow:
+ * a. Read auth_token cookie
+ * b. If no cookie -> redirect to login by area
+ * c. If cookie exists but no user -> fetchProfile
+ * d. If fetchProfile fails -> clear auth + clear cookie + redirect login
+ * e. If user exists -> role authorization
+ * f. Done
+ */
+
 export default defineNuxtRouteMiddleware(async (to) => {
+  const authStore = useAuthStore()
+  const path = to.path
+
+  // ===== Route Classification =====
+  const publicRoutes = [
+    '/', '/login', '/register', 
+    '/merchant/login', 
+    '/welcome-simple', '/merchant/welcome-simple'
+  ]
+  const isPublicExact = publicRoutes.includes(path) || publicRoutes.includes(path.replace(/\/$/, ''))
+  const isMapRoute = path.startsWith('/map')
+  const isWelcomeSimple = path.startsWith('/merchant/welcome-simple') || path.startsWith('/welcome-simple')
+  const isPublic = isPublicExact || isMapRoute || isWelcomeSimple
+
+  const isAdminRoute = path.startsWith('/admin')
+  const isMerchantRoute = path.startsWith('/merchant')
+  const isUserRoute = path.startsWith('/dashboard') || path.startsWith('/orders') || path.startsWith('/profile') || path.startsWith('/trips') || path.startsWith('/notifications') || path.startsWith('/wallet')
+
+  // ===== Helper: Load token from cookie =====
+  const loadToken = (): string | null => {
+    if (authStore.token) return authStore.token
     try {
-    const authStore = useAuthStore()
+      const tokenCookie = useCookie('auth_token')
+      if (tokenCookie.value) {
+        authStore.token = tokenCookie.value
+        return tokenCookie.value
+      }
+    } catch {}
+    return null
+  }
 
-    // === REFACTOR 2026-07-29: Cookie-only auth (like normal web browser) ===
-    // Web should read auth_token from cookie/localStorage, not from ?token= query
-    // Flutter WebView now sets cookie via WebViewCookieManager BEFORE loadRequest, no ?token= needed
-    // We keep ?token= as DEPRECATED fallback for old APKs during transition period (1-2 weeks)
-    const tokenQuery = to.query.token as string
-    const tParam = to.query.t as string
-
-    // Clean up ?t= param immediately (leftover from buggy build that caused 500 loop)
-    if (tParam) {
-        const cleanQuery = { ...to.query } as Record<string, unknown>
-        delete cleanQuery.t
-        delete cleanQuery.token // also clean token if present
-        if (to.path === '/merchant/menu' || to.path === '/merchant/menu/') {
-            // If there was token, handle it below, otherwise just clean t
-            if (!tokenQuery) {
-                return navigateTo({ path: '/merchant/menu', query: cleanQuery as Record<string, string> })
-            }
-        }
-        // Continue to token handling below if tokenQuery exists
-    }
-
-    // DEPRECATED: Token via query param - will be removed in Phase 3
-    // New flow: Flutter sets cookie via CookieManager, web reads via useCookie (below)
-    // This block is kept for backward compat with old APKs
-    if (tokenQuery) {
-        // In prod, this should not happen anymore after Flutter cookie-only update
-        if (import.meta.client) {
-            console.warn('[Auth Middleware] DEPRECATED: ?token= query used, should use cookie only')
-        }
-        try {
-        const tokenCookie = useCookie('auth_token', {
-            path: '/',
-            maxAge: 60 * 60 * 24 * 7, // 7 days
-            sameSite: 'lax',
-        })
-        tokenCookie.value = tokenQuery
-        authStore.setToken(tokenQuery)
-        } catch {
-            try { authStore.setToken(tokenQuery) } catch {}
-        }
-        
-        try {
-            await authStore.fetchProfile(true)
-            const cleanQuery = { ...to.query } as Record<string, unknown>
-            delete cleanQuery.token
-            delete cleanQuery.t
-            if (to.path === '/merchant/menu' || to.path === '/merchant/menu/') {
-                if (Object.keys(cleanQuery).length === 0) {
-                    return navigateTo({ path: '/merchant/menu' })
-                }
-                return navigateTo({ path: '/merchant/menu', query: cleanQuery as Record<string, string> })
-            }
-            return navigateTo({ path: '/merchant/menu', query: cleanQuery as Record<string, string> })
-        } catch {
-            try {
-            authStore.token = null
-            const tokenCookie = useCookie('auth_token')
-            tokenCookie.value = null
-            } catch {}
-            const wasMerchantRoute = to.path.startsWith('/merchant')
-            if (wasMerchantRoute || to.path === '/') {
-                try {
-                    if (typeof window !== 'undefined') {
-                        const win = window as unknown as { NitipLogout?: { postMessage: (s: string) => void }, triggerNativeLogout?: (s: string) => void }
-                        if (win.NitipLogout) win.NitipLogout.postMessage('token_invalid_middleware')
-                        else if (win.triggerNativeLogout) win.triggerNativeLogout('token_invalid_middleware')
-                    }
-                } catch {}
-                return navigateTo('/merchant/login')
-            }
-            return navigateTo('/')
-        }
-    }
-
-    if (!authStore.token) {
-        try {
-        const tokenCookie = useCookie('auth_token')
-        if (tokenCookie.value) {
-            authStore.token = tokenCookie.value
-        }
-        } catch {
-            // silent
-        }
-    }
-
-    // Mobile WebView bridge helper: trigger native logout when session expired inside WebView
-    const triggerNativeLogoutIfInWebView = (reason: string) => {
-        if (typeof window !== 'undefined') {
-            try {
-                const win = window as unknown as { NitipLogout?: { postMessage: (r: string) => void }, triggerNativeLogout?: (r: string) => void }
-                // WebView mobile injects NitipLogout channel + window.triggerNativeLogout
-                if (win.NitipLogout && typeof win.NitipLogout.postMessage === 'function') {
-                    win.NitipLogout.postMessage(reason)
-                } else if (typeof win.triggerNativeLogout === 'function') {
-                    win.triggerNativeLogout(reason)
-                }
-            } catch {
-                // ignore bridge errors
-            }
-        }
-    }
-
-    // Define public routes (including map pages and welcome-simple test pages for WebView 500 isolation)
-    const publicRoutes = [
-      '/', '/login', '/register', 
-      '/merchant/login', 
-      '/merchant/welcome-simple', '/merchant/welcome-simple/',
-      '/welcome-simple', '/welcome-simple/'
-    ]
-    const isMapRoute = to.path.startsWith('/map')
-    const isWelcomeSimple = to.path === '/merchant/welcome-simple' || to.path === '/merchant/welcome-simple/' || to.path.startsWith('/merchant/welcome-simple') || to.path === '/welcome-simple' || to.path === '/welcome-simple/' || to.path.startsWith('/welcome-simple')
-    const isPublic = publicRoutes.some(path => to.path === path) || isMapRoute || isWelcomeSimple
-
-    // Route categories
-    const isAdminRoute = to.path.startsWith('/admin')
-    const isMerchantRoute = to.path.startsWith('/merchant')
-    const isUserRoute = to.path.startsWith('/dashboard') || to.path.startsWith('/orders') || to.path.startsWith('/profile') || to.path.startsWith('/trips') || to.path.startsWith('/notifications')
-
-    // Detect Flutter WebView via custom UserAgent (NitipMerchant / NitipApp) to allow token injection via JS after load
-    let isFlutterWebView = false
+  // ===== Helper: Clear auth + cookie =====
+  const clearAuth = () => {
     try {
-        isFlutterWebView = typeof navigator !== 'undefined' && /NitipMerchant|NitipApp|wv|WebView/.test(navigator.userAgent)
-    } catch { isFlutterWebView = false }
+      authStore.token = null
+      authStore.setUser(null)
+      const tokenCookie = useCookie('auth_token')
+      tokenCookie.value = null
+    } catch {}
+  }
 
-    // Redirect unauthenticated users trying to access protected routes
-    // Exception: Flutter WebView untuk merchant route diberi kelonggaran (isPublic override) agar tidak 500
-    const isPublicForWebView = isPublic || (isFlutterWebView && isMerchantRoute)
+  // ===== Helper: Redirect to login by area =====
+  const redirectToLogin = () => {
+    if (isMerchantRoute) return navigateTo('/merchant/login')
+    if (isAdminRoute) return navigateTo('/admin/login')
+    return navigateTo('/login')
+  }
 
-    if (!authStore.isAuthenticated && !isPublicForWebView) {
-        // If we are inside Flutter WebView, trigger native logout instead of showing web login form
-        if (isMerchantRoute) {
-            if (!isFlutterWebView) {
-                try { triggerNativeLogoutIfInWebView('middleware_merchant_401') } catch {}
-                return navigateTo('/merchant/login')
-            }
-            // Flutter WebView: allow merchant route without auth — token will be injected via JS
-        } else {
-            try { triggerNativeLogoutIfInWebView('middleware_401') } catch {}
-            return navigateTo('/login')
-        }
+  // ===== Helper: Redirect by role when accessing public pages =====
+  const redirectByRole = (role: string) => {
+    if (role === ROLE_ADMIN) return navigateTo('/admin')
+    if (role === ROLE_MERCHANT) return navigateTo('/merchant/menu')
+    if (role === ROLE_CS) return navigateTo('/admin/support')
+    return navigateTo('/dashboard')
+  }
+
+  // ===== Helper: Ensure authenticated =====
+  const ensureAuthenticated = (): boolean => {
+    return authStore.isAuthenticated
+  }
+
+  // ===== Helper: Ensure profile loaded =====
+  const ensureProfile = async (): Promise<boolean> => {
+    if (authStore.user) return true
+    if (!authStore.isAuthenticated) return false
+    try {
+      await authStore.fetchProfile()
+      return !!authStore.user
+    } catch {
+      // fetchProfile failed - clear auth, will redirect to login
+      clearAuth()
+      return false
+    }
+  }
+
+  // ===== Helper: Role authorization =====
+  const ensureRole = (): ReturnType<typeof navigateTo> | null => {
+    if (!authStore.user) return null
+    const role = authStore.user.role
+
+    // Block merchant login page for already authenticated merchant
+    if (role === ROLE_MERCHANT && path === '/merchant/login') {
+      return navigateTo('/merchant/menu')
     }
 
-    // Fetch profile if authenticated but user data not loaded
-    if (authStore.isAuthenticated && !authStore.user) {
-        try {
-            await authStore.fetchProfile()
-        } catch {
-            try {
-            authStore.token = null
-            const tokenCookie = useCookie('auth_token')
-            tokenCookie.value = null
-            } catch {}
-            if (!isPublic && isMerchantRoute) {
-                try { triggerNativeLogoutIfInWebView('fetchProfile_failed_merchant') } catch {}
-            }
-            if (!isPublic) {
-                // Dulu return '/', sekarang ke login mapping yang benar agar tidak loop
-                if (isMerchantRoute) return navigateTo('/merchant/login')
-                if (isAdminRoute) return navigateTo('/admin/login')
-                return navigateTo('/login')
-            }
-        }
+    // Runner not allowed on Web Platform (mobile only)
+    if (role === ROLE_RUNNER) {
+      const toastStore = useToastStore()
+      try {
+        toastStore.add('Akses Ditolak: Akun Runner hanya dapat diakses melalui Aplikasi Mobile.', 'error')
+      } catch {}
+      authStore.logout()
+      return navigateTo('/login')
     }
 
-    // Support / CS routes — only cs & admin can access /admin/support, cs redirects to support
-    const isSupportCSRoute = to.path.startsWith('/admin/support')
-
-    // Role-based access control
-    if (authStore.isAuthenticated && authStore.user) {
-        const role = authStore.user.role
-
-        // Block direct access to merchant login for authenticated merchants
-        if (role === ROLE_MERCHANT && to.path === '/merchant/login') {
-            return navigateTo('/merchant/menu')
-        }
-
-        // Runner is not allowed on Web Platform (exclusively mobile)
-        if (role === ROLE_RUNNER) {
-            const toastStore = useToastStore()
-            if (toastStore) {
-                toastStore.add('Akses Ditolak: Akun Runner hanya dapat diakses melalui Aplikasi Mobile.', 'error')
-            }
-            authStore.logout()
-            return navigateTo('/login')
-        }
-
-        // Admin trying to access user/merchant routes → redirect to admin
-        if (role === ROLE_ADMIN && (isUserRoute || isMerchantRoute)) {
-            return navigateTo('/admin')
-        }
-
-        // CS role: allow /admin/support, block all other admin/user/merchant routes except profile
-        if (role === ROLE_CS) {
-            if (isSupportCSRoute) {
-                // allow
-            } else if (isAdminRoute && !isSupportCSRoute) {
-                return navigateTo('/admin/support')
-            } else if (isUserRoute) {
-                const allowed = to.path.startsWith('/profile')
-                if (!allowed) return navigateTo('/admin/support')
-            } else if (isMerchantRoute) {
-                return navigateTo('/admin/support')
-            }
-        }
-
-        // Requester trying to access admin or merchant routes
-        if (role === ROLE_REQUESTER && isAdminRoute) {
-            return navigateTo('/dashboard')
-        }
-        if (role === ROLE_REQUESTER && isMerchantRoute) {
-            return navigateTo('/dashboard')
-        }
-
-        // Merchant trying to access admin or user routes → redirect to merchant panel
-        if (role === ROLE_MERCHANT && isAdminRoute) {
-            return navigateTo('/merchant/menu')
-        }
-        if (role === ROLE_MERCHANT && isUserRoute) {
-            const isAllowedMerchantRoute = to.path.startsWith('/profile') || to.path.startsWith('/wallet')
-            if (!isAllowedMerchantRoute) {
-                return navigateTo('/merchant/menu')
-            }
-        }
-
-        // Authenticated user on public pages → redirect to their home
-        if (isPublic && !isMapRoute && to.path !== '/') {
-            if (role === ROLE_ADMIN) return navigateTo('/admin')
-            if (role === ROLE_MERCHANT) return navigateTo('/merchant/menu')
-            if (role === ROLE_CS) return navigateTo('/admin/support')
-            return navigateTo('/dashboard')
-        }
+    // Admin trying to access user/merchant routes -> redirect to admin
+    if (role === ROLE_ADMIN && (isUserRoute || isMerchantRoute)) {
+      return navigateTo('/admin')
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (_e: unknown) {
-        // ——— GLOBAL GUARD: Jangan pernah throw 500 di middleware ———
-        // Kalau ada bug di middleware, itu yang bikin prod return halaman error 500
-        // di WebView build-apk-wa. Di sini kita biarkan page render, bukan throw ke error.vue
-        // Jika masih ada token query, coba selamatkan sebagai login merchant
-        try {
-            const tq = to.query.token as string
-            if (tq) {
-                const authStore = useAuthStore()
-                authStore.setToken(tq)
-                return navigateTo({ path: '/merchant/menu' })
-            }
-        } catch {}
-        // Jangan return 500, biarkan navigasi lanjut — page akan handle auth check sendiri
-        return
+
+    // CS role
+    const isSupportCSRoute = path.startsWith('/admin/support')
+    if (role === ROLE_CS) {
+      if (isSupportCSRoute) {
+        return null // allow
+      }
+      if (isAdminRoute && !isSupportCSRoute) {
+        return navigateTo('/admin/support')
+      }
+      if (isUserRoute) {
+        const allowed = path.startsWith('/profile')
+        if (!allowed) return navigateTo('/admin/support')
+      }
+      if (isMerchantRoute) {
+        return navigateTo('/admin/support')
+      }
     }
+
+    // Requester trying to access admin or merchant routes
+    if (role === ROLE_REQUESTER) {
+      if (isAdminRoute) return navigateTo('/dashboard')
+      if (isMerchantRoute) return navigateTo('/dashboard')
+    }
+
+    // Merchant trying to access admin or user routes -> redirect to merchant panel
+    if (role === ROLE_MERCHANT) {
+      if (isAdminRoute) return navigateTo('/merchant/menu')
+      if (isUserRoute) {
+        const isAllowedMerchantRoute = path.startsWith('/profile') || path.startsWith('/wallet')
+        if (!isAllowedMerchantRoute) {
+          return navigateTo('/merchant/menu')
+        }
+      }
+    }
+
+    return null
+  }
+
+  // ===== Temporary investigasi logging (dev only, will be removed after debugging) =====
+  const debugLog = (msg: string, data?: Record<string, unknown>) => {
+    if (import.meta.client) {
+      try {
+        console.log(`[Auth Middleware] ${msg}`, data || '')
+      } catch {}
+    }
+  }
+
+  // ===== Main Flow =====
+
+  // Step a: Load token from cookie
+  const token = loadToken()
+  const hasCookie = !!token
+
+  debugLog('Route check', {
+    path,
+    hasCookie,
+    hasToken: !!authStore.token,
+    isAuthenticated: authStore.isAuthenticated,
+    hasUser: !!authStore.user,
+    role: authStore.user?.role || null,
+    isPublic,
+    isMerchantRoute,
+    isAdminRoute,
+    isUserRoute,
+  })
+
+  // Step b: If no cookie and not public -> redirect to login
+  if (!hasCookie && !isPublic) {
+    debugLog('No cookie, not public -> redirect to login', { path })
+    return redirectToLogin()
+  }
+
+  // Step c: If has cookie but no user -> fetchProfile
+  if (hasCookie && !authStore.user) {
+    debugLog('Has cookie but no user -> fetchProfile', { path })
+    const profileOk = await ensureProfile()
+    debugLog('fetchProfile result', { success: profileOk, hasUser: !!authStore.user })
+
+    // Step d: If fetchProfile failed -> clear and redirect
+    if (!profileOk && !isPublic) {
+      debugLog('fetchProfile failed -> redirect to login', { path })
+      return redirectToLogin()
+    }
+  }
+
+  // If still not authenticated and not public -> redirect
+  if (!ensureAuthenticated() && !isPublic) {
+    debugLog('Not authenticated and not public -> redirect', { path })
+    return redirectToLogin()
+  }
+
+  // Step e: Role authorization
+  if (authStore.isAuthenticated && authStore.user) {
+    // If authenticated user visits public pages (except / and map) -> redirect by role
+    if (isPublic && !isMapRoute && !isWelcomeSimple && path !== '/' && path !== '/merchant/welcome-simple' && path !== '/welcome-simple' && path !== '/merchant/welcome-simple/' && path !== '/welcome-simple/') {
+      debugLog('Authenticated user on public page -> redirect by role', { path, role: authStore.user.role })
+      const roleRedirect = redirectByRole(authStore.user.role)
+      if (roleRedirect) return roleRedirect
+    }
+
+    // Check role access for protected routes
+    const roleRedirect = ensureRole()
+    if (roleRedirect) {
+      debugLog('Role check redirect', { path, role: authStore.user.role, redirect: roleRedirect })
+      return roleRedirect
+    }
+  }
+
+  debugLog('Allowed', { path })
+  // f. Done - allow navigation
+  return
 })
