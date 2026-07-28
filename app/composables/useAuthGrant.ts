@@ -41,11 +41,14 @@ export const useAuthGrant = () => {
    * Must be called before login.
    */
   async function getGrantToken(): Promise<string> {
-    const apiKey = config.public.nitipApiKey as string
-    const apiSecret = config.public.nitipApiSecret as string
+    const apiKey = (config.public.nitipApiKey as string) || ''
+    const apiSecret = (config.public.nitipApiSecret as string) || ''
 
     if (!apiKey || !apiSecret) {
-      throw new Error('API key/secret not configured. Set NUXT_PUBLIC_NITIP_API_KEY and NUXT_PUBLIC_NITIP_API_SECRET in .env')
+      console.error('[AuthGrant] API key/secret missing — this causes 500 in WebView prod build. Keys must be set at build time via NUXT_PUBLIC_NITIP_API_KEY/SECRET env')
+      // Jangan throw Error mentah yang bikin Nuxt render error.vue 500
+      // Return empty akan ditangani di authStore.login sebagai human message
+      throw new Error('Konfigurasi API tidak tersedia di build ini. Hubungi admin untuk rebuild web dengan env yang benar.')
     }
 
     const timestamp = new Date().toISOString()
@@ -71,7 +74,8 @@ export const useAuthGrant = () => {
     )
 
     if (!res.data?.grant_token) {
-      throw new Error('Failed to obtain grant token')
+      console.error('[AuthGrant] grant_token kosong dari API', res)
+      throw new Error('Gagal mendapatkan grant token dari server. Pastikan API reachable.')
     }
 
     return res.data.grant_token

@@ -37,33 +37,40 @@ export const useApi = () => {
                 query: options.query,
                 headers,
                 onRequest({ request, options }) {
+                    try {
                     const reqHeaders = options.headers || headers
                     const payload = options.body ? JSON.stringify(options.body).substring(0, 1000) : 'empty'
                     console.log(`[API Request] ${options.method || 'GET'} ${request.toString()}`, '\n  Headers:', JSON.stringify(reqHeaders, null, 2), '\n  Query:', options.query, '\n  Payload:', payload)
+                    } catch {}
                 },
                 onResponse({ request, response }) {
+                    try {
                     const respHeaders = response.headers ? Object.fromEntries(response.headers.entries()) : {}
                     const bodyPreview = JSON.stringify(response._data || {}).substring(0, 2000)
                     console.log(`[API Response] ${request.toString()} - Status: ${response.status}`, '\n  Resp Headers:', JSON.stringify(respHeaders, null, 2), '\n  Body:', bodyPreview)
+                    } catch {}
                 },
                 async onResponseError({ request, response }) {
+                    try {
                     console.error(`[API Error] ${request.toString()} - Status: ${response.status}`, response._data)
+                    } catch {}
                     const isLoginRequest = request.toString().includes('/auth/login')
 
                     if (response.status === 401) {
-                        console.error('[API Error] 401 Unauthorized detected. Logging out...')
+                        try { console.error('[API Error] 401 Unauthorized detected. Logging out...') } catch {}
                         if (!isLoginRequest) {
+                            try {
                             if (import.meta.client) {
                                 authStore.logout()
                             } else {
                                 authStore.token = null
                             }
+                            } catch {}
                         } else {
+                            try {
                             const errorStore = useErrorStore()
                             const serverMessage = (response._data as { message?: string })?.message
                             let humanMessage = 'Email atau kata sandi Anda salah. Silakan periksa kembali detail masuk Anda.'
-                            
-                            // Map specific known backend errors to human readable Indonesian sentences
                             if (serverMessage) {
                                 const lowerMsg = serverMessage.toLowerCase()
                                 if (lowerMsg.includes('missing x-grant-token') || lowerMsg.includes('grant token')) {
@@ -75,12 +82,12 @@ export const useApi = () => {
                                 }
                             }
                             errorStore.showError(humanMessage, 'Gagal Masuk')
+                            } catch {}
                         }
                     } else if (response.status >= 400 && response.status <= 599) {
+                        try {
                         const errorStore = useErrorStore()
                         let msg = (response._data as { message?: string })?.message || 'Terjadi kesalahan sistem. Silakan coba beberapa saat lagi.'
-                        
-                        // Map technical error messages that might slip through from proxy/gateway
                         const lowerMsg = msg.toLowerCase()
                         if (lowerMsg.includes('connection refused') || lowerMsg.includes('failed to connect') || lowerMsg.includes('network error')) {
                             msg = 'Gagal terhubung ke server. Pastikan koneksi internet Anda aktif.'
@@ -91,8 +98,9 @@ export const useApi = () => {
                         } else if (response.status === 504) {
                             msg = 'Server membutuhkan waktu terlalu lama untuk merespons (504). Silakan coba beberapa saat lagi.'
                         }
-                        
+                        // Jangan throw 500 ke error.vue, cukup toast
                         errorStore.showError(msg, 'Permintaan Gagal')
+                        } catch {}
                     }
                 },
             })

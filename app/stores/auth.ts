@@ -83,19 +83,21 @@ export const useAuthStore = defineStore('auth', {
                 return { success: false }
             } catch (error: unknown) {
                 console.error('Login failed:', error)
+                const message = (error as { data?: { message?: string }, message?: string })?.data?.message || (error as { message?: string })?.message || 'Login gagal. Silakan periksa kembali email dan kata sandi Anda.'
+                // Harden: jangan throw ke error.vue 500
+                try {
                 const errStore = useErrorStore()
-                const message = (error as { data?: { message?: string } })?.data?.message || 'Login gagal. Silakan periksa kembali email dan kata sandi Anda.'
-                
-                // Translate the title and message if it defaults to english in this store catch
                 const finalTitle = 'Gagal Masuk'
-                let finalMessage = message
-                if (message === 'Login failed. Please check your credentials.') {
+                let finalMessage = message as string
+                if (finalMessage === 'Login failed. Please check your credentials.') {
                     finalMessage = 'Email atau kata sandi salah. Silakan coba lagi.'
-                } else if (message.includes('missing X-Grant-Token') || message.includes('grant token')) {
+                } else if ((finalMessage as string).toLowerCase().includes('konfigurasi api')) {
+                    finalMessage = 'Konfigurasi API tidak tersedia di build web ini. Admin perlu rebuild dengan NUXT_PUBLIC_NITIP_API_KEY/SECRET terisi.'
+                } else if ((finalMessage as string).includes('missing X-Grant-Token') || (finalMessage as string).toLowerCase().includes('grant token')) {
                     finalMessage = 'Token keamanan (Grant Token) tidak ditemukan atau tidak valid. Silakan muat ulang halaman.'
                 }
-                
                 errStore.showError(finalMessage, finalTitle)
+                } catch {}
                 return { success: false }
             } finally {
                 this.loading = false

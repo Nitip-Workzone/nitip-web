@@ -1,27 +1,18 @@
 <script setup lang="ts">
 const route = useRoute()
-const { $pwa } = useNuxtApp()
 const showInstallBanner = ref(false)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const deferredPrompt = ref<any>(null)
 
-const isMapRoute = computed(() => route.path.startsWith('/map'))
-const isWebView = computed(() => {
+// PWA disabled 2026-07-28 — keep vars prefixed _ to pass lint, future re-enable
+const _isMapRoute = computed(() => route.path.startsWith('/map'))
+const _isWebView = computed(() => {
   if (!import.meta.client) return false
   const ua = navigator.userAgent.toLowerCase()
   return ua.includes('wv') || (ua.includes('android') && ua.includes('version/'))
 })
-
-// State untuk update prompt - exclude map routes & webview
-const showUpdateBanner = computed(() => {
-  if (isMapRoute.value || isWebView.value) return false
-  return unref($pwa?.needRefresh) ?? false
-})
-
-const shouldShowInstall = computed(() => {
-  if (isMapRoute.value || isWebView.value) return false
-  return showInstallBanner.value
-})
+const showUpdateBanner = computed(() => false)
+const shouldShowInstall = computed(() => false)
 
 onMounted(() => {
   // Hanya jalankan di client-side
@@ -58,15 +49,7 @@ onMounted(() => {
     return
   }
 
-  // Periksa pembaruan secara berkala ke server setiap 1 jam
-  const updateInterval = 60 * 60 * 1000
-  setInterval(() => {
-    if ($pwa && typeof $pwa.updateServiceWorker === 'function') {
-      console.log('[PWA] Checking for updates on the server...')
-      // Parameter kosong memicu browser mengecek file sw.js baru ke server
-      $pwa.updateServiceWorker()
-    }
-  }, updateInterval)
+  // PWA disabled — no update checking
 
   // Cek apakah sudah terinstall (standalone display mode)
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches
@@ -114,10 +97,8 @@ const dismissInstallBanner = () => {
 }
 
 const updateApp = async () => {
-  if ($pwa?.updateServiceWorker) {
-    await $pwa.updateServiceWorker(true)
-    window.location.reload()
-  }
+  // PWA disabled
+  window.location.reload()
 }
 </script>
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Settings, Save, RefreshCw, AlertCircle } from '@lucide/vue'
 import { useConfigsStore } from '~/stores/configs'
-import { useToast } from '~/stores/toast'
+import { useToast } from '~/composables/useToast'
 
 definePageMeta({
   layout: 'admin',

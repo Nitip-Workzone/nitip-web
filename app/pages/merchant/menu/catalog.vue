@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, Edit, Trash2, RefreshCw, Utensils, ArrowLeft } from '@lucide/vue'
+import { Plus, Edit, Trash2, RefreshCw, Utensils, ArrowLeft, Camera } from '@lucide/vue'
 import { useMerchantsStore, type Menu } from '~/stores/merchants'
 
 definePageMeta({
@@ -41,10 +41,15 @@ const fetchProfile = async () => {
       storeForm.value.is_open = profile.is_open
       storeForm.value.auto_confirm = profile.auto_confirm
       storeForm.value.max_active_orders = profile.max_active_orders
-      await merchantsStore.fetchMerchantMenu()
+      try {
+        await merchantsStore.fetchMerchantMenu()
+      } catch (e) {
+        console.warn('[Catalog] fetchMerchantMenu failed non-fatal:', e)
+      }
     }
-  } catch {
-    error('Gagal mengambil data toko.')
+  } catch (e) {
+    console.warn('[Catalog] fetchMerchantProfile failed — show error toast not 500 page:', e)
+    try { error('Gagal mengambil data toko. Silakan tarik untuk refresh.') } catch {}
   } finally {
     checkLoading.value = false
   }

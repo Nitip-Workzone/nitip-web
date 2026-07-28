@@ -30,13 +30,5 @@ export const useToastStore = defineStore('toast', {
     },
 })
 
-// Composable shorthand
-export const useToast = () => {
-    const store = useToastStore()
-    return {
-        success: (msg: string) => store.add(msg, 'success'),
-        error: (msg: string) => store.add(msg, 'error'),
-        info: (msg: string) => store.add(msg, 'info'),
-        warning: (msg: string) => store.add(msg, 'warning'),
-    }
-}
+// Note: useToast() composable now lives in ~/composables/useToast.ts to avoid auto-import conflict
+// Keep this file as store only

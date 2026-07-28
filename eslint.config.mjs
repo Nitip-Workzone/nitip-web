@@ -5,7 +5,9 @@ export default withNuxt(
   {
     rules: {
       'vue/multi-word-component-names': 'off',
-      'nuxt/prefer-import-meta': 'error'
+      'nuxt/prefer-import-meta': 'error',
+      'no-empty': 'off',
+      '@typescript-eslint/no-empty-function': 'off'
     }
   }
 )

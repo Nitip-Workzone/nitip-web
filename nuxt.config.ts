@@ -36,20 +36,27 @@ export default defineNuxtConfig({
       ]
     }
   },
-  // PWA DIMATIKAN sementara 2026-07-28 agar web selalu fresh, tidak cache 500 error page
-  // Tampilkan 500 "Terjadi Gangguan Pada Server" di WebView prod karena SW cache error.html saat env kosong
-  // Setelah web stabil, bisa aktifkan lagi dengan uncomment module '@vite-pwa/nuxt' di atas dan blok pwa ini
-  // pwa: { ... } - disabled
-  pwa: {
-    disable: true,
-  },
   nitro: {
     devProxy: {
       '/api/v1': {
         target: 'https://api.nihtip.com/api/v1',
         changeOrigin: true,
       }
-    }
+    },
+    routeRules: {
+      // Jangan pernah cache halaman merchant di WebView / SW
+      '/merchant/**': {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      },
+      '/api/**': {
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      },
+    },
   },
   future: {
     compatibilityVersion: 4,

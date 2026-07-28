@@ -2,7 +2,7 @@
 import { ShieldCheck, Eye, RefreshCw, X, Check } from '@lucide/vue'
 import { useKycStore, type KycSubmission } from '~/stores/kyc'
 import { useUsersStore } from '~/stores/users'
-import { useToast } from '~/stores/toast'
+import { useToast } from '~/composables/useToast'
 
 definePageMeta({
   layout: 'admin',

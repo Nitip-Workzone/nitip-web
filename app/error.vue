@@ -63,13 +63,65 @@ const errorConfig = computed(() => {
 
 const IconComponent = computed(() => errorConfig.value.icon)
 
+const route = useRoute()
+const isMerchantWebView = computed(() => {
+  try {
+    if (typeof navigator === 'undefined') return false
+    return /NitipMerchant|NitipApp|wv|WebView/.test(navigator.userAgent) || route.path.startsWith('/merchant')
+  } catch { return false }
+})
+
 function handleRefresh() {
+  // Harden 2026-07-28: jika di WebView merchant, force clear SW + localStorage + cache agar tidak loop 500
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.clear()
+      sessionStorage.clear()
+      if ('caches' in window) {
+        caches.keys().then(names => names.forEach(n => caches.delete(n)))
+      }
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()))
+      }
+    }
+  } catch {}
   clearError({ redirect: '/' })
+  if (import.meta.client) {
+    setTimeout(() => window.location.reload(), 300)
+  }
 }
 
 function goHome() {
+  try {
+    if (isMerchantWebView.value && typeof window !== 'undefined') {
+      // Untuk merchant WebView, jangan redirect ke '/' (akan trigger PWA lagi)
+      // Trigger native logout via JS bridge agar Flutter logout dan clear session
+      const w = window as unknown as { NitipLogout?: { postMessage: (s: string) => void }, triggerNativeLogout?: (s: string) => void }
+      if (w.NitipLogout) w.NitipLogout.postMessage('error_page_go_home')
+      else if (w.triggerNativeLogout) w.triggerNativeLogout('error_page_go_home')
+    }
+  } catch {}
   clearError({ redirect: '/' })
 }
+
+onMounted(() => {
+  // Auto-log 500 di WebView untuk crash reporting
+  try {
+    if (statusCode.value >= 500) {
+      console.error('[Nuxt error.vue] 500 detected', props.error, 'isMerchantWebView:', isMerchantWebView.value, 'path:', route.path)
+      // Jika 500 di merchant route, coba auto-recover sekali dengan clear + reload (hindar loop)
+      if (isMerchantWebView.value) {
+        const key = 'nitip_error_recover_attempt'
+        const attempt = Number(sessionStorage.getItem(key) || '0')
+        if (attempt < 1) {
+          sessionStorage.setItem(key, String(attempt + 1))
+          console.warn('[Nuxt error.vue] Merchant WebView 500 auto-recover attempt')
+          setTimeout(() => handleRefresh(), 1500)
+        }
+      }
+    }
+  } catch {}
+})
 </script>
 
 <template>
@@ -116,7 +168,7 @@ function goHome() {
           @click="goHome"
         >
           <Home class="w-4 h-4" />
-          Kembali ke Beranda
+          {{ isMerchantWebView ? 'Keluar & Login Ulang' : 'Kembali ke Beranda' }}
         </button>
         <button
           v-if="statusCode >= 500"
@@ -126,6 +178,9 @@ function goHome() {
           <RefreshCw class="w-4 h-4" />
           Coba Lagi
         </button>
+      </div>
+      <div v-if="isMerchantWebView" class="text-[10px] text-muted-foreground/70 mt-2">
+        WebView merchant — cache dibersihkan otomatis saat error.
       </div>
 
       <!-- Nitip Branding -->

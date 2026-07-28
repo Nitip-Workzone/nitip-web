@@ -37,11 +37,17 @@ const fetchProfile = async () => {
     const profile = await merchantsStore.fetchMerchantProfile()
     if (profile) {
       hasMerchant.value = true
-      await merchantsStore.fetchMerchantMenu()
+      try {
+        await merchantsStore.fetchMerchantMenu()
+      } catch (e) {
+        // Menu fetch jangan bikin 500 halaman, cukup warning
+        console.warn('[MerchantMenu] fetchMerchantMenu failed (non-fatal):', e)
+      }
     } else {
       hasMerchant.value = false
     }
-  } catch {
+  } catch (e) {
+    console.warn('[MerchantMenu] fetchMerchantProfile failed — show registration form instead of 500:', e)
     hasMerchant.value = false
   } finally {
     checkLoading.value = false

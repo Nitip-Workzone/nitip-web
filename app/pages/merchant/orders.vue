@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ShoppingBag, RefreshCw, Clock, Utensils, Play, PackageCheck } from '@lucide/vue'
 import { useMerchantsStore } from '~/stores/merchants'
-import { useToast } from '~/stores/toast'
+import { useToast } from '~/composables/useToast'
 import { useMerchantPoolStream } from '~/composables/useMerchantPoolStream'
 
 definePageMeta({
@@ -220,7 +220,6 @@ onUnmounted(() => {
           :key="order.id"
           class="bg-white border border-slate-100 rounded-3xl p-5 space-y-4 shadow-[0_4px_25px_rgb(0,0,0,0.015)]"
         >
-      >
         <!-- Header: Order ID & Time -->
         <div class="flex justify-between items-start">
           <div class="min-w-0">
