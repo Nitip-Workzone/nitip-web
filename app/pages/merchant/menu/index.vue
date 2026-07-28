@@ -91,7 +91,8 @@ const isWebView = ref(false)
 onMounted(() => {
   if (import.meta.client && typeof navigator !== 'undefined') {
     const ua = navigator.userAgent || ''
-    isWebView.value = ua.includes('wv') || (ua.includes('Android') && ua.includes('Version/'))
+    // Support: old wv detection + NitipMerchant/NitipApp custom UA from Flutter prod (2026-07-28 fix)
+    isWebView.value = /wv|NitipMerchant|NitipApp|WebView/i.test(ua) || (ua.includes('Android') && ua.includes('Version/'))
   }
   fetchProfile()
 })
