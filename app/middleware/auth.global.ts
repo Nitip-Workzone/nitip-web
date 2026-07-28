@@ -2,11 +2,35 @@ export default defineNuxtRouteMiddleware(async (to) => {
     try {
     const authStore = useAuthStore()
 
-    // === CRITICAL: Baca cookie langsung di middleware untuk mengatasi SSR hydration gap ===
-    // Flow token dari Flutter WebView: /merchant/login?token=xxx atau /merchant/menu?token=xxx&t=xxx
+    // === REFACTOR 2026-07-29: Cookie-only auth (like normal web browser) ===
+    // Web should read auth_token from cookie/localStorage, not from ?token= query
+    // Flutter WebView now sets cookie via WebViewCookieManager BEFORE loadRequest, no ?token= needed
+    // We keep ?token= as DEPRECATED fallback for old APKs during transition period (1-2 weeks)
     const tokenQuery = to.query.token as string
     const tParam = to.query.t as string
+
+    // Clean up ?t= param immediately (leftover from buggy build that caused 500 loop)
+    if (tParam) {
+        const cleanQuery = { ...to.query } as Record<string, unknown>
+        delete cleanQuery.t
+        delete cleanQuery.token // also clean token if present
+        if (to.path === '/merchant/menu' || to.path === '/merchant/menu/') {
+            // If there was token, handle it below, otherwise just clean t
+            if (!tokenQuery) {
+                return navigateTo({ path: '/merchant/menu', query: cleanQuery as Record<string, string> })
+            }
+        }
+        // Continue to token handling below if tokenQuery exists
+    }
+
+    // DEPRECATED: Token via query param - will be removed in Phase 3
+    // New flow: Flutter sets cookie via CookieManager, web reads via useCookie (below)
+    // This block is kept for backward compat with old APKs
     if (tokenQuery) {
+        // In prod, this should not happen anymore after Flutter cookie-only update
+        if (import.meta.client) {
+            console.warn('[Auth Middleware] DEPRECATED: ?token= query used, should use cookie only')
+        }
         try {
         const tokenCookie = useCookie('auth_token', {
             path: '/',
@@ -21,11 +45,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
         
         try {
             await authStore.fetchProfile(true)
-            // Remove token and t from query parameters for clean URL and route to merchant menu directly
             const cleanQuery = { ...to.query } as Record<string, unknown>
             delete cleanQuery.token
             delete cleanQuery.t
-            // If already at /merchant/menu, just remove query (don't redirect loop)
             if (to.path === '/merchant/menu' || to.path === '/merchant/menu/') {
                 if (Object.keys(cleanQuery).length === 0) {
                     return navigateTo({ path: '/merchant/menu' })
@@ -34,17 +56,13 @@ export default defineNuxtRouteMiddleware(async (to) => {
             }
             return navigateTo({ path: '/merchant/menu', query: cleanQuery as Record<string, string> })
         } catch {
-            // Token invalid/expired from Flutter - don't redirect to '/' which could 500 if root also has .at() issue
-            // Clear token and go to merchant login
             try {
             authStore.token = null
             const tokenCookie = useCookie('auth_token')
             tokenCookie.value = null
             } catch {}
-            // If token came from merchant flow, go back to merchant login, not home
             const wasMerchantRoute = to.path.startsWith('/merchant')
             if (wasMerchantRoute || to.path === '/') {
-                // Trigger native logout for Flutter WebView to clear SecureStorage
                 try {
                     if (typeof window !== 'undefined') {
                         const win = window as unknown as { NitipLogout?: { postMessage: (s: string) => void }, triggerNativeLogout?: (s: string) => void }
@@ -52,18 +70,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
                         else if (win.triggerNativeLogout) win.triggerNativeLogout('token_invalid_middleware')
                     }
                 } catch {}
-                // Don't redirect to '/' - that caused 500 loop in diagnostics
                 return navigateTo('/merchant/login')
             }
             return navigateTo('/')
-        }
-    }
-    // Also handle ?t= param without token (leftover from previous buggy build) - just clean it
-    if (tParam && !tokenQuery) {
-        const cleanQuery = { ...to.query } as Record<string, unknown>
-        delete cleanQuery.t
-        if (to.path === '/merchant/menu' || to.path === '/merchant/menu/') {
-            return navigateTo({ path: '/merchant/menu', query: cleanQuery as Record<string, string> })
         }
     }
 
@@ -96,9 +105,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
     }
 
     // Define public routes (including map pages and welcome-simple test page for WebView 500 isolation)
-    const publicRoutes = ['/', '/login', '/register', '/merchant/login', '/merchant/welcome-simple']
+    const publicRoutes = ['/', '/login', '/register', '/merchant/login', '/merchant/welcome-simple', '/merchant/welcome-simple/']
     const isMapRoute = to.path.startsWith('/map')
-    const isPublic = publicRoutes.some(path => to.path === path) || isMapRoute || to.path === '/merchant/welcome-simple'
+    const isWelcomeSimple = to.path === '/merchant/welcome-simple' || to.path === '/merchant/welcome-simple/' || to.path.startsWith('/merchant/welcome-simple')
+    const isPublic = publicRoutes.some(path => to.path === path) || isMapRoute || isWelcomeSimple
 
     // Route categories
     const isAdminRoute = to.path.startsWith('/admin')

@@ -1,5 +1,8 @@
 /**
  * useMerchantPoolStream — lightweight SSE for merchant order pool
+ * REFACTOR 2026-07-29: Cookie-only auth, no ?token= in URL
+ * - Uses fetch + ReadableStream with Authorization header (modern)
+ * - Fallback to EventSource with cookie (old WebView)
  * Best practice anti-beban:
  * - 1 EventSource only, auto close when tab hidden (visibilitychange)
  * - Exponential backoff + jitter max 30s (no spam reconnect)
@@ -42,9 +45,9 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
   let attempt = 0
   const isLive = ref(false)
 
-  // Reuse single AudioContext for beep (memory + autoplay friendly)
   let audioCtx: AudioContext | null = null
   const getAudio = (): AudioContext | null => {
+    if (typeof window === 'undefined') return null
     if (audioCtx) return audioCtx
     try {
       const win = window as unknown as AudioContextWindow
@@ -61,11 +64,8 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
     try {
       const ctx = getAudio()
       if (!ctx) return
-      // Resume if suspended (browser autoplay policy)
       if (ctx.state === 'suspended') {
-        void ctx.resume().catch(() => {
-          // ignore resume error
-        })
+        void ctx.resume().catch(() => {})
       }
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
@@ -76,32 +76,24 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
       gain.gain.setValueAtTime(0.08, ctx.currentTime)
       osc.start()
       osc.stop(ctx.currentTime + 0.15)
-    } catch {
-      // silent - beep is best effort
-    }
+    } catch {}
   }
 
   const parseEvent = (e: MessageEvent): MerchantPoolEvent | null => {
     try {
-      const parsed = JSON.parse(e.data) as MerchantPoolEvent
-      return parsed
+      const data = JSON.parse(e.data)
+      return data as MerchantPoolEvent
     } catch {
       return null
     }
   }
 
-  const connect = () => {
-    // Don't connect if tab hidden or no token
+  const connect = async () => {
     if (typeof document !== 'undefined' && document.hidden) return
     if (!authStore.token) return
 
-    // Close old
     if (es) {
-      try {
-        es.close()
-      } catch {
-        // ignore close error
-      }
+      try { es.close() } catch {}
       es = null
     }
     if (reconnectTimer) {
@@ -109,8 +101,66 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
       reconnectTimer = null
     }
 
-    const url = `${baseURL}/orders/merchant/stream?token=${encodeURIComponent(authStore.token)}`
+    const url = `${baseURL}/orders/merchant/stream`
 
+    // Try fetch stream first (modern) with Authorization header
+    try {
+      if (typeof fetch !== 'undefined' && authStore.token) {
+        const controller = new AbortController()
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${authStore.token}`,
+            'Accept': 'text/event-stream',
+          },
+          signal: controller.signal,
+        })
+        if (response.ok && response.body) {
+          isLive.value = true
+          attempt = 0
+          opts.onConnected?.()
+          const reader = response.body.getReader()
+          const decoder = new TextDecoder()
+          let buffer = ''
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+            let idx: number
+            while ((idx = buffer.indexOf('\n\n')) !== -1) {
+              const frame = buffer.substring(0, idx)
+              buffer = buffer.substring(idx + 2)
+              let dataStr = ''
+              for (const line of frame.split('\n')) {
+                const trimmed = line.trim()
+                if (!trimmed) continue
+                if (trimmed.startsWith(':')) continue
+                if (trimmed.startsWith('data:')) dataStr += trimmed.substring(5).trim()
+              }
+              if (!dataStr) continue
+              try {
+                const jsonData = JSON.parse(dataStr) as MerchantPoolEvent
+                if (jsonData.type === 'heartbeat') continue
+                if (jsonData.type === 'order_created' || jsonData.type === 'order_ready') {
+                  beep()
+                  opts.onOrderCreated?.(jsonData)
+                } else if (jsonData.type === 'order_claimed' || jsonData.type === 'order_cancelled' || jsonData.type === 'order_expired' || jsonData.type === 'order_completed') {
+                  opts.onOrderRemoved?.(jsonData)
+                } else if (jsonData.type === 'connected') {
+                  opts.onConnected?.()
+                }
+              } catch {}
+            }
+          }
+          // Stream ended
+          isLive.value = false
+          throw new Error('fetch stream ended')
+        }
+      }
+    } catch {
+      // Fetch failed, will fallback to EventSource below
+    }
+
+    // Fallback to EventSource with cookie auth (no token in URL)
     try {
       es = new EventSource(url)
 
@@ -122,14 +172,9 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
 
       es.onerror = () => {
         isLive.value = false
-        try {
-          es?.close()
-        } catch {
-          // ignore close error
-        }
+        try { es?.close() } catch {}
         es = null
         opts.onError?.()
-        // Exponential backoff with jitter
         const jitter = Math.random() * 500
         const backoff = Math.min(1000 * Math.pow(2, attempt) + jitter, 30000)
         attempt += 1
@@ -141,23 +186,15 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
       const handleMessage = (e: MessageEvent) => {
         const ev = parseEvent(e)
         if (!ev) return
-        // Ignore heartbeat/connected for business logic
         if (ev.type === 'heartbeat' || ev.type === 'connected') return
-
         if (ev.type === 'order_created' || ev.type === 'order_ready') {
           beep()
           opts.onOrderCreated?.(ev)
-        } else if (
-          ev.type === 'order_claimed' ||
-          ev.type === 'order_cancelled' ||
-          ev.type === 'order_expired' ||
-          ev.type === 'order_completed'
-        ) {
+        } else if (ev.type === 'order_claimed' || ev.type === 'order_cancelled' || ev.type === 'order_expired' || ev.type === 'order_completed') {
           opts.onOrderRemoved?.(ev)
         }
       }
 
-      // Listen both generic message and typed events (our backend writes event: <type> + data: JSON)
       type SSEHandler = (ev: Event) => void
       es.onmessage = handleMessage
       es.addEventListener('order_created', handleMessage as unknown as SSEHandler)
@@ -180,12 +217,12 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
       reconnectTimer = null
     }
     if (es) {
-      try {
-        es.close()
-      } catch {
-        // ignore
-      }
+      try { es.close() } catch {}
       es = null
+    }
+    if (audioCtx) {
+      try { audioCtx.close() } catch {}
+      audioCtx = null
     }
     isLive.value = false
   }
@@ -193,42 +230,26 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
   const handleVisibility = () => {
     if (typeof document === 'undefined') return
     if (document.hidden) {
-      // Pause SSE when tab not visible - save battery & CPU
       if (es) {
-        try {
-          es.close()
-        } catch {
-          // ignore
-        }
+        try { es.close() } catch {}
         es = null
       }
       isLive.value = false
     } else {
-      // Resume when tab visible again
       connect()
     }
   }
 
-  // Auto bind visibility if in client
   if (import.meta.client) {
     onMounted(() => {
       document.addEventListener('visibilitychange', handleVisibility)
+      connect()
     })
     onUnmounted(() => {
       document.removeEventListener('visibilitychange', handleVisibility)
       disconnect()
-      if (audioCtx) {
-        try {
-          void audioCtx.close().catch(() => {
-            // ignore
-          })
-        } catch {
-          // ignore
-        }
-        audioCtx = null
-      }
     })
   }
 
-  return { connect, disconnect, isLive, beep }
+  return { connect, disconnect, isLive }
 }

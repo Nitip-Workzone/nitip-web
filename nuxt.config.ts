@@ -34,18 +34,13 @@ export default defineNuxtConfig({
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap' }
       ],
-      // Early polyfill for old WebView (Chrome <92) before any Nuxt bundle - fixes w.matched.at is not a function in vue-router
-      // Fixes #entry import map not supported in WebView (Chrome 120 WebView still needs shim for #entry)
-      // Missing catch error from map pages also fixed by ensuring clean map files
+      // Early polyfill for old WebView Chrome <92 + fix for #entry import map in WebView
+      // Don't load es-module-shims from CDN - HUAWEI adblock blocks ga.jspm.io causing ERR_FAILED + fonts fail
+      // Instead we rely on vite target es2019 + fix-array-at plugin + payloadExtraction false to not generate #entry
       script: [
         {
           innerHTML: `if(!Array.prototype.at){Array.prototype.at=function(n){var o=Object(this),l=o.length>>>0,k=Math.trunc(n)||0;if(k<0)k+=l;if(k<0||k>=l)return;return o[k]}}if(!String.prototype.at){String.prototype.at=function(n){var s=String(this),l=s.length,k=Math.trunc(n)||0;if(k<0)k+=l;if(k<0||k>=l)return '';return s[k]||''}}`,
           type: 'text/javascript',
-        },
-        {
-          // Fix #entry import map in WebView - es-module-shims - must be loaded before Nuxt bundle
-          src: 'https://ga.jspm.io/npm:es-module-shims@1.8.2/dist/es-module-shims.js',
-          async: false,
         },
       ],
     }
