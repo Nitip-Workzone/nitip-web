@@ -27,6 +27,26 @@ onMounted(() => {
   // Hanya jalankan di client-side
   if (!import.meta.client) return
 
+  // CLEANUP: Force unregister semua Service Worker lama yang mungkin cache 500 error page (2026-07-28)
+  // PWA dimatikan, jadi semua SW harus dihapus agar web selalu fresh
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      for (const reg of regs) {
+        reg.unregister().then((ok) => {
+          console.log('[PWA] Force unregistered old SW:', reg.scope, ok)
+        })
+      }
+    })
+    // Also clear caches API
+    if ('caches' in window) {
+      caches.keys().then((names) => {
+        for (const name of names) {
+          caches.delete(name).then(() => console.log('[PWA] Cache deleted:', name))
+        }
+      })
+    }
+  }
+
   // Jangan inisialisasi PWA logic sama sekali jika di map route atau webview
   if (route.path.startsWith('/map')) {
     console.log('[PWA] Skipped on map route')

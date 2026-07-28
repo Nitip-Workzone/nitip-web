@@ -7,7 +7,10 @@ export default defineNuxtConfig({
     '@pinia/nuxt',
     '@vueuse/nuxt',
     '@nuxt/eslint',
-    '@vite-pwa/nuxt'
+    // PWA dimatikan sementara (2026-07-28) agar web selalu fresh, tidak cache 500 error page di WebView prod
+    // Alasan: Service Worker pernah cache error 500 saat NUXT_PUBLIC_NITIP_API_KEY kosong, WebView mobile tidak bisa update
+    // Untuk aktifkan lagi, ganti jadi '@vite-pwa/nuxt' dan uncomment blok pwa di bawah
+    // '@vite-pwa/nuxt'
   ],
   runtimeConfig: {
     public: {
@@ -33,42 +36,12 @@ export default defineNuxtConfig({
       ]
     }
   },
+  // PWA DIMATIKAN sementara 2026-07-28 agar web selalu fresh, tidak cache 500 error page
+  // Tampilkan 500 "Terjadi Gangguan Pada Server" di WebView prod karena SW cache error.html saat env kosong
+  // Setelah web stabil, bisa aktifkan lagi dengan uncomment module '@vite-pwa/nuxt' di atas dan blok pwa ini
+  // pwa: { ... } - disabled
   pwa: {
-    registerType: 'prompt',
-    manifest: {
-      name: 'Nihtip - Kirim & Titip Barang',
-      short_name: 'Nihtip',
-      description: 'Kirim & Titip barang lebih mudah dengan Nihtip',
-      theme_color: '#0062cc',
-      background_color: '#ffffff',
-      display: 'standalone',
-      icons: [
-        {
-          src: '/nitip-192.png',
-          sizes: '192x192',
-          type: 'image/png',
-        },
-        {
-          src: '/nitip-512.png',
-          sizes: '512x512',
-          type: 'image/png',
-        },
-      ],
-    },
-    workbox: {
-      // REMOVED: navigateFallback: '/' — Ini menyebabkan SW mengintervensi semua
-      // navigasi dan mengembalikan cache '/' untuk rute yang belum dicache,
-      // sehingga route baru (misal /merchant/menu) tampil 404 di Android WebView.
-      navigateFallbackDenylist: [/^\/map/],
-      globPatterns: ['**/*.{js,css,html,svg,ico}'],
-      maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MiB
-    },
-    client: {
-      installPrompt: true,
-    },
-    devOptions: {
-      enabled: false,
-    },
+    disable: true,
   },
   nitro: {
     devProxy: {
