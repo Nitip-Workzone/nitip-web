@@ -13,7 +13,7 @@ export interface MerchantPoolEvent {
   order_id?: string
   ts: number
   cell_key?: string
-  data?: any
+  data?: Record<string, unknown>
 }
 
 interface UseMerchantPoolStreamOpts {
@@ -21,6 +21,11 @@ interface UseMerchantPoolStreamOpts {
   onOrderRemoved?: (ev: MerchantPoolEvent) => void
   onConnected?: () => void
   onError?: () => void
+}
+
+type AudioContextWindow = Window & {
+  AudioContext: typeof AudioContext
+  webkitAudioContext: typeof AudioContext
 }
 
 export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
@@ -42,7 +47,8 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
   const getAudio = (): AudioContext | null => {
     if (audioCtx) return audioCtx
     try {
-      const AC = (window as any).AudioContext || (window as any).webkitAudioContext
+      const win = window as unknown as AudioContextWindow
+      const AC = win.AudioContext || win.webkitAudioContext
       if (!AC) return null
       audioCtx = new AC()
       return audioCtx
@@ -56,7 +62,11 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
       const ctx = getAudio()
       if (!ctx) return
       // Resume if suspended (browser autoplay policy)
-      if (ctx.state === 'suspended') ctx.resume().catch(() => {})
+      if (ctx.state === 'suspended') {
+        void ctx.resume().catch(() => {
+          // ignore resume error
+        })
+      }
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.connect(gain)
@@ -66,8 +76,8 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
       gain.gain.setValueAtTime(0.08, ctx.currentTime)
       osc.start()
       osc.stop(ctx.currentTime + 0.15)
-    } catch (e) {
-      // silent
+    } catch {
+      // silent - beep is best effort
     }
   }
 
@@ -87,7 +97,11 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
 
     // Close old
     if (es) {
-      try { es.close() } catch {}
+      try {
+        es.close()
+      } catch {
+        // ignore close error
+      }
       es = null
     }
     if (reconnectTimer) {
@@ -108,7 +122,11 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
 
       es.onerror = () => {
         isLive.value = false
-        try { es?.close() } catch {}
+        try {
+          es?.close()
+        } catch {
+          // ignore close error
+        }
         es = null
         opts.onError?.()
         // Exponential backoff with jitter
@@ -129,23 +147,28 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
         if (ev.type === 'order_created' || ev.type === 'order_ready') {
           beep()
           opts.onOrderCreated?.(ev)
-        } else if (ev.type === 'order_claimed' || ev.type === 'order_cancelled' || ev.type === 'order_expired' || ev.type === 'order_completed') {
+        } else if (
+          ev.type === 'order_claimed' ||
+          ev.type === 'order_cancelled' ||
+          ev.type === 'order_expired' ||
+          ev.type === 'order_completed'
+        ) {
           opts.onOrderRemoved?.(ev)
         }
       }
 
       // Listen both generic message and typed events (our backend writes event: <type> + data: JSON)
+      type SSEHandler = (ev: Event) => void
       es.onmessage = handleMessage
-      es.addEventListener('order_created', handleMessage as any)
-      es.addEventListener('order_ready', handleMessage as any)
-      es.addEventListener('order_claimed', handleMessage as any)
-      es.addEventListener('order_cancelled', handleMessage as any)
-      es.addEventListener('order_expired', handleMessage as any)
-      es.addEventListener('order_completed', handleMessage as any)
-
-    } catch (err) {
+      es.addEventListener('order_created', handleMessage as unknown as SSEHandler)
+      es.addEventListener('order_ready', handleMessage as unknown as SSEHandler)
+      es.addEventListener('order_claimed', handleMessage as unknown as SSEHandler)
+      es.addEventListener('order_cancelled', handleMessage as unknown as SSEHandler)
+      es.addEventListener('order_expired', handleMessage as unknown as SSEHandler)
+      es.addEventListener('order_completed', handleMessage as unknown as SSEHandler)
+    } catch {
       isLive.value = false
-      const backoff = Math.min(1000 * Math.pow(2, attempt) + Math.random()*500, 30000)
+      const backoff = Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 30000)
       attempt += 1
       reconnectTimer = setTimeout(connect, backoff)
     }
@@ -157,7 +180,11 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
       reconnectTimer = null
     }
     if (es) {
-      try { es.close() } catch {}
+      try {
+        es.close()
+      } catch {
+        // ignore
+      }
       es = null
     }
     isLive.value = false
@@ -168,7 +195,11 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
     if (document.hidden) {
       // Pause SSE when tab not visible - save battery & CPU
       if (es) {
-        try { es.close() } catch {}
+        try {
+          es.close()
+        } catch {
+          // ignore
+        }
         es = null
       }
       isLive.value = false
@@ -187,7 +218,13 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
       document.removeEventListener('visibilitychange', handleVisibility)
       disconnect()
       if (audioCtx) {
-        try { audioCtx.close() } catch {}
+        try {
+          void audioCtx.close().catch(() => {
+            // ignore
+          })
+        } catch {
+          // ignore
+        }
         audioCtx = null
       }
     })
