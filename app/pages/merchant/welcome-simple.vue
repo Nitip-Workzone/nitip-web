@@ -15,10 +15,10 @@ onMounted(() => {
     info.push(`UA: ${navigator.userAgent.substring(0, 80)}...`)
     const m = navigator.userAgent.match(/Chrome\/([\d.]+)/)
     info.push(`Chrome: ${m ? m[1] : 'unknown'}`)
-    info.push(`Array.at: ${typeof Array.prototype.at === 'function'}`)
+    info.push(`Array dot at: ${typeof Array.prototype.at === 'function'}`)
     info.push(`URL: ${window.location.href}`)
     info.push(`Has token query: ${window.location.search.includes('token')}`)
-    info.push(`Build: 2026-07-29 simple - If you see this, bundle OK (no matched.at, no #entry)`)
+    info.push(`Build: 2026-07-29 simple - bundle OK`)
     probeText.value = info.join('\n')
   } catch (e) {
     probeText.value = `Probe error: ${e}`

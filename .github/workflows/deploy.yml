@@ -52,18 +52,20 @@ jobs:
           echo "Total chunks:"
           ls .output/public/_nuxt/*.js 2>/dev/null | wc -l
           
-          echo "🔍 Critical check: matched.at count should be 0 (real HP WebView < Chrome 92 crash fix)"
-          MATCHED_COUNT=$(grep -R "matched.at" .output/public/_nuxt/*.js 2>/dev/null | wc -l)
-          echo "matched.at count: $MATCHED_COUNT"
+          echo "🔍 Critical check: vue-router matched.at should be 0 (real HP WebView < Chrome 92 crash fix)"
+          echo "Checking for pattern '.matched.at(' which is vue-router specific, not Array.prototype.at"
+          MATCHED_COUNT=$(grep -R "\.matched\.at(" .output/public/_nuxt/*.js 2>/dev/null | wc -l)
+          echo "vue-router matched.at count: $MATCHED_COUNT (should be 0)"
           if [ "$MATCHED_COUNT" -gt 0 ]; then
-            echo "❌ FAILED: matched.at still exists in bundle - this will cause 500 on old Android WebView (real HP)"
-            echo "Files containing matched.at:"
-            grep -R "matched.at" .output/public/_nuxt/*.js 2>/dev/null | head -n 5
+            echo "❌ FAILED: vue-router matched.at( still exists - this will cause 500 on old Android WebView (real HP)"
+            echo "Files containing .matched.at(:"
+            grep -R "\.matched\.at(" .output/public/_nuxt/*.js 2>/dev/null | head -n 5
             echo "Build config nuxt.config.ts vite.build.target should be es2019 and plugin fix-array-at must handle vue-router"
             exit 1
           else
-            echo "✅ PASS: 0 matched.at - WebView old compatible"
+            echo "✅ PASS: 0 vue-router matched.at( - WebView old compatible"
           fi
+          echo "Note: Array.prototype.at is allowed (polyfill), only .matched.at( is forbidden"
           
           echo "🔍 Check polyfill exists (Array.prototype.at inline)"
           POLYFILL=$(grep -R "Array.prototype.at" .output/public/_nuxt/*.js .output/public/index.html 2>/dev/null | wc -l)
