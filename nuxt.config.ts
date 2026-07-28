@@ -46,11 +46,36 @@ export default defineNuxtConfig({
   },
   vite: {
     build: {
-      // Fix 2026-07-28: downgrade from es2022 to es2018 to avoid Array.at() which breaks old Android System WebView (< Chrome 92)
+      // Fix 2026-07-28: downgrade from es2022 to es2019 to avoid Array.at() which breaks old Android System WebView (< Chrome 92)
       // Real HP error: "w.matched.at is not a function" -> only on real device, not emulator (emulator Chrome 120+ supports at)
-      // Using es2018 forces vue-router to transpile at() to [] access
-      target: 'es2018',
+      target: 'es2019',
     },
+    optimizeDeps: {
+      include: ['vue-router'],
+    },
+    plugins: [
+      // Rewrite matched.at(-1) -> matched[matched.length-1] for old WebView compatibility
+      // Must include node_modules/vue-router because matched.at comes from there
+      {
+        name: 'fix-array-at',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        transform(code: string, id: string) {
+          if (!code.includes('.at(')) return
+          // Only care about matched.at pattern
+          if (!code.includes('matched.at')) return
+          let newCode = code
+          newCode = newCode.replace(/(\w+)\.matched\.at\((-?\d+)\)/g, (_m, obj, idx) => {
+            const i = parseInt(idx, 10)
+            if (i === -1) return `${obj}.matched[${obj}.matched.length - 1]`
+            if (i < 0) return `${obj}.matched[${obj}.matched.length + ${i}]`
+            return `${obj}.matched[${i}]`
+          })
+          // Also handle generic route.matched.at and w.matched.at patterns
+          newCode = newCode.replace(/(\b\w+\.matched)\.at\(-1\)/g, '$1[$1.length - 1]')
+          if (newCode !== code) return { code: newCode, map: null }
+        },
+      },
+    ],
   },
   nitro: {
     devProxy: {
