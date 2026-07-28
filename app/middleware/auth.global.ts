@@ -104,10 +104,15 @@ export default defineNuxtRouteMiddleware(async (to) => {
         }
     }
 
-    // Define public routes (including map pages and welcome-simple test page for WebView 500 isolation)
-    const publicRoutes = ['/', '/login', '/register', '/merchant/login', '/merchant/welcome-simple', '/merchant/welcome-simple/']
+    // Define public routes (including map pages and welcome-simple test pages for WebView 500 isolation)
+    const publicRoutes = [
+      '/', '/login', '/register', 
+      '/merchant/login', 
+      '/merchant/welcome-simple', '/merchant/welcome-simple/',
+      '/welcome-simple', '/welcome-simple/'
+    ]
     const isMapRoute = to.path.startsWith('/map')
-    const isWelcomeSimple = to.path === '/merchant/welcome-simple' || to.path === '/merchant/welcome-simple/' || to.path.startsWith('/merchant/welcome-simple')
+    const isWelcomeSimple = to.path === '/merchant/welcome-simple' || to.path === '/merchant/welcome-simple/' || to.path.startsWith('/merchant/welcome-simple') || to.path === '/welcome-simple' || to.path === '/welcome-simple/' || to.path.startsWith('/welcome-simple')
     const isPublic = publicRoutes.some(path => to.path === path) || isMapRoute || isWelcomeSimple
 
     // Route categories
