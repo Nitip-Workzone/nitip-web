@@ -35,17 +35,17 @@ export default defineNuxtConfig({
         { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap' }
       ],
       // Early polyfill for old WebView (Chrome <92) before any Nuxt bundle - fixes w.matched.at is not a function in vue-router
-      // Also fixes #entry import map not supported in WebView
-      // Real HP Chrome 120 should support at, but WebView without ES module shims fails #entry
+      // Fixes #entry import map not supported in WebView (Chrome 120 WebView still needs shim for #entry)
+      // Missing catch error from map pages also fixed by ensuring clean map files
       script: [
         {
           innerHTML: `if(!Array.prototype.at){Array.prototype.at=function(n){var o=Object(this),l=o.length>>>0,k=Math.trunc(n)||0;if(k<0)k+=l;if(k<0||k>=l)return;return o[k]}}if(!String.prototype.at){String.prototype.at=function(n){var s=String(this),l=s.length,k=Math.trunc(n)||0;if(k<0)k+=l;if(k<0||k>=l)return '';return s[k]||''}}`,
           type: 'text/javascript',
         },
         {
-          // Fix #entry import map in WebView - es-module-shims for browsers without import maps
-          src: 'https://ga.jspm.io/npm:es-module-shims@1.8.0/dist/es-module-shims.js',
-          async: true,
+          // Fix #entry import map in WebView - es-module-shims - must be loaded before Nuxt bundle
+          src: 'https://ga.jspm.io/npm:es-module-shims@1.8.2/dist/es-module-shims.js',
+          async: false,
         },
       ],
     }
@@ -64,8 +64,7 @@ export default defineNuxtConfig({
       // Must include node_modules/vue-router because matched.at comes from there
       {
         name: 'fix-array-at',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        transform(code: string, id: string) {
+        transform(code: string, _id: string) {
           if (!code.includes('.at(')) return
           // Only care about matched.at pattern
           if (!code.includes('matched.at')) return

@@ -8,7 +8,6 @@ if (import.meta.client) {
   // Array.prototype.at
   if (!Array.prototype.at) {
     Object.defineProperty(Array.prototype, 'at', {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       value: function (n: number) {
         const idx = Math.trunc(n) || 0
         if (idx < 0) return this[this.length + idx]

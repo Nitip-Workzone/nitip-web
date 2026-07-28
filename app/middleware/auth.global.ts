@@ -219,7 +219,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
             return navigateTo('/dashboard')
         }
     }
-    } catch (fatal: unknown) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_e: unknown) {
         // ——— GLOBAL GUARD: Jangan pernah throw 500 di middleware ———
         // Kalau ada bug di middleware, itu yang bikin prod return halaman error 500
         // di WebView build-apk-wa. Di sini kita biarkan page render, bukan throw ke error.vue
