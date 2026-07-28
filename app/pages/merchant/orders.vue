@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ShoppingBag, RefreshCw, Clock, Utensils, Play, PackageCheck } from '@lucide/vue'
 import { useMerchantsStore } from '~/stores/merchants'
+import { useToast } from '~/stores/toast'
 import { useMerchantPoolStream } from '~/composables/useMerchantPoolStream'
 
 definePageMeta({
@@ -17,6 +18,20 @@ const actionLoadingId = ref('')
 const lastUpdate = ref<string>('')
 
 interface MerchantOrder { id: string; status: string; created_at: string; item_details?: string; estimated_cost?: number; [key: string]: unknown }
+
+const formatEstimatedCost = (val: unknown): string => {
+  const num = Number(val ?? 0)
+  if (Number.isNaN(num)) return '0'
+  return num.toLocaleString('id-ID')
+}
+const formatShortId = (id: unknown): string => String(id ?? '').slice(0, 8) || '-'
+const formatTime = (dateStr: string): string => {
+  try {
+    return new Date(dateStr).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return '--:--'
+  }
+}
 
 const fetchOrders = async (showToastOnNew = false) => {
   try {
@@ -50,6 +65,12 @@ const processingOrders = computed<MerchantOrder[]>(() =>
 const completedOrders = computed<MerchantOrder[]>(() => 
   (merchantsStore.merchantOrders as MerchantOrder[]).filter(o => o.status === 'completed')
 )
+
+const displayedOrders = computed<MerchantOrder[]>(() => {
+  if (activeTab.value === 'pending') return pendingOrders.value
+  if (activeTab.value === 'processing') return processingOrders.value
+  return completedOrders.value
+})
 
 const handleAccept = async (orderId: string) => {
   actionLoadingId.value = orderId
@@ -185,34 +206,28 @@ onUnmounted(() => {
     <div class="space-y-3">
       <!-- Empty State -->
       <div 
-        v-if="
-          (activeTab === 'pending' && pendingOrders.length === 0) ||
-          (activeTab === 'processing' && processingOrders.length === 0) ||
-          (activeTab === 'completed' && completedOrders.length === 0)
-        " 
+        v-if="displayedOrders.length === 0"
         class="p-12 text-center bg-white border border-slate-100 rounded-3xl text-slate-400"
       >
         <ShoppingBag class="w-10 h-10 mx-auto mb-3 opacity-30" />
         <p class="text-xs">Tidak ada pesanan di tab ini.</p>
       </div>
 
-      <!-- Orders loop -->
-      <div 
-        v-for="order in (
-          activeTab === 'pending' ? pendingOrders : 
-          activeTab === 'processing' ? processingOrders : completedOrders
-        )"
-        v-else 
-        :key="order.id"
-        class="bg-white border border-slate-100 rounded-3xl p-5 space-y-4 shadow-[0_4px_25px_rgb(0,0,0,0.015)]"
+      <!-- Orders loop - fixed: separate template for v-else to avoid v-for+v-else illegal combo -->
+      <template v-else>
+        <div
+          v-for="order in displayedOrders"
+          :key="order.id"
+          class="bg-white border border-slate-100 rounded-3xl p-5 space-y-4 shadow-[0_4px_25px_rgb(0,0,0,0.015)]"
+        >
       >
         <!-- Header: Order ID & Time -->
         <div class="flex justify-between items-start">
           <div class="min-w-0">
-            <p class="text-[10px] font-black text-slate-800 tracking-wide uppercase">ID: {{ order.id.slice(0,8) }}...</p>
+            <p class="text-[10px] font-black text-slate-800 tracking-wide uppercase">ID: {{ formatShortId(order.id) }}...</p>
             <div class="flex items-center gap-1 mt-0.5 text-[9px] text-slate-400 font-semibold">
               <Clock class="w-3 h-3" />
-              <span>{{ new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }} WIB</span>
+              <span>{{ formatTime(order.created_at) }} WIB</span>
             </div>
           </div>
           <!-- Status Tag -->
@@ -249,7 +264,7 @@ onUnmounted(() => {
           <div class="min-w-0 flex-1">
             <p class="text-xs font-bold text-slate-800 leading-relaxed">{{ order.item_details || '' }}</p>
             <p class="text-[10px] text-slate-400 mt-1 font-semibold">
-              Estimasi: <span class="text-slate-800 font-extrabold">Rp {{ (order.estimated_cost as number)?.toLocaleString('id-ID') || 0 }}</span>
+              Estimasi: <span class="text-slate-800 font-extrabold">Rp {{ formatEstimatedCost(order.estimated_cost) }}</span>
             </p>
           </div>
         </div>
@@ -290,7 +305,8 @@ onUnmounted(() => {
             Tandai Siap Diambil
           </button>
         </div>
-      </div>
+        </div>
+      </template>
     </div>
   </div>
 </template>
