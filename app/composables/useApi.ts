@@ -37,10 +37,14 @@ export const useApi = () => {
                 query: options.query,
                 headers,
                 onRequest({ request, options }) {
-                    console.log(`[API Request] ${options.method || 'GET'} ${request.toString()}`, 'Headers:', options.headers)
+                    const reqHeaders = options.headers || headers
+                    const payload = options.body ? JSON.stringify(options.body).substring(0, 1000) : 'empty'
+                    console.log(`[API Request] ${options.method || 'GET'} ${request.toString()}`, '\n  Headers:', JSON.stringify(reqHeaders, null, 2), '\n  Query:', options.query, '\n  Payload:', payload)
                 },
                 onResponse({ request, response }) {
-                    console.log(`[API Response] ${request.toString()} - Status: ${response.status}`)
+                    const respHeaders = response.headers ? Object.fromEntries(response.headers.entries()) : {}
+                    const bodyPreview = JSON.stringify(response._data || {}).substring(0, 2000)
+                    console.log(`[API Response] ${request.toString()} - Status: ${response.status}`, '\n  Resp Headers:', JSON.stringify(respHeaders, null, 2), '\n  Body:', bodyPreview)
                 },
                 async onResponseError({ request, response }) {
                     console.error(`[API Error] ${request.toString()} - Status: ${response.status}`, response._data)
