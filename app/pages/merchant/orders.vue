@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ShoppingBag, RefreshCw, Clock, Utensils, Play, PackageCheck } from '@lucide/vue'
 import { useMerchantsStore } from '~/stores/merchants'
+import { useMerchantPoolStream } from '~/composables/useMerchantPoolStream'
 
 definePageMeta({
   layout: 'user',
@@ -12,32 +13,19 @@ const { success, error } = useToast()
 const activeTab = ref<'pending' | 'processing' | 'completed'>('pending')
 const pollingTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const actionLoadingId = ref('')
+const lastUpdate = ref<string>('')
 
 interface MerchantOrder { id: string; status: string; created_at: string; item_details?: string; estimated_cost?: number; [key: string]: unknown }
 
-const fetchOrders = async () => {
+const fetchOrders = async (showToastOnNew = false) => {
   try {
     const prevPendingCount = pendingOrders.value.length
     await merchantsStore.fetchMerchantOrders()
+    lastUpdate.value = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     
-    // Alert if new order arrives
-    if (pendingOrders.value.length > prevPendingCount) {
+    // Alert only if explicitly requested (SSE already beeps)
+    if (showToastOnNew && pendingOrders.value.length > prevPendingCount) {
       success('Ada pesanan baru masuk!')
-      // Play a quick alert sound if supported
-      try {
-        const audioCtx = new (window.AudioContext || ((window as unknown) as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
-        const oscillator = audioCtx.createOscillator()
-        const gainNode = audioCtx.createGain()
-        oscillator.connect(gainNode)
-        gainNode.connect(audioCtx.destination)
-        oscillator.type = 'sine'
-        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime) // A5 note
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime)
-        oscillator.start()
-        oscillator.stop(audioCtx.currentTime + 0.15)
-      } catch (e: unknown) {
-        console.warn('AudioContext not supported or allowed yet', e)
-      }
     }
   } catch {
     error('Gagal mengambil daftar pesanan.')
@@ -88,23 +76,39 @@ const handleReady = async (orderId: string) => {
   }
 }
 
+// Realtime SSE (best practice: pause when hidden, backoff, fallback 30s)
+const { connect: connectStream, disconnect: disconnectStream, isLive } = useMerchantPoolStream({
+  onOrderCreated: () => {
+    fetchOrders(false)
+    success('Ada pesanan baru masuk!')
+  },
+  onOrderRemoved: () => {
+    fetchOrders(false)
+  },
+  onConnected: () => {
+    // On (re)connect, do a light refresh to stay in sync
+    fetchOrders(false)
+  },
+  onError: () => {
+    // Will auto-reconnect with backoff inside composable
+  }
+})
+
 onMounted(async () => {
   await merchantsStore.fetchMerchantProfile()
-  await fetchOrders()
-  // P2 max perf: polling 15s (was 10s) + visibility check to avoid hammer when tab hidden (prod 512M)
-  const startPolling = () => {
-    if (pollingTimer.value) clearInterval(pollingTimer.value)
-    pollingTimer.value = setInterval(() => {
-      if (document.hidden) return
-      fetchOrders()
-    }, 15000)
-  }
-  startPolling()
-  document.addEventListener('visibilitychange', startPolling)
+  await fetchOrders(false)
+  connectStream()
+  // Fallback polling only when SSE not live + tab visible + 30s (was 15s) — save battery & DB
+  pollingTimer.value = setInterval(() => {
+    if (isLive.value) return // SSE live, skip polling
+    if (document.hidden) return
+    fetchOrders(false)
+  }, 30000)
 })
 
 onUnmounted(() => {
   if (pollingTimer.value) clearInterval(pollingTimer.value)
+  disconnectStream()
 })
 </script>
 
@@ -112,14 +116,20 @@ onUnmounted(() => {
   <div class="px-4 pb-24 space-y-6">
     <!-- Header with Quick Refresh -->
     <div class="flex justify-between items-center pt-3">
-      <div>
-        <h2 class="text-lg font-black text-slate-900 tracking-tight">Order Masuk & Proses</h2>
-        <p class="text-[10px] text-muted-foreground">Proses antrean pesanan aktif toko Anda.</p>
+      <div class="min-w-0">
+        <div class="flex items-center gap-2">
+          <h2 class="text-lg font-black text-slate-900 tracking-tight">Order Masuk & Proses</h2>
+          <span
+            class="text-[8px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider border"
+            :class="isLive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'"
+          >{{ isLive ? 'Live' : 'Polling' }}</span>
+        </div>
+        <p class="text-[10px] text-muted-foreground">Proses antrean pesanan aktif toko Anda. <span v-if="lastUpdate" class="text-[9px]">Update: {{ lastUpdate }}</span></p>
       </div>
       <button 
         class="p-2 border border-slate-100 rounded-xl bg-white hover:bg-slate-50 transition-all text-slate-600 shadow-sm" 
         :disabled="merchantsStore.loading"
-        @click="fetchOrders"
+        @click="() => fetchOrders(true)"
       >
         <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': merchantsStore.loading }" />
       </button>
