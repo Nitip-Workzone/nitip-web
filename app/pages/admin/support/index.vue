@@ -8,6 +8,8 @@ const toastStore = useToastStore()
 const activeTab = ref<'queue' | 'my' | 'all'>('queue')
 const loading = ref(true)
 
+let queuePoll: ReturnType<typeof setInterval> | null = null
+
 onMounted(async () => {
   await Promise.all([
     supportStore.fetchQueue(),
@@ -16,10 +18,17 @@ onMounted(async () => {
   ])
   loading.value = false
 
-  setInterval(() => {
+  queuePoll = setInterval(() => {
     supportStore.fetchQueue()
     supportStore.fetchMyActiveCsTicket()
   }, 10000)
+})
+
+onUnmounted(() => {
+  if (queuePoll) {
+    clearInterval(queuePoll)
+    queuePoll = null
+  }
 })
 
 function getStatusLabel(s: string) {

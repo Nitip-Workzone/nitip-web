@@ -172,6 +172,13 @@ onMounted(async () => {
   // Initial reverse geocode
   await reverseGeocode(currentLat.value, currentLng.value)
 })
+
+onUnmounted(() => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+    debounceTimer = null
+  }
+})
 </script>
 
 <template>

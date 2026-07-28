@@ -5,7 +5,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
     // === CRITICAL: Baca cookie langsung di middleware untuk mengatasi SSR hydration gap ===
     const tokenQuery = to.query.token as string
     if (tokenQuery) {
-        console.log('[Auth Middleware] Found token query parameter, setting cookie & state')
         try {
         const tokenCookie = useCookie('auth_token', {
             path: '/',
@@ -14,20 +13,17 @@ export default defineNuxtRouteMiddleware(async (to) => {
         })
         tokenCookie.value = tokenQuery
         authStore.setToken(tokenQuery)
-        } catch (e) {
-            console.warn('[Auth Middleware] set cookie failed', e)
+        } catch {
             try { authStore.setToken(tokenQuery) } catch {}
         }
         
         try {
             await authStore.fetchProfile(true)
-            console.log('[Auth Middleware] Auto-login profile loaded:', authStore.user?.email)
             // Remove token from query parameters for clean URL and route to merchant menu directly
             const cleanQuery = { ...to.query }
             delete cleanQuery.token
             return navigateTo({ path: '/merchant/menu', query: cleanQuery })
-        } catch (e) {
-            console.error('[Auth Middleware] Auto-login profile fetch failed:', e)
+        } catch {
             try {
             authStore.token = null
             const tokenCookie = useCookie('auth_token')
@@ -40,15 +36,12 @@ export default defineNuxtRouteMiddleware(async (to) => {
     if (!authStore.token) {
         try {
         const tokenCookie = useCookie('auth_token')
-        console.log('[Auth Middleware] Reading auth_token cookie:', tokenCookie.value ? 'EXISTS' : 'EMPTY')
         if (tokenCookie.value) {
             authStore.token = tokenCookie.value
         }
-        } catch (e) {
-            console.warn('[Auth Middleware] reading cookie failed', e)
+        } catch {
+            // silent
         }
-    } else {
-        console.log('[Auth Middleware] authStore.token already exists.')
     }
 
     // Mobile WebView bridge helper: trigger native logout when session expired inside WebView
@@ -95,7 +88,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
                 try { triggerNativeLogoutIfInWebView('middleware_merchant_401') } catch {}
                 return navigateTo('/merchant/login')
             }
-            console.log('[Auth Middleware] Flutter WebView detected, allowing merchant route without auth (token will be injected via JS)')
+            // Flutter WebView: allow merchant route without auth — token will be injected via JS
         } else {
             try { triggerNativeLogoutIfInWebView('middleware_401') } catch {}
             return navigateTo('/login')
@@ -105,11 +98,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
     // Fetch profile if authenticated but user data not loaded
     if (authStore.isAuthenticated && !authStore.user) {
         try {
-            console.log('[Auth Middleware] Fetching profile...')
             await authStore.fetchProfile()
-            console.log('[Auth Middleware] Profile fetched successfully:', (authStore.user as unknown as { email?: string })?.email)
-        } catch (err) {
-            console.error('[Auth Middleware] fetchProfile failed:', err)
+        } catch {
             try {
             authStore.token = null
             const tokenCookie = useCookie('auth_token')
@@ -119,7 +109,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
                 try { triggerNativeLogoutIfInWebView('fetchProfile_failed_merchant') } catch {}
             }
             if (!isPublic) {
-                console.log('[Auth Middleware] Redirecting to login due to fetchProfile failure.')
                 // Dulu return '/', sekarang ke login mapping yang benar agar tidak loop
                 if (isMerchantRoute) return navigateTo('/merchant/login')
                 if (isAdminRoute) return navigateTo('/admin/login')
@@ -199,9 +188,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     } catch (fatal: unknown) {
         // ——— GLOBAL GUARD: Jangan pernah throw 500 di middleware ———
         // Kalau ada bug di middleware, itu yang bikin prod return halaman error 500
-        // di WebView build-apk-wa. Di sini kita log dan biarkan page render,
-        // bukan throw ke error.vue
-        console.error('[Auth Middleware] FATAL unexpected error (guarded, not 500):', fatal)
+        // di WebView build-apk-wa. Di sini kita biarkan page render, bukan throw ke error.vue
         // Jika masih ada token query, coba selamatkan sebagai login merchant
         try {
             const tq = to.query.token as string

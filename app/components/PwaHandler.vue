@@ -23,16 +23,14 @@ onMounted(() => {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then((regs) => {
       for (const reg of regs) {
-        reg.unregister().then((ok) => {
-          console.log('[PWA] Force unregistered old SW:', reg.scope, ok)
-        })
+        reg.unregister()
       }
     })
     // Also clear caches API
     if ('caches' in window) {
       caches.keys().then((names) => {
         for (const name of names) {
-          caches.delete(name).then(() => console.log('[PWA] Cache deleted:', name))
+          caches.delete(name)
         }
       })
     }
@@ -40,12 +38,10 @@ onMounted(() => {
 
   // Jangan inisialisasi PWA logic sama sekali jika di map route atau webview
   if (route.path.startsWith('/map')) {
-    console.log('[PWA] Skipped on map route')
     return
   }
   const ua = navigator.userAgent.toLowerCase()
   if (ua.includes('wv') || (ua.includes('android') && ua.includes('version/'))) {
-    console.log('[PWA] Skipped inside WebView')
     return
   }
 
@@ -60,7 +56,6 @@ onMounted(() => {
   if (dismissedTime) {
     const daysSinceDismissed = (Date.now() - parseInt(dismissedTime)) / (1000 * 60 * 60 * 24)
     if (daysSinceDismissed < 7) {
-      console.log('[PWA] Installation banner is in cooldown period.')
       return
     }
   }
@@ -70,7 +65,6 @@ onMounted(() => {
     e.preventDefault()
     deferredPrompt.value = e
     showInstallBanner.value = true
-    console.log('[PWA] beforeinstallprompt event captured.')
   })
 })
 
@@ -82,7 +76,6 @@ const installPwa = async () => {
   
   // Tunggu respon user
   const { outcome } = await deferredPrompt.value.userChoice
-  console.log(`[PWA] User choice outcome: ${outcome}`)
   
   if (outcome === 'accepted') {
     showInstallBanner.value = false

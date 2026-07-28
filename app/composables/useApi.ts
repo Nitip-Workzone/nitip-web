@@ -36,28 +36,16 @@ export const useApi = () => {
                 body: options.body,
                 query: options.query,
                 headers,
-                onRequest({ request, options }) {
-                    try {
-                    const reqHeaders = options.headers || headers
-                    const payload = options.body ? JSON.stringify(options.body).substring(0, 1000) : 'empty'
-                    console.log(`[API Request] ${options.method || 'GET'} ${request.toString()}`, '\n  Headers:', JSON.stringify(reqHeaders, null, 2), '\n  Query:', options.query, '\n  Payload:', payload)
-                    } catch {}
+                onRequest() {
+                    // verbose request logging removed for performance & security (2026-07-28 cleanup)
                 },
-                onResponse({ request, response }) {
-                    try {
-                    const respHeaders = response.headers ? Object.fromEntries(response.headers.entries()) : {}
-                    const bodyPreview = JSON.stringify(response._data || {}).substring(0, 2000)
-                    console.log(`[API Response] ${request.toString()} - Status: ${response.status}`, '\n  Resp Headers:', JSON.stringify(respHeaders, null, 2), '\n  Body:', bodyPreview)
-                    } catch {}
+                onResponse() {
+                    // verbose response logging removed (2026-07-28 cleanup)
                 },
                 async onResponseError({ request, response }) {
-                    try {
-                    console.error(`[API Error] ${request.toString()} - Status: ${response.status}`, response._data)
-                    } catch {}
                     const isLoginRequest = request.toString().includes('/auth/login')
 
                     if (response.status === 401) {
-                        try { console.error('[API Error] 401 Unauthorized detected. Logging out...') } catch {}
                         if (!isLoginRequest) {
                             try {
                             if (import.meta.client) {
