@@ -4,6 +4,7 @@ import { useMerchantsStore } from '~/stores/merchants'
 
 definePageMeta({
   layout: 'user',
+  ssr: false,
 })
 
 const merchantsStore = useMerchantsStore()

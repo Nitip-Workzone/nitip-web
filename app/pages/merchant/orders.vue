@@ -5,6 +5,7 @@ import { useMerchantPoolStream } from '~/composables/useMerchantPoolStream'
 
 definePageMeta({
   layout: 'user',
+  ssr: false,
 })
 
 const merchantsStore = useMerchantsStore()
@@ -95,8 +96,17 @@ const { connect: connectStream, disconnect: disconnectStream, isLive } = useMerc
 })
 
 onMounted(async () => {
-  await merchantsStore.fetchMerchantProfile()
-  await fetchOrders(false)
+  try {
+    await merchantsStore.fetchMerchantProfile()
+  } catch (err) {
+    console.warn('[Merchant Orders] fetchMerchantProfile failed (maybe token not ready yet in WebView):', err)
+    // Jangan throw, biarkan page tetap render, retry nanti via polling/SSE
+  }
+  try {
+    await fetchOrders(false)
+  } catch (err) {
+    console.warn('[Merchant Orders] fetchOrders failed:', err)
+  }
   connectStream()
   // Fallback polling only when SSE not live + tab visible + 30s (was 15s) — save battery & DB
   pollingTimer.value = setInterval(() => {

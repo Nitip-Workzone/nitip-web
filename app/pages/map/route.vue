@@ -5,6 +5,7 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({ ssr: false })
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 

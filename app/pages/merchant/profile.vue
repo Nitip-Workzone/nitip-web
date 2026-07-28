@@ -5,6 +5,7 @@ import { Store, MapPin, Save, ArrowLeft, Clock } from '@lucide/vue'
 
 definePageMeta({
   layout: 'user',
+  ssr: false,
 })
 
 const merchantsStore = useMerchantsStore()

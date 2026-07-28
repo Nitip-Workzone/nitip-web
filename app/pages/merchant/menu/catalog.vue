@@ -4,6 +4,7 @@ import { useMerchantsStore, type Menu } from '~/stores/merchants'
 
 definePageMeta({
   layout: 'user',
+  ssr: false,
 })
 
 const merchantsStore = useMerchantsStore()
