@@ -3,6 +3,7 @@ import { useAuthStore } from '~/stores/auth'
 
 definePageMeta({
   layout: false,
+  ssr: false,
 })
 
 const authStore = useAuthStore()
@@ -11,28 +12,6 @@ const password = ref('')
 const isObscured = ref(true)
 const showTotp = ref(false)
 const totpCode = ref('')
-
-const route = useRoute()
-
-onMounted(async () => {
-  const token = route.query.token as string
-  if (token) {
-    console.log('[Merchant Login] Found token query parameter, performing auto-login...')
-    authStore.setToken(token)
-    try {
-      await authStore.fetchProfile(true)
-      if (authStore.user?.role === 'merchant') {
-        navigateTo('/merchant/menu')
-      } else {
-        console.error('[Merchant Login] Token is not for merchant role')
-        authStore.logout()
-      }
-    } catch (e) {
-      console.error('[Merchant Login] Auto-login failed:', e)
-      authStore.logout()
-    }
-  }
-})
 
 const handleLogin = async () => {
   // Kirim X-Platform: web-merchant agar backend validasi role merchant
