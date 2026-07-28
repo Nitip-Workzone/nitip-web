@@ -20,6 +20,7 @@ let L: any = null
 let isInitialized = false
 
 const initMap = async () => {
+  try {
   const lat = route.query.lat ? parseFloat(route.query.lat as string) : null
   const lng = route.query.lng ? parseFloat(route.query.lng as string) : null
 
@@ -29,8 +30,13 @@ const initMap = async () => {
 
   if (!isInitialized) {
     isInitialized = true
-    L = await import('leaflet')
-    await import('leaflet/dist/leaflet.css')
+    try {
+      L = await import('leaflet')
+      await import('leaflet/dist/leaflet.css')
+    } catch (e) {
+      console.warn('[Map Viewer] Leaflet load failed on old WebView (expected on Chrome <80):', e)
+      return
+    }
 
     // Fix marker icons
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -49,7 +55,8 @@ const initMap = async () => {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map)
 
-    const markerColor = route.query.color ? `#${route.query.color}` : '#6366f1'
+    let markerColor = '#6366f1'
+    try { markerColor = route.query.color ? `#${route.query.color}` : '#6366f1' } catch { markerColor = '#6366f1' }
     const pulseIcon = L.divIcon({
       html: `
         <div class="relative flex items-center justify-center" style="width: 40px; height: 40px;">
@@ -75,10 +82,15 @@ const initMap = async () => {
     }
   } else {
     if (map && marker) {
-      const newLatLng = new L.LatLng(lat, lng)
-      map.setView(newLatLng, 16)
-      marker.setLatLng(newLatLng)
+      try {
+        const newLatLng = new L.LatLng(lat, lng)
+        map.setView(newLatLng, 16)
+        marker.setLatLng(newLatLng)
+      } catch {}
     }
+  }
+  } catch (outerErr) {
+    console.warn('[Map Viewer] outer error old WebView:', outerErr)
   }
 }
 

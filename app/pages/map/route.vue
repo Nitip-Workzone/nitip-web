@@ -18,6 +18,7 @@ let L: any = null
 let isInitialized = false
 
 const initMap = async () => {
+  try {
   if (isInitialized) return
 
   const originLat = route.query.origin_lat ? parseFloat(route.query.origin_lat as string) : null
@@ -32,8 +33,13 @@ const initMap = async () => {
 
   isInitialized = true
 
-  L = await import('leaflet')
-  await import('leaflet/dist/leaflet.css')
+  try {
+    L = await import('leaflet')
+    await import('leaflet/dist/leaflet.css')
+  } catch (e) {
+    console.warn('[Map Route] Leaflet failed on old WebView:', e)
+    return
+  }
 
   // Fix marker icons
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -100,12 +106,17 @@ const initMap = async () => {
     }
   } catch (e) {
     console.warn('Failed to fetch routing, falling back to straight line:', e)
-    L.polyline([[originLat, originLng], [destLat, destLng]], {
-      color: '#6366f1',
-      weight: 4,
-      dashArray: '5, 10',
-      opacity: 0.8
-    }).addTo(map)
+    try {
+      L.polyline([[originLat, originLng], [destLat, destLng]], {
+        color: '#6366f1',
+        weight: 4,
+        dashArray: '5, 10',
+        opacity: 0.8
+      }).addTo(map)
+    } catch {}
+  }
+  } catch (outerErr) {
+    console.warn('[Map Route] initMap outer error (old WebView):', outerErr)
   }
 }
 
