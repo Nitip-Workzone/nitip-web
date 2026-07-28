@@ -91,8 +91,16 @@ const handleReady = async (orderId: string) => {
 onMounted(async () => {
   await merchantsStore.fetchMerchantProfile()
   await fetchOrders()
-  // Setup polling every 10 seconds for high-speed updates
-  pollingTimer.value = setInterval(fetchOrders, 10000)
+  // P2 max perf: polling 15s (was 10s) + visibility check to avoid hammer when tab hidden (prod 512M)
+  const startPolling = () => {
+    if (pollingTimer.value) clearInterval(pollingTimer.value)
+    pollingTimer.value = setInterval(() => {
+      if (document.hidden) return
+      fetchOrders()
+    }, 15000)
+  }
+  startPolling()
+  document.addEventListener('visibilitychange', startPolling)
 })
 
 onUnmounted(() => {
