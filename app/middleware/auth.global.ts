@@ -95,10 +95,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
         }
     }
 
-    // Define public routes (including map pages used by Flutter WebView — client-only, no user auth needed)
-    const publicRoutes = ['/', '/login', '/register', '/merchant/login']
+    // Define public routes (including map pages and welcome-simple test page for WebView 500 isolation)
+    const publicRoutes = ['/', '/login', '/register', '/merchant/login', '/merchant/welcome-simple']
     const isMapRoute = to.path.startsWith('/map')
-    const isPublic = publicRoutes.some(path => to.path === path) || isMapRoute
+    const isPublic = publicRoutes.some(path => to.path === path) || isMapRoute || to.path === '/merchant/welcome-simple'
 
     // Route categories
     const isAdminRoute = to.path.startsWith('/admin')
