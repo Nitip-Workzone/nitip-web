@@ -33,8 +33,24 @@ export default defineNuxtConfig({
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap' }
-      ]
+      ],
+      // Early polyfill for old WebView (Chrome <92) before any Nuxt bundle - fixes w.matched.at is not a function in vue-router
+      // Real HP 500 only, emulator Chrome 120+ supports at. Fix 2026-07-28
+      script: [
+        {
+          innerHTML: `if(!Array.prototype.at){Array.prototype.at=function(n){var o=Object(this),l=o.length>>>0,k=Math.trunc(n)||0;if(k<0)k+=l;if(k<0||k>=l)return;return o[k]}}if(!String.prototype.at){String.prototype.at=function(n){var s=String(this),l=s.length,k=Math.trunc(n)||0;if(k<0)k+=l;if(k<0||k>=l)return '';return s[k]||''}}`,
+          type: 'text/javascript',
+        },
+      ],
     }
+  },
+  vite: {
+    build: {
+      // Fix 2026-07-28: downgrade from es2022 to es2018 to avoid Array.at() which breaks old Android System WebView (< Chrome 92)
+      // Real HP error: "w.matched.at is not a function" -> only on real device, not emulator (emulator Chrome 120+ supports at)
+      // Using es2018 forces vue-router to transpile at() to [] access
+      target: 'es2018',
+    },
   },
   nitro: {
     devProxy: {

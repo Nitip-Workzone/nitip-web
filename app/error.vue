@@ -67,8 +67,14 @@ const route = useRoute()
 const isMerchantWebView = computed(() => {
   try {
     if (typeof navigator === 'undefined') return false
-    return /NitipMerchant|NitipApp|wv|WebView/.test(navigator.userAgent) || route.path.startsWith('/merchant')
+    return /wv|NitipMerchant|NitipApp|WebView/i.test(navigator.userAgent) || route.path.startsWith('/merchant')
   } catch { return false }
+})
+
+// Detect the .at() polyfill missing error - show better message
+const isAtPolyfillError = computed(() => {
+  const msg = (props.error?.message || props.error?.statusMessage || '').toLowerCase()
+  return msg.includes('.at is not a function') || msg.includes('at is not a function')
 })
 
 function handleRefresh() {
@@ -105,17 +111,32 @@ function goHome() {
 }
 
 onMounted(() => {
+  // Polyfill check for old WebView (real HP)
+  try {
+    if (typeof window !== 'undefined' && !Array.prototype.at) {
+      // Emergency polyfill if app.vue polyfill missed (error.vue loads before)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (Array.prototype as any).at = function (n: number) {
+        const idx = Math.trunc(n) || 0
+        if (idx < 0) return this[this.length + idx]
+        return this[idx]
+      }
+    }
+  } catch {}
   // Auto-log 500 di WebView untuk crash reporting
   try {
     if (statusCode.value >= 500) {
-      console.error('[Nuxt error.vue] 500 detected', props.error, 'isMerchantWebView:', isMerchantWebView.value, 'path:', route.path)
-      // Jika 500 di merchant route, coba auto-recover sekali dengan clear + reload (hindar loop)
+      // Don't spam console.log in prod (heavy) - removed 2026-07-28 cleanup
+      // Jika .at() error, jangan auto-recover loop (akan tetap 500 karena bundle built with .at)
+      // Tampilkan pesan khusus agar user update WebView
+      if (isAtPolyfillError.value) {
+        return
+      }
       if (isMerchantWebView.value) {
         const key = 'nitip_error_recover_attempt'
         const attempt = Number(sessionStorage.getItem(key) || '0')
         if (attempt < 1) {
           sessionStorage.setItem(key, String(attempt + 1))
-          console.warn('[Nuxt error.vue] Merchant WebView 500 auto-recover attempt')
           setTimeout(() => handleRefresh(), 1500)
         }
       }
