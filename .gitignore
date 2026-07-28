@@ -55,3 +55,4 @@ screenshots/
 chrome_profile_*/
 .env.local
 .env.production
+
