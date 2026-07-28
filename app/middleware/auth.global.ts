@@ -3,7 +3,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
     const authStore = useAuthStore()
 
     // === CRITICAL: Baca cookie langsung di middleware untuk mengatasi SSR hydration gap ===
+    // Flow token dari Flutter WebView: /merchant/login?token=xxx atau /merchant/menu?token=xxx&t=xxx
     const tokenQuery = to.query.token as string
+    const tParam = to.query.t as string
     if (tokenQuery) {
         try {
         const tokenCookie = useCookie('auth_token', {
@@ -19,17 +21,49 @@ export default defineNuxtRouteMiddleware(async (to) => {
         
         try {
             await authStore.fetchProfile(true)
-            // Remove token from query parameters for clean URL and route to merchant menu directly
-            const cleanQuery = { ...to.query }
+            // Remove token and t from query parameters for clean URL and route to merchant menu directly
+            const cleanQuery = { ...to.query } as Record<string, unknown>
             delete cleanQuery.token
-            return navigateTo({ path: '/merchant/menu', query: cleanQuery })
+            delete cleanQuery.t
+            // If already at /merchant/menu, just remove query (don't redirect loop)
+            if (to.path === '/merchant/menu' || to.path === '/merchant/menu/') {
+                if (Object.keys(cleanQuery).length === 0) {
+                    return navigateTo({ path: '/merchant/menu' })
+                }
+                return navigateTo({ path: '/merchant/menu', query: cleanQuery as Record<string, string> })
+            }
+            return navigateTo({ path: '/merchant/menu', query: cleanQuery as Record<string, string> })
         } catch {
+            // Token invalid/expired from Flutter - don't redirect to '/' which could 500 if root also has .at() issue
+            // Clear token and go to merchant login
             try {
             authStore.token = null
             const tokenCookie = useCookie('auth_token')
             tokenCookie.value = null
             } catch {}
+            // If token came from merchant flow, go back to merchant login, not home
+            const wasMerchantRoute = to.path.startsWith('/merchant')
+            if (wasMerchantRoute || to.path === '/') {
+                // Trigger native logout for Flutter WebView to clear SecureStorage
+                try {
+                    if (typeof window !== 'undefined') {
+                        const win = window as unknown as { NitipLogout?: { postMessage: (s: string) => void }, triggerNativeLogout?: (s: string) => void }
+                        if (win.NitipLogout) win.NitipLogout.postMessage('token_invalid_middleware')
+                        else if (win.triggerNativeLogout) win.triggerNativeLogout('token_invalid_middleware')
+                    }
+                } catch {}
+                // Don't redirect to '/' - that caused 500 loop in diagnostics
+                return navigateTo('/merchant/login')
+            }
             return navigateTo('/')
+        }
+    }
+    // Also handle ?t= param without token (leftover from previous buggy build) - just clean it
+    if (tParam && !tokenQuery) {
+        const cleanQuery = { ...to.query } as Record<string, unknown>
+        delete cleanQuery.t
+        if (to.path === '/merchant/menu' || to.path === '/merchant/menu/') {
+            return navigateTo({ path: '/merchant/menu', query: cleanQuery as Record<string, string> })
         }
     }
 
