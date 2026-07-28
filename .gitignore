@@ -17,8 +17,41 @@ logs
 .DS_Store
 .fleet
 .idea
+.vscode/
 
-# Local env files
+# ===============================
+# ENV & SECRETS - JANGAN COMMIT!
+# ===============================
+# Contains API_URL, API_KEY, API_SECRET
 .env
 .env.*
 !.env.example
+**/.env
+**/env.json
+
+# Firebase - JANGAN COMMIT!
+**/*firebase-adminsdk*.json
+**/*service-account*.json
+**/google-services.json
+firebase-credentials.json
+**/firebase-credentials.json
+**/GoogleService-Info.plist
+
+# Secrets
+*.pem
+*.key
+*.jks
+*.keystore
+*.p12
+secret.txt
+**/secret.txt
+credentials.json
+**/credentials.json
+**/key.properties
+
+# User data
+user_data/
+screenshots/
+chrome_profile_*/
+.env.local
+.env.production
