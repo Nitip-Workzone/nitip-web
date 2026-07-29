@@ -71,6 +71,43 @@ jobs:
           POLYFILL=$(grep -R "Array.prototype.at" .output/public/_nuxt/*.js .output/public/index.html 2>/dev/null | wc -l)
           echo "polyfill count: $POLYFILL (should be >=1 from inline head script + plugin)"
 
+          echo "🔍 Check for #entry import maps (HUAWEI WebView Chrome 88 engine but UA Chrome 120 - no importmap support)"
+          echo "HUAWEI AGS6-W09 log: Loaded native library version 88.0.4324.93 but UA Chrome/120.0.0.0 - import maps needs Chrome 89+"
+          ENTRY_COUNT=$(grep -R '"#entry"' .output/public/index.html .output/public/200.html 2>/dev/null | wc -l)
+          echo "#entry importmap in HTML count: $ENTRY_COUNT (should be 0 after nuxt.config experimental.entryImportMap false, but Nuxt 4 may still generate)"
+          if [ "$ENTRY_COUNT" -gt 0 ]; then
+            echo "⚠️  Found #entry importmap in HTML - will fix via post-build replacement"
+            echo "HTML with #entry:"
+            grep -o '<script type="importmap">.*</script>' .output/public/index.html | head -c 200
+            echo ""
+            echo "🔧 Fixing #entry import maps for HUAWEI WebView compatibility..."
+            # Find actual entry file name from importmap
+            ENTRY_FILE=$(grep -o '"#entry":"[^"]*"' .output/public/index.html | head -n 1 | cut -d'"' -f4)
+            echo "Entry file from importmap: $ENTRY_FILE"
+            if [ -n "$ENTRY_FILE" ]; then
+              # Replace all from "#entry" imports with relative path to actual entry file
+              # And remove importmap script tag
+              echo "Replacing #entry with $ENTRY_FILE in all chunks + removing importmap tag from HTML"
+              sed -i "s|from \"#entry\"|from \"$ENTRY_FILE\"|g" .output/public/_nuxt/*.js
+              sed -i "s|from '#entry'|from '$ENTRY_FILE'|g" .output/public/_nuxt/*.js
+              sed -i "s|\"#entry\"|\"$ENTRY_FILE\"|g" .output/public/_nuxt/*.js
+              # Remove importmap script tag from HTML files
+              sed -i '/<script type="importmap">.*<\/script>/d' .output/public/index.html
+              sed -i '/<script type="importmap">.*<\/script>/d' .output/public/200.html
+              sed -i '/<script type="importmap">.*<\/script>/d' .output/public/404.html
+              # Also remove from other HTML files
+              find .output/public -name "*.html" -exec sed -i '/<script type="importmap">.*<\/script>/d' {} \;
+              echo "✅ Fixed #entry import maps"
+              echo "Verifying fix:"
+              echo -n "#entry in HTML after fix: "; grep -R '"#entry"' .output/public/*.html 2>/dev/null | wc -l
+              echo -n "#entry in _nuxt JS after fix: "; grep -R "from \"#entry\"\|from '#entry'" .output/public/_nuxt/*.js 2>/dev/null | wc -l
+            else
+              echo "⚠️  Could not parse entry file from importmap, skipping fix"
+            fi
+          else
+            echo "✅ No #entry importmap in HTML - HUAWEI compatible"
+          fi
+
       - name: Stop and Cleanup Docker Web Container
         run: |
           docker compose down || true

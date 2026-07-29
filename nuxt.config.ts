@@ -21,6 +21,15 @@ export default defineNuxtConfig({
       nitipApiUrl: process.env.NUXT_PUBLIC_NITIP_API_URL || process.env.API_BASE_URL || '',
     },
   },
+  experimental: {
+    payloadExtraction: false,
+    inlineRouteRules: false,
+    appManifest: false,
+    // Disable import map generation that causes #entry error in HUAWEI WebView Chrome 88 (UA spoof 120 but engine 88, no importmap support)
+    // HUAWEI AGS6-W09 log: Loaded native library version number "88.0.4324.93" but UA says Chrome/120.0.0.0
+    // import maps support Chrome 89+, but HUAWEI triwebview 11.1.5.316 doesn't support it
+    entryImportMap: false,
+  },
   app: {
     head: {
       title: 'Nihtip - Kirim & Titip Barang',
@@ -34,9 +43,7 @@ export default defineNuxtConfig({
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap' }
       ],
-      // Early polyfill for old WebView Chrome <92 + fix for #entry import map in WebView
-      // Don't load es-module-shims from CDN - HUAWEI adblock blocks ga.jspm.io causing ERR_FAILED + fonts fail
-      // Instead we rely on vite target es2019 + fix-array-at plugin + payloadExtraction false to not generate #entry
+      // Polyfill for old WebView Chrome <92 - w.matched.at is not a function
       script: [
         {
           innerHTML: `if(!Array.prototype.at){Array.prototype.at=function(n){var o=Object(this),l=o.length>>>0,k=Math.trunc(n)||0;if(k<0)k+=l;if(k<0||k>=l)return;return o[k]}}if(!String.prototype.at){String.prototype.at=function(n){var s=String(this),l=s.length,k=Math.trunc(n)||0;if(k<0)k+=l;if(k<0||k>=l)return '';return s[k]||''}}`,
