@@ -23,6 +23,10 @@ const checkoutLoading = ref(false)
 const pendingItem = ref<{ id: string; name: string; price: number; image_url?: string } | null>(null)
 const paymentSource = ref<'wallet' | 'qris'>('wallet')
 
+const deliveryAddress = ref('Lolak, Sulawesi Utara')
+const deliveryLat = ref(0.8760)
+const deliveryLng = ref(124.0118)
+
 const merchant = computed(() =>
   merchantsStore.merchants.find(m => m.id === merchantId) || merchantsStore.currentMerchant
 )
@@ -33,6 +37,18 @@ onMounted(async () => {
   }
   await merchantsStore.fetchMerchantMenuPublic(merchantId)
   await walletStore.fetchBalance()
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        deliveryLat.value = position.coords.latitude
+        deliveryLng.value = position.coords.longitude
+      },
+      (err) => {
+        console.warn('Geolocation error:', err)
+      }
+    )
+  }
 })
 
 const handleAdd = (menuItem: { id: string; name: string; price: number; image_url?: string }) => {
@@ -97,9 +113,9 @@ const handleCheckout = async () => {
         pickup_lng: merchant.value?.longitude || 0,
         pickup_address: merchant.value?.address || '',
         pickup_name: merchant.value?.name || '',
-        delivery_address: 'Alamat Pengantaran Default',
-        delivery_lat: 0.8760,
-        delivery_lng: 124.0118,
+        delivery_address: deliveryAddress.value,
+        delivery_lat: deliveryLat.value,
+        delivery_lng: deliveryLng.value,
         payment_method: 'escrow',
         payment_source: paymentSource.value,
         weight_kg: 0.5,
@@ -488,6 +504,23 @@ const cartSubtotal = computed(() =>
 
           <!-- Checkout summary -->
           <div class="px-6 pb-6 pt-4 border-t border-slate-100 space-y-4 shrink-0 bg-white">
+            <!-- Delivery Address Input -->
+            <div class="space-y-2">
+              <label class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">Alamat Pengantaran</label>
+              <div class="relative">
+                <MapPin class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  v-model="deliveryAddress"
+                  type="text"
+                  placeholder="Tulis alamat pengantaran lengkap..."
+                  class="w-full h-11 pl-9 pr-3 rounded-2xl border border-slate-100 text-xs font-bold focus:outline-none focus:border-primary/40 bg-slate-50 transition-all"
+                >
+              </div>
+              <p class="text-[9px] text-slate-400 font-medium px-1">
+                📍 Koordinat saat ini: {{ deliveryLat.toFixed(5) }}, {{ deliveryLng.toFixed(5) }}
+              </p>
+            </div>
+
             <!-- Payment Source Selection -->
             <div class="space-y-2">
               <label class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">Metode Pembayaran</label>
