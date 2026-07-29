@@ -23,15 +23,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const path = to.path
 
   // ===== Route Classification =====
-  const publicRoutes = [
-    '/', '/login', '/register', 
-    '/merchant/login', 
-    '/welcome-simple', '/merchant/welcome-simple'
-  ]
+  const publicRoutes = ['/', '/login', '/register', '/merchant/login']
   const isPublicExact = publicRoutes.includes(path) || publicRoutes.includes(path.replace(/\/$/, ''))
   const isMapRoute = path.startsWith('/map')
-  const isWelcomeSimple = path.startsWith('/merchant/welcome-simple') || path.startsWith('/welcome-simple')
-  const isPublic = isPublicExact || isMapRoute || isWelcomeSimple
+  const isPublic = isPublicExact || isMapRoute
 
   const isAdminRoute = path.startsWith('/admin')
   const isMerchantRoute = path.startsWith('/merchant')
@@ -157,77 +152,44 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return null
   }
 
-  // ===== Temporary investigasi logging (dev only, will be removed after debugging) =====
-  const debugLog = (msg: string, data?: Record<string, unknown>) => {
-    if (import.meta.client) {
-      try {
-        console.log(`[Auth Middleware] ${msg}`, data || '')
-      } catch {}
-    }
-  }
-
   // ===== Main Flow =====
 
   // Step a: Load token from cookie
   const token = loadToken()
   const hasCookie = !!token
 
-  debugLog('Route check', {
-    path,
-    hasCookie,
-    hasToken: !!authStore.token,
-    isAuthenticated: authStore.isAuthenticated,
-    hasUser: !!authStore.user,
-    role: authStore.user?.role || null,
-    isPublic,
-    isMerchantRoute,
-    isAdminRoute,
-    isUserRoute,
-  })
-
   // Step b: If no cookie and not public -> redirect to login
   if (!hasCookie && !isPublic) {
-    debugLog('No cookie, not public -> redirect to login', { path })
     return redirectToLogin()
   }
 
   // Step c: If has cookie but no user -> fetchProfile
   if (hasCookie && !authStore.user) {
-    debugLog('Has cookie but no user -> fetchProfile', { path })
     const profileOk = await ensureProfile()
-    debugLog('fetchProfile result', { success: profileOk, hasUser: !!authStore.user })
-
     // Step d: If fetchProfile failed -> clear and redirect
     if (!profileOk && !isPublic) {
-      debugLog('fetchProfile failed -> redirect to login', { path })
       return redirectToLogin()
     }
   }
 
   // If still not authenticated and not public -> redirect
   if (!ensureAuthenticated() && !isPublic) {
-    debugLog('Not authenticated and not public -> redirect', { path })
     return redirectToLogin()
   }
 
   // Step e: Role authorization
   if (authStore.isAuthenticated && authStore.user) {
     // If authenticated user visits public pages (except / and map) -> redirect by role
-    if (isPublic && !isMapRoute && !isWelcomeSimple && path !== '/' && path !== '/merchant/welcome-simple' && path !== '/welcome-simple' && path !== '/merchant/welcome-simple/' && path !== '/welcome-simple/') {
-      debugLog('Authenticated user on public page -> redirect by role', { path, role: authStore.user.role })
+    if (isPublic && !isMapRoute && path !== '/') {
       const roleRedirect = redirectByRole(authStore.user.role)
       if (roleRedirect) return roleRedirect
     }
 
     // Check role access for protected routes
     const roleRedirect = ensureRole()
-    if (roleRedirect) {
-      debugLog('Role check redirect', { path, role: authStore.user.role, redirect: roleRedirect })
-      return roleRedirect
-    }
+    if (roleRedirect) return roleRedirect
   }
 
-  debugLog('Allowed', { path })
   // f. Done - allow navigation
   return
 })
