@@ -37,9 +37,8 @@ jobs:
           echo "🧹 Cleaning previous build artifacts..."
           rm -rf .output .nuxt
           echo "🔍 Checking env secrets..."
-          echo "WEB_BASE_URL from env file:"
-          grep NUXT_PUBLIC_NITIP_API_URL .env || echo "NUXT_PUBLIC_NITIP_API_URL not set"
-          grep NUXT_PUBLIC_NITIP_API_KEY .env && echo "API_KEY exists: $(grep NUXT_PUBLIC_NITIP_API_KEY .env | cut -c1-40)..." || echo "API_KEY missing!"
+          if grep -q NUXT_PUBLIC_NITIP_API_URL .env; then echo "API URL configured."; else echo "API URL missing!"; fi
+          if grep -q NUXT_PUBLIC_NITIP_API_KEY .env; then echo "API KEY configured."; else echo "API KEY missing!"; fi
           
           echo "🔨 Building SPA static site..."
           echo "Node: $(node -v) Yarn: $(yarn -v)"
