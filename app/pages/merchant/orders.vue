@@ -48,12 +48,13 @@ const fetchOrders = async (showToastOnNew = false) => {
   }
 }
 
-// Group orders by status
+// Group orders by status — FIX merchant_accepted orphan (waiting runner) was missing -> order vanished
 const pendingOrders = computed<MerchantOrder[]>(() => 
   (merchantsStore.merchantOrders as MerchantOrder[]).filter(o => o.status === 'pending')
 )
 const processingOrders = computed<MerchantOrder[]>(() => 
   (merchantsStore.merchantOrders as MerchantOrder[]).filter(o => 
+    o.status === 'merchant_accepted' || // <-- FIX: dapur terima, menunggu runner -> was orphaned
     o.status === 'cooking' || 
     o.status === 'ready' || 
     o.status === 'accepted' || 
@@ -76,7 +77,10 @@ const handleAccept = async (orderId: string) => {
   actionLoadingId.value = orderId
   try {
     await merchantsStore.acceptMerchantOrder(orderId)
-    success('Pesanan berhasil diterima dan siap dimasak!')
+    // FIX: auto switch to Diproses so order tidak terasa hilang (pending -> merchant_accepted is in processing tab)
+    activeTab.value = 'processing'
+    success('Pesanan berhasil diterima! Mencari runner terdekat...')
+    await fetchOrders(false)
   } catch (err) {
     const errMsg = (err as { message?: string })?.message || 'Gagal menerima pesanan.'
     error(errMsg)
@@ -90,6 +94,7 @@ const handleReady = async (orderId: string) => {
   try {
     await merchantsStore.readyMerchantOrder(orderId)
     success('Pesanan ditandai SIAP! Menunggu Runner mengambil.')
+    await fetchOrders(false)
   } catch (err) {
     const errMsg = (err as { message?: string })?.message || 'Gagal memperbarui status pesanan.'
     error(errMsg)
@@ -234,6 +239,7 @@ onUnmounted(() => {
             class="px-2.5 py-1 text-[9px] font-extrabold uppercase rounded-lg border"
             :class="
               order.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-100' : 
+              order.status === 'merchant_accepted' ? 'bg-orange-50 text-orange-600 border-orange-100' : 
               order.status === 'cooking' ? 'bg-blue-50 text-blue-600 border-blue-100' : 
               order.status === 'ready' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
               order.status === 'accepted' ? 'bg-orange-50 text-orange-600 border-orange-100' : 
@@ -244,6 +250,7 @@ onUnmounted(() => {
           >
             {{ 
               order.status === 'pending' ? 'Masuk' : 
+              order.status === 'merchant_accepted' ? 'Mencari Runner' : 
               order.status === 'cooking' ? 'Sedang Dimasak' : 
               order.status === 'ready' ? 'Siap Diambil' : 
               order.status === 'accepted' ? 'Mencari Kurir' : 
@@ -269,7 +276,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Dynamic Action Buttons for Quick Access -->
-        <div v-if="order.status === 'pending' || order.status === 'accepted' || order.status === 'cooking'" class="pt-1.5 flex gap-2">
+        <div v-if="order.status === 'pending' || order.status === 'merchant_accepted' || order.status === 'accepted' || order.status === 'cooking'" class="pt-1.5 flex gap-2">
           <!-- Accept Button -->
           <button 
             v-if="order.status === 'pending'"
@@ -282,14 +289,14 @@ onUnmounted(() => {
             Terima Pesanan
           </button>
 
-          <!-- Waiting for Runner (Accepted state) -->
+          <!-- Waiting for Runner (merchant_accepted + accepted) -->
           <button 
-            v-if="order.status === 'accepted'"
+            v-if="order.status === 'merchant_accepted' || order.status === 'accepted'"
             class="flex-1 h-10 rounded-xl text-xs flex items-center justify-center gap-1.5 font-bold bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
             disabled
           >
             <Clock class="w-3.5 h-3.5" />
-            Menunggu Kurir Menerima...
+            Menunggu Runner...
           </button>
 
           <!-- Mark Ready Button -->

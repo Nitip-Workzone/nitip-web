@@ -44,11 +44,12 @@ function getStatusColor(order: Record<string, unknown>) {
   }
   switch (order.status) {
     case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200'
+    case 'merchant_accepted': return 'bg-orange-50 text-orange-700 border-orange-200'
     case 'cooking': return 'bg-blue-50 text-blue-700 border-blue-200'
     case 'ready': return 'bg-indigo-50 text-indigo-700 border-indigo-200'
     case 'accepted': return 'bg-sky-50 text-sky-700 border-sky-200'
     case 'purchasing': return 'bg-purple-50 text-purple-700 border-purple-200'
-    case 'delivering': return 'bg-orange-50 text-orange-700 border-orange-200'
+    case 'delivering': return 'bg-amber-50 text-orange-700 border-orange-200'
     case 'completed': return 'bg-emerald-50 text-emerald-700 border-emerald-200'
     case 'cancelled': return 'bg-rose-50 text-rose-700 border-rose-200'
     case 'disputed': return 'bg-red-50 text-red-700 border-red-200'
@@ -60,17 +61,19 @@ function getStatusLabel(order: Record<string, unknown>) {
   if (order.status === 'pending' && order.payment_status === 'unpaid' && order.payment_method === 'escrow' && order.payment_source === 'qris') {
     return 'Menunggu Pembayaran'
   }
+  // Unified: accepted always = Runner, merchant_accepted = Dapur — no double meaning
   switch (order.status) {
     case 'pending': return order.merchant_id ? 'Menunggu Dapur Menerima' : 'Menunggu Runner'
+    case 'merchant_accepted': return 'Diterima Dapur - Mencari Runner'
     case 'cooking': return 'Sedang Dimasak'
     case 'ready': return 'Pesanan Siap Diambil'
-    case 'accepted': return order.merchant_id ? 'Diterima Dapur' : 'Diterima Runner'
+    case 'accepted': return 'Diterima Runner'
     case 'purchasing': return 'Sedang Belanja'
     case 'delivering': return 'Sedang Diantar'
     case 'completed': return 'Selesai'
     case 'cancelled': return 'Dibatalkan'
     case 'disputed': return 'Sengketa'
-    default: return order.status
+    default: return order.status as string
   }
 }
 
