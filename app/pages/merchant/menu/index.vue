@@ -56,7 +56,7 @@ const fetchProfile = async () => {
 
 const handleRegisterProfile = async () => {
   if (!registrationForm.value.name.trim()) {
-    error('Nama merchant wajib diisi.')
+    error('Mohon masukkan nama toko Anda.')
     return
   }
   if (!registrationForm.value.address.trim()) {

@@ -39,7 +39,7 @@ const openAddModal = () => {
 
 const handleAddUser = async () => {
   if (!addForm.value.name || !addForm.value.email || !addForm.value.whatsapp_number || !addForm.value.password || !addForm.value.admin_password) {
-    error('Semua data dan password konfirmasi admin wajib diisi.')
+    error('Mohon lengkapi seluruh kolom profil beserta kata sandi Admin Anda.')
     return
   }
   try {
@@ -91,7 +91,7 @@ const handleQuickVerify = async (user: AdminUser) => {
   const newVal = !user.is_verified
   const ok = await usersStore.verifyUser(user.id, newVal)
   if (ok) {
-    success(`${user.name} ${newVal ? 'verified' : 'unverified'}`)
+    success(`Status verifikasi ${user.name} berhasil diperbarui.`)
   }
 }
 

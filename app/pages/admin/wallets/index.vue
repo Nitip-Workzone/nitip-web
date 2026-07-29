@@ -38,8 +38,8 @@ const systemBalance = computed(() => walletsStore.systemBalance)
 const handleApprove = async (id: string) => {
   if (!confirm('Approve this withdrawal? The corresponding user balance will be permanently deducted.')) return
   const ok = await walletsStore.approveWithdrawal(id)
-  if (ok) success('Withdrawal approved successfully')
-  else toastError('Failed to approve withdrawal')
+  if (ok) success('Penarikan dana berhasil disetujui.')
+  else toastError('Gagal menyetujui penarikan dana.')
 }
 
 const formatDate = (date: string) =>

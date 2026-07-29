@@ -49,7 +49,7 @@ const fetchProfile = async () => {
     }
   } catch (e) {
     console.warn('[Catalog] fetchMerchantProfile failed — show error toast not 500 page:', e)
-    try { error('Gagal mengambil data toko. Silakan tarik untuk refresh.') } catch {}
+    try { error('Gagal memuat profil toko. Silakan muat ulang (refresh) halaman ini.') } catch {}
   } finally {
     checkLoading.value = false
   }

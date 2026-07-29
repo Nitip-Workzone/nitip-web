@@ -73,15 +73,15 @@ function formatCurrency(amount: number) {
 const handleCancelOrder = async (id: string) => {
   if (!confirm('Are you sure you want to FORCE CANCEL this order? This bypasses standard flow.')) return
   const ok = await ordersStore.cancelOrder(id)
-  if (ok) success('Order cancelled successfully')
-  else toastError('Failed to cancel order')
+  if (ok) success('Pesanan berhasil dibatalkan.')
+  else toastError('Gagal membatalkan pesanan.')
 }
 
 const handleResolveDispute = async (id: string, side: typeof ROLE_REQUESTER | typeof ROLE_RUNNER) => {
   if (!confirm(`Resolve dispute in favor of ${side}?`)) return
   const ok = await ordersStore.resolveDispute(id, side)
-  if (ok) success(`Dispute resolved for ${side}`)
-  else toastError('Failed to resolve dispute')
+  if (ok) success(`Sengketa berhasil diselesaikan untuk pihak ${side}.`)
+  else toastError('Gagal menyelesaikan sengketa.')
 }
 </script>
 

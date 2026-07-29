@@ -63,7 +63,7 @@ const handleAdd = (menuItem: { id: string; name: string; price: number; image_ur
       pendingItem.value = menuItem
       showClearCartConfirm.value = true
     } else if ((err as Error).message === 'MAX_ITEMS_LIMIT') {
-      error('Batas maksimal 10 item per pesanan.')
+      error('Maaf, Anda hanya dapat memesan maksimal 10 porsi dalam sekali jalan.')
     }
   }
 }
@@ -87,7 +87,7 @@ const handleIncrement = (itemId: string) => {
     cartStore.updateQuantity(itemId, getItemQty(itemId) + 1)
   } catch (err: unknown) {
     if ((err as Error).message === 'MAX_ITEMS_LIMIT') {
-      error('Batas maksimal 10 item per pesanan.')
+      error('Maaf, Anda hanya dapat memesan maksimal 10 porsi dalam sekali jalan.')
     }
   }
 }

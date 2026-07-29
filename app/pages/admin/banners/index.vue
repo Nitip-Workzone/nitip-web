@@ -63,7 +63,7 @@ const handleAddBanner = async () => {
     return
   }
   if (uploadMode.value === 'file' && !selectedFile.value) {
-    error('Silakan pilih file gambar untuk diupload.')
+    error('Mohon pilih file gambar dari perangkat Anda terlebih dahulu.')
     return
   }
   if (uploadMode.value === 'url' && !form.value.image_url) {
@@ -113,7 +113,7 @@ const handleEditBanner = async () => {
     return
   }
   if (uploadMode.value === 'file' && !selectedFile.value) {
-    error('Silakan pilih file gambar untuk diupload.')
+    error('Mohon pilih file gambar dari perangkat Anda terlebih dahulu.')
     return
   }
 
