@@ -166,8 +166,12 @@ export const useUserWalletStore = defineStore('user-wallet', {
         async fetchRegisteredBankAccount() {
             const { request } = useApi()
             try {
-                const res = await request<{ data: UserBankAccount }>('/users/me/bank-account')
-                return res.data
+                const res = await request<{ data: UserBankAccount | null; message?: string; success?: boolean }>('/users/me/bank-account')
+                // Backend now returns 200 with data=null when not yet registered
+                if (res && (res as { data?: UserBankAccount | null }).data) {
+                    return (res as { data: UserBankAccount }).data
+                }
+                return null
             } catch (error) {
                 console.warn('Failed to fetch registered bank account or none found:', error)
                 return null

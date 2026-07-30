@@ -166,8 +166,10 @@ export const useUsersStore = defineStore('users', {
         async fetchUserBankAccount(id: string) {
             const { request } = useApi()
             try {
-                const res = await request<{ data: UserBankAccount }>(`/admin/users/${id}/bank-account`)
-                return res.data
+                const res = await request<{ data: UserBankAccount | null; message?: string; success?: boolean }>(`/admin/users/${id}/bank-account`)
+                // Backend now returns 200 with data=null when not yet registered
+                if (res && res.data) return res.data as UserBankAccount
+                return null
             } catch (error) {
                 console.warn('Failed to fetch user bank account:', error)
                 return null
@@ -191,6 +193,27 @@ export const useUsersStore = defineStore('users', {
                 return true
             } catch (error) {
                 console.error('Failed to register bank account:', error)
+                throw error
+            } finally {
+                this.actionLoading = false
+            }
+        },
+
+        async resetUserPassword(id: string, payload: {
+            new_password: string
+            admin_password: string
+            totp_code: string
+        }) {
+            this.actionLoading = true
+            const { request } = useApi()
+            try {
+                await request(`/admin/users/${id}/reset-password`, {
+                    method: 'POST',
+                    body: payload
+                })
+                return true
+            } catch (error) {
+                console.error('Failed to reset user password:', error)
                 throw error
             } finally {
                 this.actionLoading = false

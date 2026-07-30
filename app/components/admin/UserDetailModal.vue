@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Shield, ShieldOff, Star, ShieldAlert, CreditCard, Lock, User } from '@lucide/vue'
+import { Shield, ShieldOff, Star, ShieldAlert, CreditCard, Lock, User, KeyRound, Eye, EyeOff } from '@lucide/vue'
 import type { AdminUser } from '~/stores/users'
 import type { UserBankAccount } from '~/stores/user-wallet'
 import { useAuthStore } from '~/stores/auth'
@@ -33,6 +33,15 @@ const bankForm = ref({
   totp_code: '',
 })
 
+const passwordForm = ref({
+  new_password: '',
+  confirm_password: '',
+  admin_password: '',
+  totp_code: '',
+})
+const showNewPass = ref(false)
+const showConfirmPass = ref(false)
+
 watch(() => props.user, (u) => {
   if (u) {
     trustInput.value = u.trust_score
@@ -60,7 +69,8 @@ const loadBankAccount = async () => {
 }
 
 watch([() => props.user, activeTab], async () => {
-  if (props.user && activeTab.value === 'bank') {
+  if (!props.user) return
+  if (activeTab.value === 'bank') {
     bankForm.value = {
       bank_name: '',
       account_no: '',
@@ -74,6 +84,15 @@ watch([() => props.user, activeTab], async () => {
       bankForm.value.account_no = bankAccount.value.account_no
       bankForm.value.account_name = bankAccount.value.account_name
     }
+  } else if (activeTab.value === 'security') {
+    passwordForm.value = {
+      new_password: '',
+      confirm_password: '',
+      admin_password: '',
+      totp_code: '',
+    }
+    showNewPass.value = false
+    showConfirmPass.value = false
   }
 }, { immediate: true })
 
@@ -147,6 +166,40 @@ const handleSubmitBank = async () => {
   }
 }
 
+const handleResetPassword = async () => {
+  if (!props.user) return
+  if (!passwordForm.value.new_password || !passwordForm.value.confirm_password || !passwordForm.value.admin_password || !passwordForm.value.totp_code) {
+    error('Mohon lengkapi password baru beserta Password & Kode TOTP Admin.')
+    return
+  }
+  if (passwordForm.value.new_password !== passwordForm.value.confirm_password) {
+    error('Konfirmasi password tidak cocok.')
+    return
+  }
+  if (passwordForm.value.new_password.length < 8) {
+    error('Password baru minimal 8 karakter.')
+    return
+  }
+  if (!confirm(`Yakin ingin mereset password untuk ${props.user.name}? Semua sesi aktif user akan di-logout.`)) {
+    return
+  }
+  try {
+    const ok = await usersStore.resetUserPassword(props.user.id, {
+      new_password: passwordForm.value.new_password,
+      admin_password: passwordForm.value.admin_password,
+      totp_code: passwordForm.value.totp_code,
+    })
+    if (ok) {
+      success(`Password ${props.user.name} berhasil direset. Semua sesi user telah di-logout.`)
+      passwordForm.value = { new_password: '', confirm_password: '', admin_password: '', totp_code: '' }
+    }
+  } catch (err: unknown) {
+    const errorObj = err as { data?: { message?: string } }
+    const msg = errorObj.data?.message || 'Gagal mereset password. Pastikan password admin & TOTP valid.'
+    error(msg)
+  }
+}
+
 const roleVariant = (role: string) => {
   if (role === ROLE_ADMIN) return 'destructive'
   if (role === ROLE_RUNNER) return 'info'
@@ -172,7 +225,7 @@ const roleVariant = (role: string) => {
           @click="activeTab = 'profile'"
         >
           <User class="w-4 h-4" />
-          Detail Profil
+          Profil
         </button>
         <button
           type="button"
@@ -181,7 +234,16 @@ const roleVariant = (role: string) => {
           @click="activeTab = 'bank'"
         >
           <CreditCard class="w-4 h-4" />
-          Rekening Bank
+          Rekening
+        </button>
+        <button
+          type="button"
+          class="flex-1 pb-3 text-sm font-semibold border-b-2 transition-all flex items-center justify-center gap-2"
+          :class="activeTab === 'security' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'"
+          @click="activeTab = 'security'"
+        >
+          <KeyRound class="w-4 h-4" />
+          Keamanan
         </button>
       </div>
 
@@ -452,6 +514,112 @@ const roleVariant = (role: string) => {
               :loading="usersStore.actionLoading"
             >
               {{ bankAccount ? 'Simpan Perubahan Rekening' : 'Daftarkan Rekening' }}
+            </UiButton>
+          </form>
+        </template>
+      </div>
+
+      <!-- Tab Content: Security - Reset Password -->
+      <div v-else-if="activeTab === 'security'" class="space-y-6">
+        <!-- 2FA Verification Constraint Card -->
+        <div v-if="!authStore.user?.totp_enabled" class="border border-amber-200/50 bg-amber-50/30 rounded-2xl p-5 space-y-4">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center flex-shrink-0">
+              <Lock class="w-5 h-5" />
+            </div>
+            <div>
+              <h4 class="text-sm font-bold text-amber-800">Autentikasi 2FA Admin Diperlukan</h4>
+              <p class="text-xs text-amber-700/80 mt-1 leading-relaxed">
+                Untuk keamanan, Anda wajib mengaktifkan 2FA (TOTP) terlebih dahulu sebelum dapat mereset password pengguna.
+              </p>
+            </div>
+          </div>
+          <UiButton
+            variant="primary"
+            size="sm"
+            class="w-full sm:w-auto"
+            @click="showSetupTotpModal = true"
+          >
+            Aktifkan 2FA Sekarang
+          </UiButton>
+        </div>
+
+        <template v-else>
+          <div class="border border-amber-200/50 bg-amber-50/20 rounded-xl p-3">
+            <p class="text-[11px] text-amber-800 leading-relaxed">
+              ⚠️ Aksi ini akan <b>mereset password</b> user <b>{{ user.name }}</b> dan otomatis <b>logout semua sesi aktif</b> user tersebut. Berikan password baru ke user secara aman (offline).
+            </p>
+          </div>
+
+          <form class="space-y-4" @submit.prevent="handleResetPassword">
+            <!-- New Password -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-foreground">Password Baru (min 8 karakter)</label>
+              <div class="relative">
+                <UiInput
+                  v-model="passwordForm.new_password"
+                  :type="showNewPass ? 'text' : 'password'"
+                  placeholder="Password baru untuk user"
+                  required
+                  class="pr-9"
+                />
+                <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" @click="showNewPass = !showNewPass">
+                  <EyeOff v-if="showNewPass" class="w-4 h-4" />
+                  <Eye v-else class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <!-- Confirm -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-foreground">Konfirmasi Password Baru</label>
+              <div class="relative">
+                <UiInput
+                  v-model="passwordForm.confirm_password"
+                  :type="showConfirmPass ? 'text' : 'password'"
+                  placeholder="Ulangi password baru"
+                  required
+                  class="pr-9"
+                />
+                <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" @click="showConfirmPass = !showConfirmPass">
+                  <EyeOff v-if="showConfirmPass" class="w-4 h-4" />
+                  <Eye v-else class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <!-- Otorisasi -->
+            <div class="border border-red-200/50 bg-red-50/10 rounded-2xl p-4 space-y-3.5">
+              <h5 class="text-xs font-bold text-red-700 flex items-center gap-1.5">
+                <Lock class="w-3.5 h-3.5" />
+                Otorisasi Keamanan Admin
+              </h5>
+              <div class="space-y-1">
+                <label class="text-[10px] font-bold text-red-700 uppercase">Kata Sandi Anda (Admin)</label>
+                <UiInput
+                  v-model="passwordForm.admin_password"
+                  type="password"
+                  placeholder="Kata sandi admin Anda"
+                  required
+                  class="border-red-200 focus:ring-red-400 bg-background"
+                />
+              </div>
+              <div class="space-y-1">
+                <label class="text-[10px] font-bold text-red-700 uppercase">Kode TOTP Admin</label>
+                <UiInput
+                  v-model="passwordForm.totp_code"
+                  type="text"
+                  maxlength="6"
+                  placeholder="123456"
+                  required
+                  class="border-red-200 focus:ring-red-400 bg-background font-mono text-center tracking-[0.2em]"
+                />
+              </div>
+            </div>
+
+            <UiButton type="submit" variant="destructive" class="w-full" :loading="usersStore.actionLoading">
+              <KeyRound class="w-4 h-4 mr-2" />
+              Reset Password User
             </UiButton>
           </form>
         </template>
