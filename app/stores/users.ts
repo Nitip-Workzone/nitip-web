@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import type { UserBankAccount } from './user-wallet'
 
 export interface AdminUser {
     id: string
@@ -156,6 +157,40 @@ export const useUsersStore = defineStore('users', {
                 return true
             } catch (error) {
                 console.error('Failed to disable TOTP:', error)
+                throw error
+            } finally {
+                this.actionLoading = false
+            }
+        },
+
+        async fetchUserBankAccount(id: string) {
+            const { request } = useApi()
+            try {
+                const res = await request<{ data: UserBankAccount }>(`/admin/users/${id}/bank-account`)
+                return res.data
+            } catch (error) {
+                console.warn('Failed to fetch user bank account:', error)
+                return null
+            }
+        },
+
+        async registerUserBankAccount(id: string, payload: {
+            bank_name: string
+            account_no: string
+            account_name: string
+            admin_password: string
+            totp_code: string
+        }) {
+            this.actionLoading = true
+            const { request } = useApi()
+            try {
+                await request(`/admin/users/${id}/bank-account`, {
+                    method: 'POST',
+                    body: payload
+                })
+                return true
+            } catch (error) {
+                console.error('Failed to register bank account:', error)
                 throw error
             } finally {
                 this.actionLoading = false

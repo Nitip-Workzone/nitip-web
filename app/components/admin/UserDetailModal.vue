@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { Shield, ShieldOff, Star, ShieldAlert } from '@lucide/vue'
+import { Shield, ShieldOff, Star, ShieldAlert, CreditCard, Lock, User } from '@lucide/vue'
 import type { AdminUser } from '~/stores/users'
+import type { UserBankAccount } from '~/stores/user-wallet'
+import { useAuthStore } from '~/stores/auth'
 
 const props = defineProps<{
   open: boolean
@@ -13,14 +15,65 @@ const emit = defineEmits<{
 }>()
 
 const usersStore = useUsersStore()
+const authStore = useAuthStore()
 const { success, error } = useToast()
+
+const activeTab = ref('profile')
 const trustInput = ref(0)
 const suspendReason = ref('')
+const showSetupTotpModal = ref(false)
+
+const bankAccount = ref<UserBankAccount | null>(null)
+const loadingBank = ref(false)
+const bankForm = ref({
+  bank_name: '',
+  account_no: '',
+  account_name: '',
+  admin_password: '',
+  totp_code: '',
+})
 
 watch(() => props.user, (u) => {
   if (u) {
     trustInput.value = u.trust_score
     suspendReason.value = u.suspended_reason || ''
+  }
+}, { immediate: true })
+
+watch(() => props.open, (isOpen) => {
+  if (isOpen) {
+    activeTab.value = 'profile'
+  }
+})
+
+const loadBankAccount = async () => {
+  if (!props.user) return
+  loadingBank.value = true
+  try {
+    const res = await usersStore.fetchUserBankAccount(props.user.id)
+    bankAccount.value = res
+  } catch {
+    bankAccount.value = null
+  } finally {
+    loadingBank.value = false
+  }
+}
+
+watch([() => props.user, activeTab], async () => {
+  if (props.user && activeTab.value === 'bank') {
+    bankForm.value = {
+      bank_name: '',
+      account_no: '',
+      account_name: '',
+      admin_password: '',
+      totp_code: '',
+    }
+    await loadBankAccount()
+    if (bankAccount.value) {
+      bankForm.value.bank_name = bankAccount.value.bank_name
+      bankForm.value.account_no = bankAccount.value.account_no
+      bankForm.value.account_name = bankAccount.value.account_name
+    }
   }
 }, { immediate: true })
 
@@ -72,6 +125,28 @@ const handleDisableTotp = async () => {
   }
 }
 
+const handleSubmitBank = async () => {
+  if (!props.user) return
+  if (!bankForm.value.bank_name || !bankForm.value.account_no || !bankForm.value.account_name || !bankForm.value.admin_password || !bankForm.value.totp_code) {
+    error('Mohon lengkapi data rekening beserta Password & Kode TOTP Admin.')
+    return
+  }
+
+  try {
+    const ok = await usersStore.registerUserBankAccount(props.user.id, bankForm.value)
+    if (ok) {
+      success('Nomor rekening bank pengguna berhasil diperbarui.')
+      await loadBankAccount()
+      bankForm.value.admin_password = ''
+      bankForm.value.totp_code = ''
+    }
+  } catch (err: unknown) {
+    const errorObj = err as { data?: { message?: string } }
+    const msg = errorObj.data?.message || 'Gagal mendaftarkan rekening. Pastikan password & TOTP valid.'
+    error(msg)
+  }
+}
+
 const roleVariant = (role: string) => {
   if (role === ROLE_ADMIN) return 'destructive'
   if (role === ROLE_RUNNER) return 'info'
@@ -88,132 +163,303 @@ const roleVariant = (role: string) => {
     @update:open="close"
   >
     <div v-if="user" class="space-y-6">
-      <!-- Avatar + Basic Info -->
-      <div class="flex items-center gap-4">
-        <div class="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold flex-shrink-0">
-          {{ user.name.substring(0, 2).toUpperCase() }}
-        </div>
-        <div class="min-w-0">
-          <p class="font-semibold text-foreground text-base">{{ user.name }}</p>
-          <p class="text-sm text-muted-foreground truncate">{{ user.email }}</p>
-          <div class="flex items-center gap-2 mt-1">
-            <UiBadge :variant="roleVariant(user.role)">{{ user.role }}</UiBadge>
-            <UiBadge :variant="user.is_verified ? 'success' : 'warning'">
-              {{ user.is_verified ? 'Verified' : 'Unverified' }}
-            </UiBadge>
-            <UiBadge v-if="user.is_suspended" variant="destructive">
-              Suspended
-            </UiBadge>
+      <!-- Tabs Navigation -->
+      <div class="flex border-b border-border mb-4">
+        <button
+          type="button"
+          class="flex-1 pb-3 text-sm font-semibold border-b-2 transition-all flex items-center justify-center gap-2"
+          :class="activeTab === 'profile' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'"
+          @click="activeTab = 'profile'"
+        >
+          <User class="w-4 h-4" />
+          Detail Profil
+        </button>
+        <button
+          type="button"
+          class="flex-1 pb-3 text-sm font-semibold border-b-2 transition-all flex items-center justify-center gap-2"
+          :class="activeTab === 'bank' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'"
+          @click="activeTab = 'bank'"
+        >
+          <CreditCard class="w-4 h-4" />
+          Rekening Bank
+        </button>
+      </div>
+
+      <!-- Tab Content: Profile -->
+      <div v-if="activeTab === 'profile'" class="space-y-6">
+        <!-- Avatar + Basic Info -->
+        <div class="flex items-center gap-4">
+          <div class="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold flex-shrink-0">
+            {{ user.name.substring(0, 2).toUpperCase() }}
+          </div>
+          <div class="min-w-0">
+            <p class="font-semibold text-foreground text-base">{{ user.name }}</p>
+            <p class="text-sm text-muted-foreground truncate">{{ user.email }}</p>
+            <div class="flex items-center gap-2 mt-1">
+              <UiBadge :variant="roleVariant(user.role)">{{ user.role }}</UiBadge>
+              <UiBadge :variant="user.is_verified ? 'success' : 'warning'">
+                {{ user.is_verified ? 'Verified' : 'Unverified' }}
+              </UiBadge>
+              <UiBadge v-if="user.is_suspended" variant="destructive">
+                Suspended
+              </UiBadge>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Stats Row -->
-      <div class="grid grid-cols-2 gap-3">
-        <div class="bg-secondary/40 rounded-lg p-3 border border-border/50">
-          <p class="text-xs text-muted-foreground">Trust Score</p>
-          <p class="text-2xl font-bold text-foreground mt-0.5">{{ user.trust_score }}</p>
+        <!-- Stats Row -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-secondary/40 rounded-lg p-3 border border-border/50">
+            <p class="text-xs text-muted-foreground">Trust Score</p>
+            <p class="text-2xl font-bold text-foreground mt-0.5">{{ user.trust_score }}</p>
+          </div>
+          <div class="bg-secondary/40 rounded-lg p-3 border border-border/50">
+            <p class="text-xs text-muted-foreground">Member Since</p>
+            <p class="text-sm font-semibold text-foreground mt-0.5">
+              {{ new Date(user.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' }) }}
+            </p>
+          </div>
         </div>
-        <div class="bg-secondary/40 rounded-lg p-3 border border-border/50">
-          <p class="text-xs text-muted-foreground">Member Since</p>
-          <p class="text-sm font-semibold text-foreground mt-0.5">
-            {{ new Date(user.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' }) }}
-          </p>
-        </div>
-      </div>
 
-      <!-- Trust Score Editor -->
-      <div class="space-y-2">
-        <label class="text-sm font-medium text-foreground">Update Trust Score</label>
-        <div class="flex items-center gap-2">
-          <UiInput
-            v-model="trustInput"
-            type="number"
-            placeholder="0-100"
-            class="flex-1"
-          />
-          <UiButton
-            variant="secondary"
-            :loading="usersStore.actionLoading"
-            @click="handleUpdateTrust"
-          >
-            <Star class="w-4 h-4 mr-1.5" />
-            Save
-          </UiButton>
+        <!-- Trust Score Editor -->
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-foreground">Update Trust Score</label>
+          <div class="flex items-center gap-2">
+            <UiInput
+              v-model="trustInput"
+              type="number"
+              placeholder="0-100"
+              class="flex-1"
+            />
+            <UiButton
+              variant="secondary"
+              :loading="usersStore.actionLoading"
+              @click="handleUpdateTrust"
+            >
+              <Star class="w-4 h-4 mr-1.5" />
+              Save
+            </UiButton>
+          </div>
         </div>
-      </div>
 
-      <!-- Verify Action -->
-      <div class="border border-border/50 rounded-lg p-4 flex items-center justify-between">
-        <div>
-          <p class="text-sm font-medium">Account Verification</p>
-          <p class="text-xs text-muted-foreground mt-0.5">
-            {{ user.is_verified ? 'This account is currently verified.' : 'This account is not yet verified.' }}
-          </p>
-        </div>
-        <UiButton
-          :variant="user.is_verified ? 'destructive' : 'primary'"
-          size="sm"
-          :loading="usersStore.actionLoading"
-          @click="handleVerify"
-        >
-          <ShieldOff v-if="user.is_verified" class="w-4 h-4 mr-1.5" />
-          <Shield v-else class="w-4 h-4 mr-1.5" />
-          {{ user.is_verified ? 'Unverify' : 'Verify' }}
-        </UiButton>
-      </div>
-
-      <!-- Suspend Action -->
-      <div class="border border-border/50 rounded-lg p-4 space-y-3">
-        <div class="flex items-center justify-between">
+        <!-- Verify Action -->
+        <div class="border border-border/50 rounded-lg p-4 flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium">Suspend Account</p>
+            <p class="text-sm font-medium">Account Verification</p>
             <p class="text-xs text-muted-foreground mt-0.5">
-              {{ user.is_suspended ? 'This user is currently restricted.' : 'Restrict user from making or receiving orders.' }}
+              {{ user.is_verified ? 'This account is currently verified.' : 'This account is not yet verified.' }}
             </p>
           </div>
           <UiButton
-            :variant="user.is_suspended ? 'secondary' : 'destructive'"
+            :variant="user.is_verified ? 'destructive' : 'primary'"
             size="sm"
             :loading="usersStore.actionLoading"
-            @click="handleSuspend"
+            @click="handleVerify"
           >
-            <ShieldAlert v-if="!user.is_suspended" class="w-4 h-4 mr-1.5" />
-            {{ user.is_suspended ? 'Unsuspend' : 'Suspend User' }}
+            <ShieldOff v-if="user.is_verified" class="w-4 h-4 mr-1.5" />
+            <Shield v-else class="w-4 h-4 mr-1.5" />
+            {{ user.is_verified ? 'Unverify' : 'Verify' }}
           </UiButton>
         </div>
-        
-        <div v-if="!user.is_suspended || user.is_suspended" class="space-y-1.5">
-          <label class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {{ user.is_suspended ? 'Suspended Reason' : 'Suspension Reason (Required)' }}
-          </label>
-          <UiInput
-            v-model="suspendReason"
-            placeholder="e.g. Unusual activity or payment failure"
-            :disabled="user.is_suspended && usersStore.actionLoading"
-          />
+
+        <!-- Suspend Action -->
+        <div class="border border-border/50 rounded-lg p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium">Suspend Account</p>
+              <p class="text-xs text-muted-foreground mt-0.5">
+                {{ user.is_suspended ? 'This user is currently restricted.' : 'Restrict user from making or receiving orders.' }}
+              </p>
+            </div>
+            <UiButton
+              :variant="user.is_suspended ? 'secondary' : 'destructive'"
+              size="sm"
+              :loading="usersStore.actionLoading"
+              @click="handleSuspend"
+            >
+              <ShieldAlert v-if="!user.is_suspended" class="w-4 h-4 mr-1.5" />
+              {{ user.is_suspended ? 'Unsuspend' : 'Suspend User' }}
+            </UiButton>
+          </div>
+          
+          <div v-if="!user.is_suspended || user.is_suspended" class="space-y-1.5">
+            <label class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {{ user.is_suspended ? 'Suspended Reason' : 'Suspension Reason (Required)' }}
+            </label>
+            <UiInput
+              v-model="suspendReason"
+              placeholder="e.g. Unusual activity or payment failure"
+              :disabled="user.is_suspended && usersStore.actionLoading"
+            />
+          </div>
+        </div>
+
+        <!-- TOTP Action -->
+        <div v-if="user.totp_enabled" class="border border-red-200/50 bg-red-50/30 rounded-lg p-4 flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-red-700">Nonaktifkan 2FA (TOTP)</p>
+            <p class="text-xs text-red-600/80 mt-0.5">
+              Gunakan fitur ini jika pengguna kehilangan akses ke aplikasi Authenticator mereka.
+            </p>
+          </div>
+          <UiButton
+            variant="destructive"
+            size="sm"
+            :loading="usersStore.actionLoading"
+            @click="handleDisableTotp"
+          >
+            <ShieldOff class="w-4 h-4 mr-1.5" />
+            Matikan 2FA
+          </UiButton>
         </div>
       </div>
 
-      <!-- TOTP Action -->
-      <div v-if="user.totp_enabled" class="border border-red-200/50 bg-red-50/30 rounded-lg p-4 flex items-center justify-between">
-        <div>
-          <p class="text-sm font-medium text-red-700">Nonaktifkan 2FA (TOTP)</p>
-          <p class="text-xs text-red-600/80 mt-0.5">
-            Gunakan fitur ini jika pengguna kehilangan akses ke aplikasi Authenticator mereka.
-          </p>
+      <!-- Tab Content: Bank Account -->
+      <div v-else-if="activeTab === 'bank'" class="space-y-6">
+        <!-- 2FA Verification Constraint Card -->
+        <div v-if="!authStore.user?.totp_enabled" class="border border-amber-200/50 bg-amber-50/30 rounded-2xl p-5 space-y-4">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center flex-shrink-0">
+              <Lock class="w-5 h-5" />
+            </div>
+            <div>
+              <h4 class="text-sm font-bold text-amber-800">Autentikasi 2FA Admin Diperlukan</h4>
+              <p class="text-xs text-amber-700/80 mt-1 leading-relaxed">
+                Untuk melindungi keamanan finansial pengguna, Anda wajib mengaktifkan Autentikasi Dua Langkah (2FA / TOTP) terlebih dahulu pada akun Anda sebelum dapat mendaftarkan atau memperbarui data rekening bank.
+              </p>
+            </div>
+          </div>
+          <UiButton
+            variant="primary"
+            size="sm"
+            class="w-full sm:w-auto"
+            @click="showSetupTotpModal = true"
+          >
+            Aktifkan 2FA Sekarang
+          </UiButton>
         </div>
-        <UiButton
-          variant="destructive"
-          size="sm"
-          :loading="usersStore.actionLoading"
-          @click="handleDisableTotp"
-        >
-          <ShieldOff class="w-4 h-4 mr-1.5" />
-          Matikan 2FA
-        </UiButton>
+
+        <!-- Bank Account CRUD (Only if Admin TOTP is enabled) -->
+        <template v-else>
+          <!-- Current Account Status Card -->
+          <div class="border border-border/60 bg-slate-50/50 rounded-2xl p-4 space-y-3">
+            <h4 class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Status Rekening Terdaftar</h4>
+            
+            <div v-if="loadingBank" class="py-4 flex items-center justify-center gap-2">
+              <span class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <span class="text-xs text-muted-foreground">Memeriksa rekening...</span>
+            </div>
+            
+            <div v-else-if="bankAccount" class="space-y-2">
+              <div class="flex items-center justify-between text-xs border-b border-border/50 pb-2">
+                <span class="text-muted-foreground">Nama Bank:</span>
+                <span class="font-bold text-foreground">{{ bankAccount.bank_name }}</span>
+              </div>
+              <div class="flex items-center justify-between text-xs border-b border-border/50 pb-2">
+                <span class="text-muted-foreground">Nomor Rekening:</span>
+                <span class="font-mono font-bold text-foreground select-all">{{ bankAccount.account_no }}</span>
+              </div>
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-muted-foreground">Nama Pemilik:</span>
+                <span class="font-bold text-foreground">{{ bankAccount.account_name }}</span>
+              </div>
+            </div>
+            
+            <div v-else class="py-4 text-center">
+              <p class="text-xs font-semibold text-muted-foreground">Pengguna ini belum memiliki rekening terdaftar.</p>
+            </div>
+          </div>
+
+          <!-- CRUD Form -->
+          <form class="space-y-4" @submit.prevent="handleSubmitBank">
+            <h4 class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border/50 pb-1.5">
+              {{ bankAccount ? 'Perbarui Informasi Rekening' : 'Daftarkan Rekening Baru' }}
+            </h4>
+            
+            <!-- Bank Name Input -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-foreground">Nama Bank</label>
+              <UiInput
+                v-model="bankForm.bank_name"
+                type="text"
+                placeholder="Contoh: Bank BCA, Bank Mandiri, Bank BNI"
+                required
+              />
+            </div>
+
+            <!-- Account Number Input -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-foreground">Nomor Rekening</label>
+              <UiInput
+                v-model="bankForm.account_no"
+                type="text"
+                placeholder="Masukkan nomor rekening"
+                required
+              />
+            </div>
+
+            <!-- Account Name Input -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-foreground">Nama Pemilik Rekening</label>
+              <UiInput
+                v-model="bankForm.account_name"
+                type="text"
+                placeholder="Nama lengkap di buku tabungan"
+                required
+              />
+            </div>
+
+            <!-- Otorisasi Keamanan Admin -->
+            <div class="border border-red-200/50 bg-red-50/10 rounded-2xl p-4 space-y-3.5">
+              <h5 class="text-xs font-bold text-red-700 flex items-center gap-1.5">
+                <Lock class="w-3.5 h-3.5" />
+                Otorisasi Keamanan Admin
+              </h5>
+              <p class="text-[10px] text-red-600/80 leading-relaxed">
+                Demi melindungi integritas data finansial, tindakan ini memerlukan otorisasi sandi dan kode OTP pribadi Anda.
+              </p>
+
+              <!-- Password Admin -->
+              <div class="space-y-1">
+                <label class="text-[10px] font-bold text-red-700 uppercase">Kata Sandi Anda (Admin)</label>
+                <UiInput
+                  v-model="bankForm.admin_password"
+                  type="password"
+                  placeholder="Masukkan kata sandi admin Anda"
+                  required
+                  class="border-red-200 focus:ring-red-400 bg-background"
+                />
+              </div>
+
+              <!-- TOTP Code Admin -->
+              <div class="space-y-1">
+                <label class="text-[10px] font-bold text-red-700 uppercase">Kode TOTP Admin</label>
+                <UiInput
+                  v-model="bankForm.totp_code"
+                  type="text"
+                  maxlength="6"
+                  placeholder="123456"
+                  required
+                  class="border-red-200 focus:ring-red-400 bg-background font-mono text-center tracking-[0.2em]"
+                />
+              </div>
+            </div>
+
+            <UiButton
+              type="submit"
+              variant="primary"
+              class="w-full"
+              :loading="usersStore.actionLoading"
+            >
+              {{ bankAccount ? 'Simpan Perubahan Rekening' : 'Daftarkan Rekening' }}
+            </UiButton>
+          </form>
+        </template>
       </div>
     </div>
+
+    <!-- Admin Setup TOTP Modal Shortcut -->
+    <AdminTotpModal v-model="showSetupTotpModal" />
 
     <template #footer>
       <UiButton variant="ghost" class="w-full" @click="close">Close</UiButton>
