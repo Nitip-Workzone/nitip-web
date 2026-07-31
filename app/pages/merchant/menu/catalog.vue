@@ -247,28 +247,20 @@ onMounted(() => {
         </button>
       </div>
 
-      <!-- Add Menu Card Box -->
-      <div class="bg-white border border-slate-100 rounded-3xl p-5 shadow-soft flex justify-between items-center">
-        <div class="space-y-0.5">
-          <p class="text-xs font-black text-slate-800">Punya produk baru?</p>
-          <p class="text-[10px] text-slate-400 font-semibold leading-normal">Tambahkan item baru langsung ke menu Anda.</p>
-        </div>
-        <button 
-          class="flex items-center gap-1.5 h-10 px-4 rounded-2xl text-xs font-black bg-primary text-white hover:bg-primary/95 active:scale-95 transition-all shadow-md shadow-primary/10"
-          @click="openAddModal"
-        >
-          <Plus class="w-4.5 h-4.5" />
-          Tambah Item
-        </button>
-      </div>
-
       <!-- Menus Grid / List -->
       <div v-if="merchantsStore.merchantMenus.length === 0" class="p-12 text-center bg-white border border-slate-100 rounded-3xl text-slate-400 shadow-soft">
         <div class="inline-flex p-4 bg-slate-50 text-slate-300 rounded-full mb-3 border border-slate-100">
           <Utensils class="w-8 h-8" />
         </div>
         <p class="text-sm font-bold text-slate-800 mb-1">Belum Ada Menu Terdaftar</p>
-        <p class="text-xs text-slate-400 max-w-xs mx-auto">Klik tombol "Tambah Item" untuk memasukkan produk pertamamu.</p>
+        <p class="text-xs text-slate-400 max-w-xs mx-auto mb-4">Klik tombol di bawah ini atau tombol tambah di atas untuk memasukkan produk pertamamu.</p>
+        <button 
+          class="inline-flex items-center gap-1.5 h-10 px-5 rounded-2xl text-xs font-black bg-primary text-white hover:bg-primary/95 active:scale-95 transition-all shadow-md shadow-primary/10"
+          @click="openAddModal"
+        >
+          <Plus class="w-4.5 h-4.5" />
+          Tambah Item Pertama
+        </button>
       </div>
       
       <div v-else class="space-y-3.5">
