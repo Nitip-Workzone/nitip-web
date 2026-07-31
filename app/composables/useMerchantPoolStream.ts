@@ -24,6 +24,7 @@ interface UseMerchantPoolStreamOpts {
   onOrderRemoved?: (ev: MerchantPoolEvent) => void
   onConnected?: () => void
   onError?: () => void
+  enabled?: any
 }
 
 type AudioContextWindow = Window & {
@@ -39,6 +40,32 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
   const baseURL = rawApiUrl
     ? (rawApiUrl.endsWith('/api/v1') ? rawApiUrl : `${rawApiUrl}/api/v1`)
     : '/api/v1'
+
+  const isEnabled = () => {
+    if (opts.enabled === undefined) return true
+    return typeof opts.enabled === 'function' ? opts.enabled() : toValue(opts.enabled)
+  }
+
+  const triggerMobileNotification = (ev: MerchantPoolEvent) => {
+    if (typeof window === 'undefined') return
+    try {
+      const win = window as any
+      const payloadStr = JSON.stringify({
+        type: ev.type,
+        order_id: ev.order_id || '',
+        message: ev.type === 'order_created' ? 'Ada pesanan baru masuk!' : 'Pesanan siap diambil!'
+      })
+      if (win.NitipNotificationChannel) {
+        win.NitipNotificationChannel.postMessage(payloadStr)
+      } else if (win.flutter_inappwebview) {
+        void win.flutter_inappwebview.callHandler('NitipNotification', payloadStr).catch(() => {})
+      } else if (win.webkit?.messageHandlers?.NitipNotification) {
+        win.webkit.messageHandlers.NitipNotification.postMessage(payloadStr)
+      }
+    } catch (e) {
+      console.warn('Failed to postMessage to NitipNotificationChannel:', e)
+    }
+  }
 
   let es: EventSource | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -91,6 +118,7 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
   const connect = async () => {
     if (typeof document !== 'undefined' && document.hidden) return
     if (!authStore.token) return
+    if (!isEnabled()) return
 
     if (es) {
       try { es.close() } catch {}
@@ -142,6 +170,7 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
                 if (jsonData.type === 'heartbeat') continue
                 if (jsonData.type === 'order_created' || jsonData.type === 'order_ready') {
                   beep()
+                  triggerMobileNotification(jsonData)
                   opts.onOrderCreated?.(jsonData)
                 } else if (jsonData.type === 'order_claimed' || jsonData.type === 'order_cancelled' || jsonData.type === 'order_expired' || jsonData.type === 'order_completed') {
                   opts.onOrderRemoved?.(jsonData)
@@ -189,6 +218,7 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
         if (ev.type === 'heartbeat' || ev.type === 'connected') return
         if (ev.type === 'order_created' || ev.type === 'order_ready') {
           beep()
+          triggerMobileNotification(ev)
           opts.onOrderCreated?.(ev)
         } else if (ev.type === 'order_claimed' || ev.type === 'order_cancelled' || ev.type === 'order_expired' || ev.type === 'order_completed') {
           opts.onOrderRemoved?.(ev)
@@ -243,11 +273,21 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
   if (import.meta.client) {
     onMounted(() => {
       document.addEventListener('visibilitychange', handleVisibility)
-      connect()
+      if (isEnabled()) {
+        connect()
+      }
     })
     onUnmounted(() => {
       document.removeEventListener('visibilitychange', handleVisibility)
       disconnect()
+    })
+
+    watch(() => isEnabled(), (newVal) => {
+      if (newVal) {
+        connect()
+      } else {
+        disconnect()
+      }
     })
   }
 

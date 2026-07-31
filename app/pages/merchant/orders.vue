@@ -9,6 +9,9 @@ definePageMeta({
   ssr: false,
 })
 
+const route = useRoute()
+const router = useRouter()
+
 const merchantsStore = useMerchantsStore()
 const { success, error } = useToast()
 
@@ -16,6 +19,11 @@ const activeTab = ref<'pending' | 'processing' | 'completed'>('pending')
 const pollingTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const actionLoadingId = ref('')
 const lastUpdate = ref<string>('')
+
+const filterOrderId = computed(() => {
+  const q = route.query.id || route.query.order_id || ''
+  return String(q).trim()
+})
 
 interface MerchantOrder { 
   id: string
@@ -110,6 +118,16 @@ const completedOrders = computed<MerchantOrder[]>(() =>
 )
 
 const displayedOrders = computed<MerchantOrder[]>(() => {
+  const targetId = filterOrderId.value.toLowerCase()
+  if (targetId) {
+    const matched = (merchantsStore.merchantOrders as MerchantOrder[]).filter(o => 
+      o.id.toLowerCase() === targetId || o.id.toLowerCase().startsWith(targetId)
+    )
+    if (matched.length > 0) {
+      return matched
+    }
+  }
+
   if (activeTab.value === 'pending') return pendingOrders.value
   if (activeTab.value === 'processing') return processingOrders.value
   return completedOrders.value
@@ -146,6 +164,7 @@ const handleReady = async (orderId: string) => {
 
 // Realtime SSE
 const { connect: connectStream, disconnect: disconnectStream, isLive } = useMerchantPoolStream({
+  enabled: computed(() => !!merchantsStore.currentMerchant),
   onOrderCreated: () => {
     fetchOrders(false)
     success('Ada pesanan baru masuk!')
@@ -213,6 +232,20 @@ onUnmounted(() => {
         @click="() => fetchOrders(true)"
       >
         <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': merchantsStore.loading }" />
+      </button>
+    </div>
+
+    <!-- Filter ID Banner -->
+    <div v-if="filterOrderId" class="bg-indigo-50 border border-indigo-100 rounded-3xl p-4 flex justify-between items-center text-xs text-indigo-900 shadow-soft">
+      <div class="flex items-center gap-2">
+        <ShoppingBag class="w-4.5 h-4.5 text-indigo-600" />
+        <p class="font-bold">Menampilkan pesanan terpilih: #{{ filterOrderId.slice(0, 8).toUpperCase() }}</p>
+      </div>
+      <button 
+        class="text-[11px] font-black text-indigo-600 hover:underline"
+        @click="router.push({ query: {} })"
+      >
+        Tampilkan Semua
       </button>
     </div>
 

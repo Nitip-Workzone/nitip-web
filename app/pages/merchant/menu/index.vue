@@ -139,6 +139,7 @@ const handleRegisterProfile = async () => {
 
 // SSE Connection
 const { connect: connectStream, disconnect: disconnectStream, isLive } = useMerchantPoolStream({
+  enabled: hasMerchant,
   onOrderCreated: () => {
     fetchOrders()
     success('Ada pesanan baru masuk!')

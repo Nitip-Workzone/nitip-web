@@ -25,10 +25,12 @@ const navItems = computed(() => {
 })
 
 const isActive = (path: string) => {
-  if (path === '/dashboard' || path === '/merchant/menu') {
-    return route.path === path
+  const cleanRoutePath = route.path.replace(/\/$/, '')
+  const cleanPath = path.replace(/\/$/, '')
+  if (cleanPath === '/dashboard' || cleanPath === '/merchant/menu') {
+    return cleanRoutePath === cleanPath
   }
-  return route.path.startsWith(path)
+  return cleanRoutePath.startsWith(cleanPath)
 }
 
 onMounted(() => {
