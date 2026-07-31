@@ -164,6 +164,12 @@ onMounted(async () => {
   } catch (err) {
     console.warn('[Merchant Orders] fetchMerchantProfile failed:', err)
   }
+
+  if (!merchantsStore.currentMerchant) {
+    await navigateTo('/merchant/menu')
+    return
+  }
+
   try {
     await fetchOrders(false)
   } catch (err) {

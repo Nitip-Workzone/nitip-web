@@ -39,6 +39,9 @@ const fetchProfile = async () => {
       } catch (e) {
         console.warn('[Catalog] fetchMerchantMenu failed non-fatal:', e)
       }
+    } else {
+      await navigateTo('/merchant/menu')
+      return
     }
   } catch (e) {
     console.warn('[Catalog] fetchMerchantProfile failed:', e)

@@ -83,6 +83,9 @@ const fetchProfile = async () => {
       } catch (e) {
         console.warn('[MerchantMenu] fetchOrders failed (non-fatal):', e)
       }
+
+      // Connect stream only if we actually have a merchant profile
+      connectStream()
     } else {
       hasMerchant.value = false
     }
@@ -99,6 +102,38 @@ const fetchOrders = async () => {
     await merchantsStore.fetchMerchantOrders()
   } catch (e) {
     console.warn('[MerchantMenu] fetchMerchantOrders failed:', e)
+  }
+}
+
+const handleRegisterProfile = async () => {
+  if (!registrationForm.value.name.trim()) {
+    error('Nama merchant wajib diisi.')
+    return
+  }
+  if (!registrationForm.value.address.trim()) {
+    error('Alamat merchant wajib diisi.')
+    return
+  }
+
+  actionLoading.value = true
+  try {
+    const res = await merchantsStore.createMerchantProfile({
+      name: registrationForm.value.name.trim(),
+      description: registrationForm.value.description.trim(),
+      address: registrationForm.value.address.trim(),
+      latitude: Number(registrationForm.value.latitude),
+      longitude: Number(registrationForm.value.longitude),
+      category: registrationForm.value.category,
+    })
+    if (res) {
+      success('Profil merchant berhasil dibuat! Toko Anda sekarang aktif.')
+      await fetchProfile()
+    }
+  } catch (err) {
+    const errMsg = (err as { message?: string })?.message || 'Gagal membuat profil merchant.'
+    error(errMsg)
+  } finally {
+    actionLoading.value = false
   }
 }
 
@@ -194,6 +229,16 @@ const pendingOrders = computed(() =>
   (merchantsStore.merchantOrders || []).filter(o => o.status === 'pending')
 )
 
+const latestPendingOrder = computed(() => {
+  const o = pendingOrders.value[0]
+  if (!o) return null
+  return {
+    id: (o.id as string) || '',
+    item_details: (o.item_details as string) || '',
+    estimated_cost: Number(o.estimated_cost ?? 0)
+  }
+})
+
 const activeOrdersCount = computed(() => 
   (merchantsStore.merchantOrders || []).filter(o => 
     o.status === 'pending' || 
@@ -220,7 +265,6 @@ onMounted(() => {
     isWebView.value = /wv|NitipMerchant|NitipApp|WebView/i.test(ua) || (ua.includes('Android') && ua.includes('Version/'))
   }
   fetchProfile()
-  connectStream()
 })
 
 onUnmounted(() => {
@@ -421,18 +465,18 @@ onUnmounted(() => {
         </div>
         
         <!-- Quick action for the latest pending order -->
-        <div class="bg-white/10 border border-white/15 rounded-2xl p-3 flex justify-between items-center text-xs backdrop-blur-sm">
+        <div v-if="latestPendingOrder" class="bg-white/10 border border-white/15 rounded-2xl p-3 flex justify-between items-center text-xs backdrop-blur-sm">
           <div class="min-w-0 flex-1 mr-3">
-            <p class="font-extrabold tracking-wide text-rose-100">ID: {{ pendingOrders[0].id.slice(0, 8).toUpperCase() }}</p>
-            <p class="font-bold truncate mt-0.5">{{ pendingOrders[0].item_details }}</p>
-            <p class="text-[10px] text-white/80 font-semibold mt-0.5">Rp {{ Number(pendingOrders[0].estimated_cost ?? 0).toLocaleString('id-ID') }}</p>
+            <p class="font-extrabold tracking-wide text-rose-100">ID: {{ latestPendingOrder.id.slice(0, 8).toUpperCase() }}</p>
+            <p class="font-bold truncate mt-0.5">{{ latestPendingOrder.item_details }}</p>
+            <p class="text-[10px] text-white/80 font-semibold mt-0.5">Rp {{ latestPendingOrder.estimated_cost.toLocaleString('id-ID') }}</p>
           </div>
           <button 
             class="h-9 px-4 rounded-xl text-[11px] font-black bg-white text-rose-600 hover:bg-rose-50 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-1"
-            :disabled="actionLoadingId === pendingOrders[0].id"
-            @click="handleAccept(pendingOrders[0].id)"
+            :disabled="actionLoadingId === latestPendingOrder.id"
+            @click="handleAccept(latestPendingOrder.id)"
           >
-            <Play v-if="actionLoadingId !== pendingOrders[0].id" class="w-3.5 h-3.5 fill-current" />
+            <Play v-if="actionLoadingId !== latestPendingOrder.id" class="w-3.5 h-3.5 fill-current" />
             <RefreshCw v-else class="w-3.5 h-3.5 animate-spin" />
             Terima
           </button>

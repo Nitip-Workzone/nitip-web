@@ -67,6 +67,9 @@ onMounted(async () => {
           if (dayLabels[k]) (openingHours.value as Record<string, DayHours>)[k] = { open: (oh[k] as DayHours).open, close: (oh[k] as DayHours).close, closed: (oh[k] as DayHours).closed }
         }
       }
+    } else {
+      await navigateTo('/merchant/menu')
+      return
     }
   } catch (e) {
     console.error('Failed to fetch merchant profile:', e)
