@@ -10,15 +10,18 @@ import {
   Search, 
   RefreshCw,
   Clock,
-  Ban
+  Ban,
+  Radio
 } from '@lucide/vue'
 import { useOrdersStore, type AdminOrder } from '~/stores/orders'
+import { useWalletsStore } from '~/stores/wallets'
 
 definePageMeta({
   layout: 'admin',
 })
 
 const ordersStore = useOrdersStore()
+const walletsStore = useWalletsStore()
 const { request } = useApi()
 const { success: toastSuccess, error: toastError } = useToast()
 
@@ -26,9 +29,14 @@ const activeTab = ref<'order' | 'topup'>('order')
 const loading = ref(false)
 const consoleOutput = ref('')
 
-// List filter and search
+// List configuration
+const listType = ref<'orders' | 'topups'>('orders')
 const listFilter = ref<'all' | 'pending' | 'success' | 'failed'>('all')
 const listSearchQuery = ref('')
+
+// Auto Refresh Configuration
+const isAutoRefresh = ref(false)
+let refreshIntervalId: any = null
 
 // Form States
 const orderForm = ref({
@@ -47,15 +55,51 @@ const appendToConsole = (msg: string, type: 'info' | 'success' | 'error' = 'info
   consoleOutput.value += `[${time}] ${prefix} ${msg}\n`
 }
 
+// Fetch all data
+const fetchData = async () => {
+  try {
+    await Promise.all([
+      ordersStore.fetchOrders(),
+      walletsStore.fetchTopups()
+    ])
+  } catch (error) {
+    console.error('Failed to auto-refresh data:', error)
+  }
+}
+
+// Handle Auto-Refresh Lifecycle
+const toggleAutoRefresh = () => {
+  isAutoRefresh.value = !isAutoRefresh.value
+  
+  if (isAutoRefresh.value) {
+    appendToConsole('Auto-refresh diaktifkan (per 15 detik).', 'info')
+    refreshIntervalId = setInterval(() => {
+      fetchData()
+      appendToConsole('Data diperbarui otomatis.', 'info')
+    }, 15000)
+  } else {
+    appendToConsole('Auto-refresh dinonaktifkan.', 'info')
+    if (refreshIntervalId) {
+      clearInterval(refreshIntervalId)
+      refreshIntervalId = null
+    }
+  }
+}
+
 onMounted(() => {
-  ordersStore.fetchOrders()
+  fetchData()
 })
 
-// Filtered Orders for the list
+onUnmounted(() => {
+  if (refreshIntervalId) {
+    clearInterval(refreshIntervalId)
+  }
+})
+
+// Filtered data computed properties
 const filteredOrders = computed(() => {
   let list = ordersStore.orders
 
-  // 1. Status Filter
   if (listFilter.value === 'pending') {
     list = list.filter(o => o.status === 'pending' || o.payment_status === 'unpaid')
   } else if (listFilter.value === 'success') {
@@ -64,12 +108,33 @@ const filteredOrders = computed(() => {
     list = list.filter(o => o.status === 'cancelled')
   }
 
-  // 2. Search Query
   if (listSearchQuery.value.trim()) {
     const q = listSearchQuery.value.toLowerCase()
     list = list.filter(o => 
       o.id.toLowerCase().includes(q) || 
       o.item_details.toLowerCase().includes(q)
+    )
+  }
+
+  return list
+})
+
+const filteredTopups = computed(() => {
+  let list = walletsStore.topups
+
+  if (listFilter.value === 'pending') {
+    list = list.filter(t => t.status === 'pending')
+  } else if (listFilter.value === 'success') {
+    list = list.filter(t => t.status === 'completed')
+  } else if (listFilter.value === 'failed') {
+    list = list.filter(t => t.status === 'failed' || t.status === 'rejected')
+  }
+
+  if (listSearchQuery.value.trim()) {
+    const q = listSearchQuery.value.toLowerCase()
+    list = list.filter(t => 
+      t.id.toLowerCase().includes(q) || 
+      (t.reference && t.reference.toLowerCase().includes(q))
     )
   }
 
@@ -143,6 +208,7 @@ const handleTopupTrigger = async () => {
       if (res.message) appendToConsole(`Backend: ${res.message}`, 'info')
       topupForm.value.reference = ''
       topupForm.value.notificationId = ''
+      await walletsStore.fetchTopups()
     } else {
       toastError(res.message || 'Gagal memproses top-up')
       appendToConsole(`GAGAL: ${res.message || 'Error tidak dikenal'}`, 'error')
@@ -156,10 +222,10 @@ const handleTopupTrigger = async () => {
   }
 }
 
-// Trigger Handlers from List Actions
+// Trigger Handlers from List Actions (Orders)
 const triggerListSuccess = async (order: AdminOrder) => {
   const notifId = prompt(`Masukkan Notification ID untuk Order ${order.id.substring(0, 8)} (opsional):`, `MANUAL_PAY_${Date.now()}`)
-  if (notifId === null) return // user cancelled prompt
+  if (notifId === null) return
 
   loading.value = true
   appendToConsole(`Mencoba trigger pembayaran manual untuk Order ID: ${order.id}...`, 'info')
@@ -217,6 +283,67 @@ const triggerListFailed = async (order: AdminOrder) => {
   }
 }
 
+// Trigger Handlers from List Actions (Top-Ups)
+const triggerTopupSuccess = async (tx: any) => {
+  const notifId = prompt(`Masukkan Notification ID untuk Top-Up ${tx.reference || tx.id.substring(0, 8)} (opsional):`, `MANUAL_TOPUP_${Date.now()}`)
+  if (notifId === null) return
+
+  loading.value = true
+  appendToConsole(`Mencoba trigger finalisasi manual untuk Top-Up Ref: ${tx.reference}...`, 'info')
+
+  try {
+    const res = await request<{ success: boolean; message: string }>(`/admin/wallets/topup/${tx.reference}/finalize`, {
+      method: 'POST',
+      body: {
+        notification_id: notifId.trim() || undefined,
+      },
+    })
+
+    if (res.success !== false) {
+      toastSuccess('Top-up berhasil difinalisasi!')
+      appendToConsole(`SUKSES: Top-Up Ref ${tx.reference} berhasil dikreditkan ke wallet user.`, 'success')
+      await walletsStore.fetchTopups()
+    } else {
+      toastError(res.message || 'Gagal memproses top-up')
+      appendToConsole(`GAGAL: ${res.message}`, 'error')
+    }
+  } catch (err: any) {
+    const errorMsg = err?.data?.message || err?.message || 'Koneksi gagal'
+    toastError(errorMsg)
+    appendToConsole(`ERROR: ${errorMsg}`, 'error')
+  } finally {
+    loading.value = false
+  }
+}
+
+const triggerTopupFailed = async (tx: any) => {
+  if (!confirm(`Apakah Anda yakin ingin menggagalkan (FAIL) transaksi Top-Up ${tx.reference || tx.id.substring(0, 8)} ini?`)) return
+
+  loading.value = true
+  appendToConsole(`Mencoba membatalkan (CANCEL/FAIL) Top-Up Ref: ${tx.reference}...`, 'info')
+
+  try {
+    const res = await request<{ success: boolean; message: string }>(`/admin/wallets/topup/${tx.reference}/cancel`, {
+      method: 'POST',
+    })
+
+    if (res.success !== false) {
+      toastSuccess('Transaksi Top-up ditolak (FAILED)!')
+      appendToConsole(`SUKSES: Top-Up Ref ${tx.reference} ditandai sebagai FAILED.`, 'success')
+      await walletsStore.fetchTopups()
+    } else {
+      toastError(res.message || 'Gagal membatalkan top-up')
+      appendToConsole(`GAGAL: ${res.message}`, 'error')
+    }
+  } catch (err: any) {
+    const errorMsg = err?.data?.message || err?.message || 'Koneksi gagal'
+    toastError(errorMsg)
+    appendToConsole(`ERROR: ${errorMsg}`, 'error')
+  } finally {
+    loading.value = false
+  }
+}
+
 const getPaymentStatusBadge = (status: string) => {
   return status === 'paid' ? 'success' : 'warning'
 }
@@ -226,6 +353,16 @@ const getOrderStatusBadge = (status: string) => {
     case 'completed': return 'success'
     case 'cancelled': return 'secondary'
     case 'disputed': return 'destructive'
+    case 'pending': return 'warning'
+    default: return 'info'
+  }
+}
+
+const getTopupStatusBadge = (status: string) => {
+  switch (status) {
+    case 'completed': return 'success'
+    case 'failed':
+    case 'rejected': return 'secondary'
     case 'pending': return 'warning'
     default: return 'info'
   }
@@ -255,15 +392,27 @@ const formatDate = (date: string) =>
           Picu penyelesaian manual (SUCCESS/FAILED) untuk transaksi tertunda akibat gangguan listener atau gateway.
         </p>
       </div>
-      <UiButton
-        variant="secondary"
-        size="sm"
-        :loading="ordersStore.loading"
-        @click="ordersStore.fetchOrders()"
-      >
-        <RefreshCw class="w-4 h-4 mr-2" />
-        Refresh Data
-      </UiButton>
+      <div class="flex items-center gap-3">
+        <!-- Auto Refresh Toggle -->
+        <button
+          class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm"
+          :class="[isAutoRefresh ? 'bg-primary/10 text-primary border-primary/30' : 'bg-background hover:bg-muted text-muted-foreground border-border']"
+          @click="toggleAutoRefresh"
+        >
+          <Radio class="w-4 h-4" :class="{'animate-pulse text-primary': isAutoRefresh}" />
+          Auto Refresh (15s): {{ isAutoRefresh ? 'ON' : 'OFF' }}
+        </button>
+
+        <UiButton
+          variant="secondary"
+          size="sm"
+          :loading="ordersStore.loading || walletsStore.loading"
+          @click="fetchData"
+        >
+          <RefreshCw class="w-4 h-4 mr-2" />
+          Refresh Data
+        </UiButton>
+      </div>
     </div>
 
     <!-- Info Warning Alert -->
@@ -398,8 +547,27 @@ const formatDate = (date: string) =>
 
     <!-- Transaction List Section -->
     <div class="space-y-4">
-      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-        <h2 class="text-phi-lg font-bold tracking-tight">Daftar Transaksi Pesanan (Sniffed Orders)</h2>
+      <div class="flex flex-col xl:flex-row justify-between xl:items-center gap-3">
+        <!-- List Type Selector -->
+        <div class="flex items-center gap-2">
+          <h2 class="text-phi-lg font-bold tracking-tight">Daftar Transaksi:</h2>
+          <div class="flex border border-border/50 rounded-lg p-0.5 bg-muted/20 text-[11px] font-bold">
+            <button
+              class="px-3 py-1 rounded-md transition-all"
+              :class="[listType === 'orders' ? 'bg-background shadow-xs text-primary' : 'text-muted-foreground']"
+              @click="listType = 'orders'"
+            >
+              Pesanan (Orders)
+            </button>
+            <button
+              class="px-3 py-1 rounded-md transition-all"
+              :class="[listType === 'topups' ? 'bg-background shadow-xs text-primary' : 'text-muted-foreground']"
+              @click="listType = 'topups'"
+            >
+              Isi Saldo (Top-Ups)
+            </button>
+          </div>
+        </div>
         
         <!-- List Toolbar -->
         <div class="flex flex-col sm:flex-row gap-3">
@@ -408,7 +576,7 @@ const formatDate = (date: string) =>
             <input
               v-model="listSearchQuery"
               type="text"
-              placeholder="Cari Order ID / item…"
+              placeholder="Cari ID / Kode Ref…"
               class="h-9 w-full rounded-md border border-input bg-background/50 pl-9 pr-3 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all"
             >
           </div>
@@ -447,8 +615,8 @@ const formatDate = (date: string) =>
         </div>
       </div>
 
-      <!-- Table Card -->
-      <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+      <!-- Table Card (Orders) -->
+      <div v-if="listType === 'orders'" class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
         <div v-if="ordersStore.loading" class="p-12 flex justify-center">
           <RefreshCw class="w-8 h-8 text-primary animate-spin" />
         </div>
@@ -526,6 +694,87 @@ const formatDate = (date: string) =>
                     </span>
                     <span v-else-if="order.status === 'cancelled'" class="text-[10px] text-muted-foreground italic mr-2">
                       Batal
+                    </span>
+                  </div>
+                </UiTableCell>
+              </UiTableRow>
+            </UiTableBody>
+          </UiTable>
+        </template>
+      </div>
+
+      <!-- Table Card (Topups) -->
+      <div v-else class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+        <div v-if="walletsStore.loading" class="p-12 flex justify-center">
+          <RefreshCw class="w-8 h-8 text-primary animate-spin" />
+        </div>
+
+        <div v-else-if="filteredTopups.length === 0" class="py-16 text-center">
+          <Ban class="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+          <p class="font-semibold text-sm">Tidak ada transaksi top-up ditemukan</p>
+          <p class="text-xs text-muted-foreground mt-0.5">Coba sesuaikan kata kunci pencarian atau filter status.</p>
+        </div>
+
+        <template v-else>
+          <UiTable>
+            <UiTableHeader>
+              <UiTableRow :header="true">
+                <UiTableHead>Transaction ID</UiTableHead>
+                <UiTableHead>Kode Referensi</UiTableHead>
+                <UiTableHead>Tanggal Transaksi</UiTableHead>
+                <UiTableHead>Nominal Top-Up</UiTableHead>
+                <UiTableHead>Status</UiTableHead>
+                <UiTableHead class="text-right">Aksi Trigger Manual</UiTableHead>
+              </UiTableRow>
+            </UiTableHeader>
+            <UiTableBody>
+              <UiTableRow v-for="tx in filteredTopups" :key="tx.id">
+                <UiTableCell>
+                  <span class="font-mono text-[10px] font-bold text-primary">{{ tx.id.substring(0, 8) }}...</span>
+                </UiTableCell>
+                <UiTableCell>
+                  <span class="font-mono text-[11px] font-bold text-slate-700">{{ tx.reference || '-' }}</span>
+                </UiTableCell>
+                <UiTableCell>
+                  <span class="text-[11px] text-muted-foreground">{{ formatDate(tx.created_at) }}</span>
+                </UiTableCell>
+                <UiTableCell>
+                  <span class="text-[12px] font-bold text-emerald-600">+ {{ formatCurrency(tx.amount) }}</span>
+                </UiTableCell>
+                <UiTableCell>
+                  <UiBadge :variant="getTopupStatusBadge(tx.status)" class="text-[10px]">
+                    {{ tx.status.toUpperCase() }}
+                  </UiBadge>
+                </UiTableCell>
+                <UiTableCell>
+                  <div class="flex items-center justify-end gap-2">
+                    <!-- Trigger SUCCESS (Finalize) -->
+                    <button
+                      v-if="tx.status === 'pending'"
+                      class="px-2.5 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 text-[10px] font-bold transition-colors flex items-center gap-1"
+                      title="Trigger Success (Finalize)"
+                      @click="triggerTopupSuccess(tx)"
+                    >
+                      <CheckCircle2 class="w-3.5 h-3.5" />
+                      Success
+                    </button>
+
+                    <!-- Trigger FAILED (Cancel/Fail) -->
+                    <button
+                      v-if="tx.status === 'pending'"
+                      class="px-2.5 py-1 rounded bg-destructive/10 hover:bg-destructive/20 text-destructive text-[10px] font-bold transition-colors flex items-center gap-1"
+                      title="Trigger Failed (Cancel)"
+                      @click="triggerTopupFailed(tx)"
+                    >
+                      <XCircle class="w-3.5 h-3.5" />
+                      Failed
+                    </button>
+                    
+                    <span v-if="tx.status === 'completed'" class="text-[10px] text-muted-foreground italic mr-2">
+                      Selesai
+                    </span>
+                    <span v-else-if="tx.status === 'failed' || tx.status === 'rejected'" class="text-[10px] text-muted-foreground italic mr-2">
+                      Gagal
                     </span>
                   </div>
                 </UiTableCell>

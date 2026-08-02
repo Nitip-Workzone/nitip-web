@@ -22,6 +22,7 @@ export interface SystemBalanceSummary {
 export const useWalletsStore = defineStore('wallets', {
     state: () => ({
         withdrawals: [] as WalletTransaction[],
+        topups: [] as WalletTransaction[],
         systemBalance: null as SystemBalanceSummary | null,
         loading: false,
         systemBalanceLoading: false,
@@ -39,6 +40,21 @@ export const useWalletsStore = defineStore('wallets', {
                 }
             } catch (error) {
                 console.error('Failed to fetch withdrawals:', error)
+            } finally {
+                this.loading = false
+            }
+        },
+
+        async fetchTopups() {
+            this.loading = true
+            const { request } = useApi()
+            try {
+                const res = await request<{ data: WalletTransaction[] }>('/admin/wallets/topups')
+                if (res.data) {
+                    this.topups = res.data
+                }
+            } catch (error) {
+                console.error('Failed to fetch topups:', error)
             } finally {
                 this.loading = false
             }
@@ -70,6 +86,41 @@ export const useWalletsStore = defineStore('wallets', {
                 return true
             } catch (error) {
                 console.error('Failed to approve withdrawal:', error)
+                return false
+            } finally {
+                this.actionLoading = false
+            }
+        },
+
+        async finalizeTopup(reference: string, notificationId?: string) {
+            this.actionLoading = true
+            const { request } = useApi()
+            try {
+                await request(`/admin/wallets/topup/${reference}/finalize`, {
+                    method: 'POST',
+                    body: { notification_id: notificationId || undefined }
+                })
+                await this.fetchTopups()
+                return true
+            } catch (error) {
+                console.error('Failed to finalize topup:', error)
+                return false
+            } finally {
+                this.actionLoading = false
+            }
+        },
+
+        async cancelTopup(reference: string) {
+            this.actionLoading = true
+            const { request } = useApi()
+            try {
+                await request(`/admin/wallets/topup/${reference}/cancel`, {
+                    method: 'POST'
+                })
+                await this.fetchTopups()
+                return true
+            } catch (error) {
+                console.error('Failed to cancel topup:', error)
                 return false
             } finally {
                 this.actionLoading = false
