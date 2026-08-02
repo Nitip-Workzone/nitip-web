@@ -13,6 +13,7 @@ import {
   Image,
   Store,
   Headset,
+  Zap,
 } from '@lucide/vue'
 import { useAuthStore } from '~/stores/auth'
 
@@ -30,6 +31,7 @@ const baseNavigation = [
   { name: 'Merchants', href: '/admin/merchants', icon: Store, roles: ['admin'] },
   { name: 'Orders', href: '/admin/orders', icon: ShoppingBag, roles: ['admin'] },
   { name: 'Wallets', href: '/admin/wallets', icon: Wallet, roles: ['admin'] },
+  { name: 'Manual Trigger', href: '/admin/trigger', icon: Zap, roles: ['admin'] },
   { name: 'Support', href: '/admin/support', icon: Headset, roles: ['admin','cs'] },
   { name: 'Audit Logs', href: '/admin/audit', icon: History, roles: ['admin'] },
   { name: 'Settings', href: '/admin/settings', icon: Settings, roles: ['admin'] },
