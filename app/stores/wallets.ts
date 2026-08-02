@@ -92,13 +92,16 @@ export const useWalletsStore = defineStore('wallets', {
             }
         },
 
-        async finalizeTopup(reference: string, notificationId?: string) {
+        async finalizeTopup(reference: string, notificationId?: string, reason?: string) {
             this.actionLoading = true
             const { request } = useApi()
             try {
                 await request(`/admin/wallets/topup/${reference}/finalize`, {
                     method: 'POST',
-                    body: { notification_id: notificationId || undefined }
+                    body: { 
+                        notification_id: notificationId || undefined,
+                        reason: reason || undefined
+                    }
                 })
                 await this.fetchTopups()
                 return true
@@ -110,12 +113,15 @@ export const useWalletsStore = defineStore('wallets', {
             }
         },
 
-        async cancelTopup(reference: string) {
+        async cancelTopup(reference: string, reason?: string) {
             this.actionLoading = true
             const { request } = useApi()
             try {
                 await request(`/admin/wallets/topup/${reference}/cancel`, {
-                    method: 'POST'
+                    method: 'POST',
+                    body: {
+                        reason: reason || undefined
+                    }
                 })
                 await this.fetchTopups()
                 return true

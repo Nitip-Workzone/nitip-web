@@ -42,11 +42,13 @@ let refreshIntervalId: any = null
 const orderForm = ref({
   orderId: '',
   notificationId: '',
+  reason: '',
 })
 
 const topupForm = ref({
   reference: '',
   notificationId: '',
+  reason: '',
 })
 
 const appendToConsole = (msg: string, type: 'info' | 'success' | 'error' = 'info') => {
@@ -145,9 +147,14 @@ const filteredTopups = computed(() => {
 const handleOrderTrigger = async () => {
   const id = orderForm.value.orderId.trim()
   const notifId = orderForm.value.notificationId.trim()
+  const reason = orderForm.value.reason.trim()
 
   if (!id) {
     toastError('Order ID wajib diisi!')
+    return
+  }
+  if (!reason) {
+    toastError('Catatan audit / Alasan wajib diisi!')
     return
   }
 
@@ -159,6 +166,7 @@ const handleOrderTrigger = async () => {
       method: 'POST',
       body: {
         notification_id: notifId || undefined,
+        reason: reason,
       },
     })
 
@@ -168,6 +176,7 @@ const handleOrderTrigger = async () => {
       if (res.message) appendToConsole(`Backend: ${res.message}`, 'info')
       orderForm.value.orderId = ''
       orderForm.value.notificationId = ''
+      orderForm.value.reason = ''
       await ordersStore.fetchOrders()
     } else {
       toastError(res.message || 'Gagal memproses transaksi')
@@ -185,9 +194,14 @@ const handleOrderTrigger = async () => {
 const handleTopupTrigger = async () => {
   const refId = topupForm.value.reference.trim()
   const notifId = topupForm.value.notificationId.trim()
+  const reason = topupForm.value.reason.trim()
 
   if (!refId) {
     toastError('Reference ID wajib diisi!')
+    return
+  }
+  if (!reason) {
+    toastError('Catatan audit / Alasan wajib diisi!')
     return
   }
 
@@ -199,6 +213,7 @@ const handleTopupTrigger = async () => {
       method: 'POST',
       body: {
         notification_id: notifId || undefined,
+        reason: reason,
       },
     })
 
@@ -208,6 +223,7 @@ const handleTopupTrigger = async () => {
       if (res.message) appendToConsole(`Backend: ${res.message}`, 'info')
       topupForm.value.reference = ''
       topupForm.value.notificationId = ''
+      topupForm.value.reason = ''
       await walletsStore.fetchTopups()
     } else {
       toastError(res.message || 'Gagal memproses top-up')
@@ -227,6 +243,13 @@ const triggerListSuccess = async (order: AdminOrder) => {
   const notifId = prompt(`Masukkan Notification ID untuk Order ${order.id.substring(0, 8)} (opsional):`, `MANUAL_PAY_${Date.now()}`)
   if (notifId === null) return
 
+  const remark = prompt(`[PENTING] Masukkan Catatan Audit / Keterangan pembayaran (wajib):`)
+  if (remark === null) return
+  if (!remark.trim()) {
+    toastError('Catatan audit wajib diisi untuk keperluan data transaksi!')
+    return
+  }
+
   loading.value = true
   appendToConsole(`Mencoba trigger pembayaran manual untuk Order ID: ${order.id}...`, 'info')
 
@@ -235,12 +258,13 @@ const triggerListSuccess = async (order: AdminOrder) => {
       method: 'POST',
       body: {
         notification_id: notifId.trim() || undefined,
+        reason: remark.trim(),
       },
     })
 
     if (res.success !== false) {
       toastSuccess('Status Pembayaran Order diperbarui ke PAID!')
-      appendToConsole(`SUKSES: Order ${order.id} berhasil ditandai sebagai PAID.`, 'success')
+      appendToConsole(`SUKSES: Order ${order.id} berhasil ditandai sebagai PAID. Catatan: ${remark}`, 'success')
       await ordersStore.fetchOrders()
     } else {
       toastError(res.message || 'Gagal memperbarui status order')
@@ -256,7 +280,12 @@ const triggerListSuccess = async (order: AdminOrder) => {
 }
 
 const triggerListFailed = async (order: AdminOrder) => {
-  if (!confirm(`Apakah Anda yakin ingin membatalkan (FAIL/CANCEL) Order ${order.id.substring(0, 8)} ini?`)) return
+  const remark = prompt(`[PENTING] Masukkan Alasan Pembatalan / Gagalkan Order ${order.id.substring(0, 8)} (wajib):`)
+  if (remark === null) return
+  if (!remark.trim()) {
+    toastError('Alasan pembatalan wajib diisi untuk keperluan data transaksi!')
+    return
+  }
 
   loading.value = true
   appendToConsole(`Mencoba membatalkan (FORCE CANCEL) Order ID: ${order.id}...`, 'info')
@@ -264,11 +293,14 @@ const triggerListFailed = async (order: AdminOrder) => {
   try {
     const res = await request<{ success: boolean; message: string }>(`/admin/orders/${order.id}/cancel`, {
       method: 'POST',
+      body: {
+        reason: remark.trim(),
+      }
     })
 
     if (res.success !== false) {
       toastSuccess('Order berhasil dibatalkan (FAILED)!')
-      appendToConsole(`SUKSES: Order ${order.id} ditandai sebagai CANCELLED.`, 'success')
+      appendToConsole(`SUKSES: Order ${order.id} ditandai sebagai CANCELLED. Alasan: ${remark}`, 'success')
       await ordersStore.fetchOrders()
     } else {
       toastError(res.message || 'Gagal membatalkan order')
@@ -288,6 +320,13 @@ const triggerTopupSuccess = async (tx: any) => {
   const notifId = prompt(`Masukkan Notification ID untuk Top-Up ${tx.reference || tx.id.substring(0, 8)} (opsional):`, `MANUAL_TOPUP_${Date.now()}`)
   if (notifId === null) return
 
+  const remark = prompt(`[PENTING] Masukkan Catatan Audit / Keterangan finalisasi Top-Up (wajib):`)
+  if (remark === null) return
+  if (!remark.trim()) {
+    toastError('Catatan audit wajib diisi untuk keperluan data transaksi!')
+    return
+  }
+
   loading.value = true
   appendToConsole(`Mencoba trigger finalisasi manual untuk Top-Up Ref: ${tx.reference}...`, 'info')
 
@@ -296,12 +335,13 @@ const triggerTopupSuccess = async (tx: any) => {
       method: 'POST',
       body: {
         notification_id: notifId.trim() || undefined,
+        reason: remark.trim(),
       },
     })
 
     if (res.success !== false) {
       toastSuccess('Top-up berhasil difinalisasi!')
-      appendToConsole(`SUKSES: Top-Up Ref ${tx.reference} berhasil dikreditkan ke wallet user.`, 'success')
+      appendToConsole(`SUKSES: Top-Up Ref ${tx.reference} berhasil dikreditkan ke wallet user. Catatan: ${remark}`, 'success')
       await walletsStore.fetchTopups()
     } else {
       toastError(res.message || 'Gagal memproses top-up')
@@ -317,7 +357,12 @@ const triggerTopupSuccess = async (tx: any) => {
 }
 
 const triggerTopupFailed = async (tx: any) => {
-  if (!confirm(`Apakah Anda yakin ingin menggagalkan (FAIL) transaksi Top-Up ${tx.reference || tx.id.substring(0, 8)} ini?`)) return
+  const remark = prompt(`[PENTING] Masukkan Alasan Pembatalan / Gagalkan Top-Up ${tx.reference || tx.id.substring(0, 8)} (wajib):`)
+  if (remark === null) return
+  if (!remark.trim()) {
+    toastError('Alasan penolakan wajib diisi untuk keperluan data transaksi!')
+    return
+  }
 
   loading.value = true
   appendToConsole(`Mencoba membatalkan (CANCEL/FAIL) Top-Up Ref: ${tx.reference}...`, 'info')
@@ -325,11 +370,14 @@ const triggerTopupFailed = async (tx: any) => {
   try {
     const res = await request<{ success: boolean; message: string }>(`/admin/wallets/topup/${tx.reference}/cancel`, {
       method: 'POST',
+      body: {
+        reason: remark.trim(),
+      }
     })
 
     if (res.success !== false) {
       toastSuccess('Transaksi Top-up ditolak (FAILED)!')
-      appendToConsole(`SUKSES: Top-Up Ref ${tx.reference} ditandai sebagai FAILED.`, 'success')
+      appendToConsole(`SUKSES: Top-Up Ref ${tx.reference} ditandai sebagai FAILED. Alasan: ${remark}`, 'success')
       await walletsStore.fetchTopups()
     } else {
       toastError(res.message || 'Gagal membatalkan top-up')
@@ -419,8 +467,8 @@ const formatDate = (date: string) =>
     <div class="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 text-amber-600 flex gap-3 text-xs leading-relaxed">
       <Info class="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-500" />
       <div>
-        <p class="font-extrabold uppercase tracking-wider mb-0.5">Proteksi Keamanan Idempotency</p>
-        Pemicuan ini dilindungi secara ketat. Memasukkan <span class="font-bold">Notification ID</span> akan mendaftarkan token tersebut ke dalam Redis cache selama 24 jam untuk mencegah penyelesaian ganda otomatis jika di kemudian hari notifikasi bank asli diterima oleh aplikasi listener Android.
+        <p class="font-extrabold uppercase tracking-wider mb-0.5">Proteksi Keamanan Idempotency & Audit</p>
+        Pemicuan ini dilindungi secara ketat. Memasukkan <span class="font-bold">Notification ID</span> akan mencegah penyelesaian ganda. Catatan audit (<span class="font-bold">Remark</span>) wajib diisi untuk mendokumentasikan alasan intervensi manual pada tabel log keuangan (`audit_logs`).
       </div>
     </div>
 
@@ -452,26 +500,40 @@ const formatDate = (date: string) =>
           <!-- Order Form -->
           <div v-if="activeTab === 'order'" class="space-y-4">
             <h3 class="text-sm font-bold text-foreground">Trigger Pembayaran Pesanan</h3>
-            <div class="space-y-1">
-              <label class="text-[10px] font-extrabold text-muted-foreground uppercase">Order ID (UUID)</label>
-              <input
-                v-model="orderForm.orderId"
-                type="text"
-                placeholder="Masukkan ID Pesanan (misal: a8b3cd4e-1234...)"
-                class="h-10 w-full rounded-md border border-input bg-background/50 px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all font-mono"
-              >
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <label class="text-[10px] font-extrabold text-muted-foreground uppercase">Order ID (UUID)</label>
+                <input
+                  v-model="orderForm.orderId"
+                  type="text"
+                  placeholder="Masukkan ID Pesanan (misal: a8b3cd4e-1234...)"
+                  class="h-10 w-full rounded-md border border-input bg-background/50 px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all font-mono"
+                >
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-[10px] font-extrabold text-muted-foreground uppercase flex items-center gap-1">
+                  Notification ID (Opsional)
+                  <span class="text-[8px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-700">Rekomendasi</span>
+                </label>
+                <input
+                  v-model="orderForm.notificationId"
+                  type="text"
+                  placeholder="Contoh: MANUAL_PAY_17100000"
+                  class="h-10 w-full rounded-md border border-input bg-background/50 px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all"
+                >
+              </div>
             </div>
 
             <div class="space-y-1">
               <label class="text-[10px] font-extrabold text-muted-foreground uppercase flex items-center gap-1">
-                Notification ID (Opsional)
-                <span class="text-[8px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-700">Rekomendasi</span>
+                Catatan Audit / Remark (Wajib)
               </label>
               <input
-                v-model="orderForm.notificationId"
+                v-model="orderForm.reason"
                 type="text"
-                placeholder="Contoh: MANUAL_PAY_17100000"
-                class="h-10 w-full rounded-md border border-input bg-background/50 px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all"
+                placeholder="Tuliskan keterangan detail untuk keperluan audit keuangan..."
+                class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all"
               >
             </div>
 
@@ -489,26 +551,40 @@ const formatDate = (date: string) =>
           <!-- Top-Up Form -->
           <div v-else class="space-y-4">
             <h3 class="text-sm font-bold text-foreground">Finalisasi Top-Up Wallet</h3>
-            <div class="space-y-1">
-              <label class="text-[10px] font-extrabold text-muted-foreground uppercase">Reference ID (Wallet Transaction)</label>
-              <input
-                v-model="topupForm.reference"
-                type="text"
-                placeholder="Masukkan Kode Referensi Transaksi (misal: TX171000000)"
-                class="h-10 w-full rounded-md border border-input bg-background/50 px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all font-mono"
-              >
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <label class="text-[10px] font-extrabold text-muted-foreground uppercase">Reference ID</label>
+                <input
+                  v-model="topupForm.reference"
+                  type="text"
+                  placeholder="Masukkan Kode Referensi Transaksi (misal: TX171000000)"
+                  class="h-10 w-full rounded-md border border-input bg-background/50 px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all font-mono"
+                >
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-[10px] font-extrabold text-muted-foreground uppercase flex items-center gap-1">
+                  Notification ID (Opsional)
+                  <span class="text-[8px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-700">Rekomendasi</span>
+                </label>
+                <input
+                  v-model="topupForm.notificationId"
+                  type="text"
+                  placeholder="Contoh: MANUAL_TOPUP_17100000"
+                  class="h-10 w-full rounded-md border border-input bg-background/50 px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all"
+                >
+              </div>
             </div>
 
             <div class="space-y-1">
               <label class="text-[10px] font-extrabold text-muted-foreground uppercase flex items-center gap-1">
-                Notification ID (Opsional)
-                <span class="text-[8px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-700">Rekomendasi</span>
+                Catatan Audit / Remark (Wajib)
               </label>
               <input
-                v-model="topupForm.notificationId"
+                v-model="topupForm.reason"
                 type="text"
-                placeholder="Contoh: MANUAL_TOPUP_17100000"
-                class="h-10 w-full rounded-md border border-input bg-background/50 px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all"
+                placeholder="Tuliskan keterangan detail untuk keperluan audit keuangan..."
+                class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all"
               >
             </div>
 
