@@ -54,6 +54,13 @@ const getConfigLabel = (key: string): string => {
     platform_fee_percent: 'Persentase Biaya Layanan Platform',
     order_checking_fee: 'Biaya Pemeriksaan / Deposit Pembatalan',
 
+    // Tarif Layanan Merchant (Bertingkat)
+    merchant_fee_tier1_limit: 'Batas Harga Makanan Tier 1 (Murah)',
+    merchant_fee_tier2_limit: 'Batas Harga Makanan Tier 2 (Menengah)',
+    merchant_fee_tier1_amount: 'Biaya Layanan Flat - Tier 1',
+    merchant_fee_tier2_amount: 'Biaya Layanan Flat - Tier 2',
+    merchant_fee_tier3_amount: 'Biaya Layanan Flat - Tier 3',
+
     // COD
     cod_enabled: 'Status Aktif COD',
     cod_max_amount: 'Batas Maksimal Nominal COD',
@@ -79,6 +86,7 @@ const groupedConfigs = computed(() => {
     'Tarif Reguler (Jarak Jauh > 5km)': [] as typeof configsStore.configs,
     'Tarif Instan (Jarak Dekat ≤ 5km)': [] as typeof configsStore.configs,
     'Biaya Layanan & Pemeriksaan': [] as typeof configsStore.configs,
+    'Tarif Layanan Merchant (Bertingkat)': [] as typeof configsStore.configs,
     'Batas Transaksi & COD': [] as typeof configsStore.configs,
     'Limit Akun (Non-KYC)': [] as typeof configsStore.configs,
     'Lain-lain': [] as typeof configsStore.configs,
@@ -91,6 +99,8 @@ const groupedConfigs = computed(() => {
       groups['Tarif Reguler (Jarak Jauh > 5km)'].push(c)
     } else if (c.key === 'platform_fee_percent' || c.key === 'order_checking_fee') {
       groups['Biaya Layanan & Pemeriksaan'].push(c)
+    } else if (c.key.startsWith('merchant_fee_')) {
+      groups['Tarif Layanan Merchant (Bertingkat)'].push(c)
     } else if (c.key.startsWith('cod_') || c.key === 'min_trust_score_cod') {
       groups['Batas Transaksi & COD'].push(c)
     } else if (c.key.startsWith('kyc_') || c.key.includes('limit')) {
@@ -150,6 +160,34 @@ const groupedConfigs = computed(() => {
         <h2 class="text-sm font-extrabold uppercase tracking-wider text-muted-foreground pl-1">
           {{ groupName }}
         </h2>
+
+        <!-- Tiered Merchant Fee Explanation Banner -->
+        <div 
+          v-if="groupName === 'Tarif Layanan Merchant (Bertingkat)'"
+          class="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-4 space-y-2.5 text-xs text-indigo-950/90 leading-relaxed shadow-sm"
+        >
+          <div class="flex items-center gap-2 font-bold text-indigo-900">
+            <AlertCircle class="w-4 h-4 text-indigo-600 shrink-0" />
+            <span>Cara Kerja Logika Biaya Bertingkat (Tiered Fee)</span>
+          </div>
+          <p>
+            Sistem secara otomatis akan mengklasifikasikan nominal order makanan dari merchant ke dalam 3 tingkatan (Tier) saat pesanan selesai:
+          </p>
+          <ul class="list-disc pl-4 space-y-1.5 font-medium">
+            <li>
+              <strong>Tier 1:</strong> Jika total harga makanan <span class="font-bold underline text-indigo-900">Kurang dari</span> nilai <code>merchant_fee_tier1_limit</code>, maka merchant dipotong biaya flat sebesar <code>merchant_fee_tier1_amount</code>.
+            </li>
+            <li>
+              <strong>Tier 2:</strong> Jika total harga makanan berada di antara nilai <span class="font-bold text-indigo-900">Batas Tier 1 s/d Batas Tier 2</span>, maka merchant dipotong biaya flat sebesar <code>merchant_fee_tier2_amount</code>.
+            </li>
+            <li>
+              <strong>Tier 3:</strong> Jika total harga makanan <span class="font-bold underline text-indigo-900">Lebih dari</span> nilai <code>merchant_fee_tier2_limit</code>, maka merchant dipotong biaya flat sebesar <code>merchant_fee_tier3_amount</code>.
+            </li>
+          </ul>
+          <p class="text-[10px] text-indigo-600/90 italic font-semibold mt-1">
+            *Catatan: Jika nominal biaya flat yang dikonfigurasikan lebih besar dari total harga makanan, sistem otomatis membatasi potongan maksimal senilai harga makanan tersebut agar saldo merchant tidak bernilai minus.
+          </p>
+        </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <UiCard 
