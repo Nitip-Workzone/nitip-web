@@ -69,6 +69,7 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
 
   let es: EventSource | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  let fetchController: AbortController | null = null
   let attempt = 0
   const isLive = ref(false)
 
@@ -128,19 +129,24 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
       clearTimeout(reconnectTimer)
       reconnectTimer = null
     }
+    if (fetchController) {
+      try { fetchController.abort() } catch {}
+      fetchController = null
+    }
 
     const url = `${baseURL}/orders/merchant/stream`
 
     // Try fetch stream first (modern) with Authorization header
+    let fetchAborted = false
     try {
       if (typeof fetch !== 'undefined' && authStore.token) {
-        const controller = new AbortController()
+        fetchController = new AbortController()
         const response = await fetch(url, {
           headers: {
             'Authorization': `Bearer ${authStore.token}`,
             'Accept': 'text/event-stream',
           },
-          signal: controller.signal,
+          signal: fetchController.signal,
         })
         if (response.ok && response.body) {
           isLive.value = true
@@ -185,9 +191,15 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
           throw new Error('fetch stream ended')
         }
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        fetchAborted = true
+        return // Do not fallback or reconnect if aborted intentionally
+      }
       // Fetch failed, will fallback to EventSource below
     }
+
+    if (fetchAborted) return
 
     // Fallback to EventSource with cookie auth (no token in URL)
     try {
@@ -250,6 +262,10 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
       try { es.close() } catch {}
       es = null
     }
+    if (fetchController) {
+      try { fetchController.abort() } catch {}
+      fetchController = null
+    }
     if (audioCtx) {
       try { audioCtx.close() } catch {}
       audioCtx = null
@@ -260,11 +276,7 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
   const handleVisibility = () => {
     if (typeof document === 'undefined') return
     if (document.hidden) {
-      if (es) {
-        try { es.close() } catch {}
-        es = null
-      }
-      isLive.value = false
+      disconnect()
     } else {
       connect()
     }

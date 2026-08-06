@@ -1,3 +1,5 @@
+import { useConnectivityStore } from '~/stores/connectivity'
+
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS'
 
 interface ApiOptions {
@@ -28,6 +30,8 @@ export const useApi = () => {
                 headers['Authorization'] = `Bearer ${authStore.token}`
             }
 
+            const startTime = Date.now()
+
             // If path starts with /, combine manually with baseURL to avoid ofetch overriding baseURL
             const targetPath = path.startsWith('/') ? `${baseURL}${path}` : `${baseURL}/${path}`
 
@@ -40,9 +44,24 @@ export const useApi = () => {
                     // verbose request logging removed for performance & security (2026-07-28 cleanup)
                 },
                 onResponse() {
-                    // verbose response logging removed (2026-07-28 cleanup)
+                    const duration = Date.now() - startTime
+                    try {
+                        const connectivityStore = useConnectivityStore()
+                        if (duration > 3000) {
+                            connectivityStore.setPoorConnection(true)
+                        } else if (duration < 1500) {
+                            connectivityStore.setPoorConnection(false)
+                        }
+                    } catch {}
                 },
                 async onResponseError({ request, response }) {
+                    try {
+                        const connectivityStore = useConnectivityStore()
+                        if (response.status === 0 || response.status >= 502) {
+                            connectivityStore.setPoorConnection(true)
+                        }
+                    } catch {}
+
                     const isLoginRequest = request.toString().includes('/auth/login')
 
                     if (response.status === 401) {

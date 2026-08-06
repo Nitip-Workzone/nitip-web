@@ -16,8 +16,10 @@ import {
   Zap,
 } from '@lucide/vue'
 import { useAuthStore } from '~/stores/auth'
+import { useConnectivityStore } from '~/stores/connectivity'
 
 const authStore = useAuthStore()
+const connectivityStore = useConnectivityStore()
 const { isOpen, toggle, close } = useSidebar()
 const route = useRoute()
 
@@ -48,6 +50,7 @@ const navigation = computed(() => {
 
 // Fetch profile on mount
 onMounted(async () => {
+  connectivityStore.initialize()
   if (authStore.isAuthenticated && !authStore.user) {
     await authStore.fetchProfile()
   }
@@ -74,7 +77,24 @@ watch(() => route.path, () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-background flex overflow-hidden">
+  <div class="min-h-screen bg-background flex flex-col overflow-hidden">
+    <!-- Connectivity Banner -->
+    <div 
+      v-if="connectivityStore.isOffline" 
+      class="bg-red-600 text-white text-xs font-semibold py-2 px-4 flex items-center justify-center gap-2 z-50 shadow-sm"
+    >
+      <WifiOff class="w-4 h-4" />
+      <span>Tidak ada koneksi internet</span>
+    </div>
+    <div 
+      v-else-if="connectivityStore.isPoorConnection" 
+      class="bg-amber-600 text-white text-xs font-semibold py-2 px-4 flex items-center justify-center gap-2 z-50 shadow-sm"
+    >
+      <AlertTriangle class="w-4 h-4" />
+      <span>Koneksi internet lambat / tidak stabil</span>
+    </div>
+
+    <div class="flex-1 flex overflow-hidden">
     
     <!-- Mobile Overlay -->
     <div 
@@ -181,6 +201,7 @@ watch(() => route.path, () => {
       </main>
     </div>
   </div>
+</div>
 </template>
 
 <style>

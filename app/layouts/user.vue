@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { Home, Package, User, Truck, Store, ShoppingBag, CreditCard, Utensils } from '@lucide/vue'
+import { Home, Package, User, Truck, Store, ShoppingBag, CreditCard, Utensils, WifiOff, AlertTriangle } from '@lucide/vue'
 import { useNotificationsStore } from '~/stores/notifications'
+import { useConnectivityStore } from '~/stores/connectivity'
 
 const route = useRoute()
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
+const connectivityStore = useConnectivityStore()
 
 const navItems = computed(() => {
   if (authStore.user?.role === 'merchant') {
@@ -34,6 +36,7 @@ const isActive = (path: string) => {
 }
 
 onMounted(() => {
+  connectivityStore.initialize()
   if (authStore.isAuthenticated) {
     notificationsStore.fetchUnreadCount()
   }
@@ -42,6 +45,21 @@ onMounted(() => {
 
 <template>
   <div class="min-h-screen bg-background flex flex-col font-sans">
+    <!-- Connectivity Banner -->
+    <div 
+      v-if="connectivityStore.isOffline" 
+      class="bg-red-600 text-white text-xs font-semibold py-2 px-4 flex items-center justify-center gap-2 sticky top-0 z-50 shadow-sm"
+    >
+      <WifiOff class="w-4 h-4" />
+      <span>Tidak ada koneksi internet</span>
+    </div>
+    <div 
+      v-else-if="connectivityStore.isPoorConnection" 
+      class="bg-amber-600 text-white text-xs font-semibold py-2 px-4 flex items-center justify-center gap-2 sticky top-0 z-50 shadow-sm"
+    >
+      <AlertTriangle class="w-4 h-4" />
+      <span>Koneksi internet lambat / tidak stabil</span>
+    </div>
 
     <!-- Page Content -->
     <main class="flex-1 max-w-md mx-auto w-full pt-4 pb-20">
