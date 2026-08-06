@@ -37,19 +37,61 @@ const handleSave = async (key: string) => {
   }
 }
 
+// Helper to get friendly human-readable label
+const getConfigLabel = (key: string): string => {
+  const labels: Record<string, string> = {
+    // Tarif Regular
+    fee_base: 'Tarif Dasar Reguler (Jarak Jauh)',
+    fee_per_km: 'Tarif per Kilometer (Reguler)',
+    fee_per_kg: 'Tarif per Kilogram (Reguler)',
+    fee_per_liter: 'Tarif per Liter Volume (Reguler)',
+
+    // Tarif Instant
+    fee_short_base: 'Tarif Dasar Instan (Jarak Dekat)',
+    fee_short_per_kg: 'Tarif per Kilogram (Instan)',
+
+    // Jasa & Layanan
+    platform_fee_percent: 'Persentase Biaya Layanan Platform',
+    order_checking_fee: 'Biaya Pemeriksaan / Deposit Pembatalan',
+
+    // COD
+    cod_enabled: 'Status Aktif COD',
+    cod_max_amount: 'Batas Maksimal Nominal COD',
+    cod_max_distance_km: 'Jarak Maksimal Pengantaran COD',
+    min_trust_score_cod: 'Minimal Trust Score untuk COD',
+
+    // KYC Limits
+    kyc_daily_order_limit: 'Batas Pesanan Harian Non-KYC',
+    kyc_daily_withdrawal_limit: 'Batas Penarikan Harian Non-KYC',
+
+    // Lain-lain
+    max_search_radius_km: 'Radius Maksimal Pencarian Mitra',
+    support_auto_close_days: 'Auto-Close Tiket Dukungan (Hari)',
+    support_cs_max_concurrent: 'Maksimal Tiket Aktif per CS',
+    base_delivery_fee: 'Biaya Pengantaran Dasar (Flat Legacy)',
+  }
+  return labels[key] || key
+}
+
 // Group configs for better UI organization
 const groupedConfigs = computed(() => {
   const groups = {
-    'Tarif & Jasa (Fees)': [] as typeof configsStore.configs,
+    'Tarif Reguler (Jarak Jauh > 5km)': [] as typeof configsStore.configs,
+    'Tarif Instan (Jarak Dekat ≤ 5km)': [] as typeof configsStore.configs,
+    'Biaya Layanan & Pemeriksaan': [] as typeof configsStore.configs,
     'Batas Transaksi & COD': [] as typeof configsStore.configs,
     'Limit Akun (Non-KYC)': [] as typeof configsStore.configs,
     'Lain-lain': [] as typeof configsStore.configs,
   }
 
   configsStore.configs.forEach((c) => {
-    if (c.key.startsWith('fee_') || c.key.includes('fee')) {
-      groups['Tarif & Jasa (Fees)'].push(c)
-    } else if (c.key.startsWith('cod_')) {
+    if (c.key.startsWith('fee_short_')) {
+      groups['Tarif Instan (Jarak Dekat ≤ 5km)'].push(c)
+    } else if (c.key.startsWith('fee_')) {
+      groups['Tarif Reguler (Jarak Jauh > 5km)'].push(c)
+    } else if (c.key === 'platform_fee_percent' || c.key === 'order_checking_fee') {
+      groups['Biaya Layanan & Pemeriksaan'].push(c)
+    } else if (c.key.startsWith('cod_') || c.key === 'min_trust_score_cod') {
       groups['Batas Transaksi & COD'].push(c)
     } else if (c.key.startsWith('kyc_') || c.key.includes('limit')) {
       groups['Limit Akun (Non-KYC)'].push(c)
@@ -116,12 +158,12 @@ const groupedConfigs = computed(() => {
             class="p-5 flex flex-col justify-between hover:border-primary/30 transition-colors"
           >
             <div class="space-y-3">
-              <div class="flex items-start justify-between gap-2">
-                <span class="font-mono text-xs font-bold text-primary truncate max-w-[70%]" :title="cfg.key">
-                  {{ cfg.key }}
+              <div class="flex flex-col gap-1">
+                <span class="text-sm font-extrabold text-slate-800">
+                  {{ getConfigLabel(cfg.key) }}
                 </span>
-                <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-                  Global
+                <span class="font-mono text-[10px] text-slate-400" :title="cfg.key">
+                  key: {{ cfg.key }}
                 </span>
               </div>
 
