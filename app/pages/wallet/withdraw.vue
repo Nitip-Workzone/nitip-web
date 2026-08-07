@@ -93,7 +93,7 @@ const proceedToPin = () => {
     errorMsg.value = 'Rekening tujuan belum didaftarkan'
     return
   }
-  const minAmount = selectedChannel.value?.min_amount ?? 0
+  const minAmount = Math.max(selectedChannel.value?.min_amount ?? 50000, 50000)
   if (!amount.value || amount.value < minAmount) {
     errorMsg.value = `Minimal penarikan adalah ${formatCurrency(minAmount)}`
     return
@@ -212,10 +212,19 @@ function formatCurrency(val: number) {
           <!-- 1. Select Method -->
           <div class="space-y-2">
             <label class="text-xs font-bold text-slate-700 tracking-wide">Pilih Metode Penarikan</label>
-            <div class="relative">
+            <div class="relative flex items-center">
+              <div v-if="selectedChannel" class="absolute left-3 flex items-center pointer-events-none">
+                <img 
+                  v-if="['BCA', 'MANDIRI', 'BRI', 'DANA', 'OVO'].includes(selectedChannel.code.toUpperCase())" 
+                  :src="`/images/providers/${selectedChannel.code.toLowerCase()}.png`" 
+                  class="w-7 h-7 object-contain p-0.5 bg-white rounded border border-slate-100"
+                  alt="Channel Logo"
+                />
+              </div>
               <select
                 v-model="selectedChannelId"
-                class="w-full h-12 rounded-xl border border-slate-200 bg-slate-50/50 px-4 text-sm font-semibold text-slate-800 focus:border-primary focus:bg-white focus:outline-none transition-all cursor-pointer appearance-none"
+                class="w-full h-12 rounded-xl border border-slate-200 bg-slate-50/50 pr-10 text-sm font-semibold text-slate-800 focus:border-primary focus:bg-white focus:outline-none transition-all cursor-pointer appearance-none"
+                :class="selectedChannel ? 'pl-12' : 'pl-4'"
               >
                 <option value="" disabled>Pilih Bank atau E-Wallet</option>
                 <option 
@@ -223,7 +232,7 @@ function formatCurrency(val: number) {
                   :key="ch.id" 
                   :value="ch.id"
                 >
-                  {{ ch.name }} (Min. {{ formatCurrency(ch.min_amount) }})
+                  {{ ch.name }} (Min. {{ formatCurrency(Math.max(ch.min_amount, 50000)) }})
                 </option>
               </select>
               <div class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400">
@@ -235,12 +244,23 @@ function formatCurrency(val: number) {
           <!-- 2. Account Details Card (Read Only) -->
           <div v-if="selectedChannelId" class="space-y-2">
             <label class="text-xs font-bold text-slate-700 tracking-wide">Rekening Tujuan Terdaftar</label>
-            <div class="flex items-center gap-3 p-4 bg-slate-50 text-slate-800 rounded-2xl border border-slate-100">
-              <ShieldCheck class="w-5 h-5 text-emerald-600 shrink-0" />
-              <div class="text-xs space-y-0.5">
-                <p class="font-black text-slate-900 uppercase tracking-wide">{{ registeredAccount.bank_name }}</p>
-                <p class="font-bold text-slate-600">{{ registeredAccount.account_no }}</p>
-                <p class="font-extrabold text-emerald-700 uppercase">{{ registeredAccount.account_name }}</p>
+            <div class="flex items-center gap-4 p-4 bg-slate-50 text-slate-800 rounded-2xl border border-slate-100">
+              <img 
+                v-if="['BCA', 'MANDIRI', 'BRI', 'DANA', 'OVO'].includes(registeredAccount.bank_name.toUpperCase())" 
+                :src="`/images/providers/${registeredAccount.bank_name.toLowerCase()}.png`" 
+                class="w-12 h-12 object-contain p-1.5 bg-white rounded-xl border border-slate-200 shrink-0"
+                alt="Bank Logo"
+              />
+              <div v-else class="p-3 bg-primary/5 rounded-xl text-primary shrink-0">
+                <ShieldCheck class="w-6 h-6 text-emerald-600" />
+              </div>
+              <div class="text-xs space-y-0.5 flex-1 min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <p class="font-black text-slate-900 uppercase tracking-wide">{{ registeredAccount.bank_name }}</p>
+                  <span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-black rounded uppercase">Terverifikasi</span>
+                </div>
+                <p class="font-mono font-bold text-slate-600">{{ registeredAccount.account_no }}</p>
+                <p class="font-extrabold text-slate-900 uppercase">{{ registeredAccount.account_name }}</p>
               </div>
             </div>
           </div>
@@ -249,7 +269,7 @@ function formatCurrency(val: number) {
           <div v-if="selectedChannelId" class="space-y-2 animate-in fade-in slide-in-from-top-3 duration-300">
             <div class="flex justify-between items-baseline">
               <label class="text-xs font-bold text-slate-700 tracking-wide">Nominal Penarikan</label>
-              <span class="text-[10px] text-slate-400 font-bold">Min. {{ formatCurrency(selectedChannel?.min_amount || 10000) }}</span>
+              <span class="text-[10px] text-slate-400 font-bold">Min. {{ formatCurrency(Math.max(selectedChannel?.min_amount || 50000, 50000)) }}</span>
             </div>
             <div class="relative">
               <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">Rp</span>
@@ -264,7 +284,7 @@ function formatCurrency(val: number) {
             </div>
 
             <!-- Fee & Net Info -->
-            <div v-if="amount && amount >= (selectedChannel?.min_amount || 10000)" class="bg-slate-50 rounded-xl p-3 space-y-1.5 border border-slate-100 text-xs">
+            <div v-if="amount && amount >= Math.max(selectedChannel?.min_amount || 50000, 50000)" class="bg-slate-50 rounded-xl p-3 space-y-1.5 border border-slate-100 text-xs">
               <div class="flex justify-between text-slate-500">
                 <span>Biaya Admin ({{ selectedChannel?.name }}):</span>
                 <span class="font-bold">{{ adminFee > 0 ? formatCurrency(adminFee) : 'Gratis' }}</span>
@@ -284,7 +304,7 @@ function formatCurrency(val: number) {
 
           <!-- Continue Button -->
           <button
-            v-if="selectedChannelId && amount >= (selectedChannel?.min_amount || 10000)"
+            v-if="selectedChannelId && amount >= Math.max(selectedChannel?.min_amount || 50000, 50000)"
             class="w-full h-12 bg-primary text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 hover-lift transition-all active:scale-[0.98] shadow-sm shadow-primary/20"
             @click="proceedToPin"
           >

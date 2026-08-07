@@ -415,7 +415,15 @@ const roleVariant = (role: string) => {
             <div v-else-if="bankAccount" class="space-y-2">
               <div class="flex items-center justify-between text-xs border-b border-border/50 pb-2">
                 <span class="text-muted-foreground">Nama Bank:</span>
-                <span class="font-bold text-foreground">{{ bankAccount.bank_name }}</span>
+                <span class="font-bold text-foreground flex items-center gap-1.5">
+                  <img 
+                    v-if="['BCA', 'MANDIRI', 'BRI', 'DANA', 'OVO'].includes(bankAccount.bank_name.toUpperCase())" 
+                    :src="`/images/providers/${bankAccount.bank_name.toLowerCase()}.png`" 
+                    class="h-4 object-contain"
+                    alt="Logo"
+                  />
+                  {{ bankAccount.bank_name }}
+                </span>
               </div>
               <div class="flex items-center justify-between text-xs border-b border-border/50 pb-2">
                 <span class="text-muted-foreground">Nomor Rekening:</span>
@@ -441,12 +449,44 @@ const roleVariant = (role: string) => {
             <!-- Bank Name Input -->
             <div class="space-y-1.5">
               <label class="text-xs font-semibold text-foreground">Nama Bank</label>
-              <UiInput
-                v-model="bankForm.bank_name"
-                type="text"
-                placeholder="Contoh: Bank BCA, Bank Mandiri, Bank BNI"
-                required
+              <div class="relative flex items-center">
+                <select
+                  v-model="bankForm.bank_name"
+                  class="flex h-10 w-full rounded-md border border-input bg-background/50 px-3 py-2 text-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-all cursor-pointer appearance-none"
+                  required
+                >
+                  <option value="" disabled>Pilih Bank atau E-Wallet</option>
+                  <option value="BCA">BCA</option>
+                  <option value="MANDIRI">Mandiri</option>
+                  <option value="BRI">BRI</option>
+                  <option value="DANA">Dana (E-Wallet)</option>
+                  <option value="OVO">Ovo (E-Wallet)</option>
+                </select>
+                <div class="pointer-events-none absolute right-3 flex items-center text-muted-foreground">
+                  <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                </div>
+              </div>
+            </div>
+
+            <!-- Selected Bank Info (Logo & Biaya Admin) -->
+            <div v-if="bankForm.bank_name" class="flex items-center gap-3 p-3 bg-slate-50/50 rounded-xl border border-border/60 animate-in fade-in duration-200">
+              <img 
+                :src="`/images/providers/${bankForm.bank_name.toLowerCase()}.png`" 
+                class="w-10 h-10 object-contain p-1.5 bg-white rounded-lg border border-border/50"
+                alt="Logo Provider"
               />
+              <div class="text-xs space-y-0.5">
+                <p class="font-bold text-foreground">Metode Terpilih: {{ bankForm.bank_name }}</p>
+                <p v-if="['DANA', 'OVO'].includes(bankForm.bank_name.toUpperCase())" class="text-amber-600 font-semibold">
+                  * Biaya admin penarikan: Rp 1.000 (Dikenakan potongan sesuai kebijakan e-wallet)
+                </p>
+                <p v-else-if="['BCA', 'MANDIRI'].includes(bankForm.bank_name.toUpperCase())" class="text-emerald-600 font-semibold">
+                  * Biaya admin penarikan: Gratis (Rp 0)
+                </p>
+                <p v-else class="text-slate-500 font-semibold">
+                  * Biaya admin penarikan: Rp 2.500 (Dikenakan potongan sesuai kebijakan bank)
+                </p>
+              </div>
             </div>
 
             <!-- Account Number Input -->
