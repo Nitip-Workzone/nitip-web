@@ -219,7 +219,7 @@ function formatCurrency(val: number) {
                   :src="`/images/providers/${selectedChannel.code.toLowerCase()}.png`" 
                   class="w-7 h-7 object-contain p-0.5 bg-white rounded border border-slate-100"
                   alt="Channel Logo"
-                />
+                >
               </div>
               <select
                 v-model="selectedChannelId"
@@ -250,7 +250,7 @@ function formatCurrency(val: number) {
                 :src="`/images/providers/${registeredAccount.bank_name.toLowerCase()}.png`" 
                 class="w-12 h-12 object-contain p-1.5 bg-white rounded-xl border border-slate-200 shrink-0"
                 alt="Bank Logo"
-              />
+              >
               <div v-else class="p-3 bg-primary/5 rounded-xl text-primary shrink-0">
                 <ShieldCheck class="w-6 h-6 text-emerald-600" />
               </div>

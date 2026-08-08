@@ -421,7 +421,7 @@ const roleVariant = (role: string) => {
                     :src="`/images/providers/${bankAccount.bank_name.toLowerCase()}.png`" 
                     class="h-4 object-contain"
                     alt="Logo"
-                  />
+                  >
                   {{ bankAccount.bank_name }}
                 </span>
               </div>
@@ -474,7 +474,7 @@ const roleVariant = (role: string) => {
                 :src="`/images/providers/${bankForm.bank_name.toLowerCase()}.png`" 
                 class="w-10 h-10 object-contain p-1.5 bg-white rounded-lg border border-border/50"
                 alt="Logo Provider"
-              />
+              >
               <div class="text-xs space-y-0.5">
                 <p class="font-bold text-foreground">Metode Terpilih: {{ bankForm.bank_name }}</p>
                 <p v-if="['DANA', 'OVO'].includes(bankForm.bank_name.toUpperCase())" class="text-amber-600 font-semibold">
