@@ -256,7 +256,6 @@ function formatCurrency(val: number) {
             <div v-if="selectedType === 'CASH'" class="relative flex items-center mt-2">
               <div v-if="selectedChannel" class="absolute left-3 flex items-center pointer-events-none">
                 <img 
-                  v-slot="logo"
                   v-if="['BCA', 'MANDIRI', 'BRI', 'DANA', 'OVO'].includes(selectedChannel.code.toUpperCase())" 
                   :src="`/images/providers/${selectedChannel.code.toLowerCase()}.png`" 
                   class="w-7 h-7 object-contain p-0.5 bg-white rounded border border-slate-100"
