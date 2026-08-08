@@ -172,7 +172,7 @@ function formatCurrency(amount: number) {
               </UiTableCell>
               <UiTableCell>
                 <p class="font-bold text-[14px] text-destructive">
-                   - {{ formatCurrency(tx.amount) }}
+                   - {{ formatCurrency(Math.abs(tx.amount)) }}
                  </p>
               </UiTableCell>
               <UiTableCell>

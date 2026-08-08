@@ -19,9 +19,14 @@ const amountInput = useCurrencyInput()
 const verifiedAccountName = ref('')
 const errorMsg = ref('')
 
+const selectedType = ref<'TRANSFER' | 'CASH'>('TRANSFER')
 const registeredAccount = ref<{ account_no: string; account_name: string; bank_name: string } | null>(null)
 const hasCheckedAccount = ref(false)
 const withdrawalSchedule = ref('Setiap hari pukul 09:00 WITA')
+
+const hasManualChannel = computed(() => {
+  return walletStore.withdrawalChannels.some(c => c.code.toLowerCase() === 'manual' && c.is_active)
+})
 
 // Step 2 PIN
 const pin = ref('')
@@ -72,15 +77,29 @@ const totalDeduction = computed(() => {
   return amount.value + adminFee.value
 })
 
-watch(() => walletStore.withdrawalChannels, (channels) => {
-  if (channels.length > 0 && registeredAccount.value && !selectedChannelId.value) {
-    const matched = channels.find(c => c.code.toLowerCase() === (registeredAccount.value as { bank_name: string }).bank_name.toLowerCase())
+const syncChannel = () => {
+  const channels = walletStore.withdrawalChannels
+  if (!channels || channels.length === 0) return
+
+  if (selectedType.value === 'TRANSFER' && registeredAccount.value) {
+    const matched = channels.find(c => c.code.toLowerCase() === registeredAccount.value.bank_name.toLowerCase())
     if (matched) {
       selectedChannelId.value = matched.id
-    } else if (channels[0]) {
+    } else {
+      selectedChannelId.value = channels[0].id
+    }
+  } else if (selectedType.value === 'CASH') {
+    const matched = channels.find(c => c.code.toLowerCase() === 'manual')
+    if (matched) {
+      selectedChannelId.value = matched.id
+    } else {
       selectedChannelId.value = channels[0].id
     }
   }
+}
+
+watch([() => walletStore.withdrawalChannels, registeredAccount, selectedType], () => {
+  syncChannel()
 }, { immediate: true })
 
 const proceedToPin = () => {
@@ -212,30 +231,47 @@ function formatCurrency(val: number) {
           <!-- 1. Select Method -->
           <div class="space-y-2">
             <label class="text-xs font-bold text-slate-700 tracking-wide">Pilih Metode Penarikan</label>
-            <div class="relative flex items-center">
+            
+            <!-- Segmented Control for Transfer vs Cash -->
+            <div v-if="hasManualChannel" class="flex p-1 bg-slate-100 rounded-xl">
+              <button
+                type="button"
+                class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
+                :class="selectedType === 'TRANSFER' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'"
+                @click="selectedType = 'TRANSFER'"
+              >
+                Transfer Rekening
+              </button>
+              <button
+                type="button"
+                class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
+                :class="selectedType === 'CASH' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'"
+                @click="selectedType = 'CASH'"
+              >
+                Tarik Tunai (Cash)
+              </button>
+            </div>
+
+            <!-- Read Only Channel Display -->
+            <div v-if="selectedType === 'CASH'" class="relative flex items-center mt-2">
               <div v-if="selectedChannel" class="absolute left-3 flex items-center pointer-events-none">
                 <img 
+                  v-slot="logo"
                   v-if="['BCA', 'MANDIRI', 'BRI', 'DANA', 'OVO'].includes(selectedChannel.code.toUpperCase())" 
                   :src="`/images/providers/${selectedChannel.code.toLowerCase()}.png`" 
                   class="w-7 h-7 object-contain p-0.5 bg-white rounded border border-slate-100"
                   alt="Channel Logo"
                 >
+                <div v-else class="w-7 h-7 flex items-center justify-center bg-white rounded border border-slate-100 text-xs shrink-0 select-none">
+                  💵
+                </div>
               </div>
-              <select
-                v-model="selectedChannelId"
-                disabled
-                class="w-full h-12 rounded-xl border border-slate-200 bg-slate-100 pr-10 text-sm font-semibold text-slate-800 focus:outline-none transition-all appearance-none cursor-not-allowed"
+              <div
+                class="w-full h-12 flex items-center rounded-xl border border-slate-200 bg-slate-100/80 pr-10 text-sm font-semibold text-slate-800 focus:outline-none transition-all cursor-not-allowed"
                 :class="selectedChannel ? 'pl-12' : 'pl-4'"
               >
-                <option value="" disabled>Pilih Bank atau E-Wallet</option>
-                <option 
-                  v-for="ch in walletStore.withdrawalChannels" 
-                  :key="ch.id" 
-                  :value="ch.id"
-                >
-                  {{ ch.name }} (Min. {{ formatCurrency(Math.max(ch.min_amount, 50000)) }})
-                </option>
-              </select>
+                {{ selectedChannel ? `${selectedChannel.name} (Estimasi: ${selectedChannel.estimated_time})` : 'Metode tidak terpilih' }}
+              </div>
               <div class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400">
                 <Lock class="w-4 h-4 text-slate-400" />
               </div>
@@ -243,7 +279,7 @@ function formatCurrency(val: number) {
           </div>
 
           <!-- 2. Account Details Card (Read Only) -->
-          <div v-if="selectedChannelId" class="space-y-2">
+          <div v-if="selectedChannelId && selectedType === 'TRANSFER'" class="space-y-2">
             <label class="text-xs font-bold text-slate-700 tracking-wide">Rekening Tujuan Terdaftar</label>
             <div class="flex items-center gap-4 p-4 bg-slate-50 text-slate-800 rounded-2xl border border-slate-100">
               <img 
@@ -337,7 +373,9 @@ function formatCurrency(val: number) {
           <div class="bg-slate-50/80 border border-slate-100 rounded-2xl p-4 text-xs space-y-2">
             <div class="flex justify-between">
               <span class="text-slate-400">Tujuan:</span>
-              <span class="font-bold text-slate-800 uppercase">{{ selectedChannel?.name }} - {{ accountNo }}</span>
+              <span class="font-bold text-slate-800 uppercase">
+                {{ selectedChannel?.name }} <template v-if="selectedType === 'TRANSFER'">- {{ accountNo }}</template>
+              </span>
             </div>
             <div class="flex justify-between">
               <span class="text-slate-400">Pemilik Rekening:</span>
