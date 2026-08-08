@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Wallet, AlertCircle, ArrowRight, ShieldCheck } from '@lucide/vue'
+import { ArrowLeft, Wallet, AlertCircle, ArrowRight, ShieldCheck, Lock } from '@lucide/vue'
 import { useUserWalletStore } from '~/stores/user-wallet'
 import { useToastStore } from '~/stores/toast'
 import { useCurrencyInput } from '~/composables/useCurrencyInput'
@@ -223,7 +223,8 @@ function formatCurrency(val: number) {
               </div>
               <select
                 v-model="selectedChannelId"
-                class="w-full h-12 rounded-xl border border-slate-200 bg-slate-50/50 pr-10 text-sm font-semibold text-slate-800 focus:border-primary focus:bg-white focus:outline-none transition-all cursor-pointer appearance-none"
+                disabled
+                class="w-full h-12 rounded-xl border border-slate-200 bg-slate-100 pr-10 text-sm font-semibold text-slate-800 focus:outline-none transition-all appearance-none cursor-not-allowed"
                 :class="selectedChannel ? 'pl-12' : 'pl-4'"
               >
                 <option value="" disabled>Pilih Bank atau E-Wallet</option>
@@ -236,7 +237,7 @@ function formatCurrency(val: number) {
                 </option>
               </select>
               <div class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400">
-                <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                <Lock class="w-4 h-4 text-slate-400" />
               </div>
             </div>
           </div>
