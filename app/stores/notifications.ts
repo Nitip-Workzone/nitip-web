@@ -80,6 +80,13 @@ export const useNotificationsStore = defineStore('notifications', {
             if (typeof window === 'undefined') return
             if (this.pollingIntervalId) return
             
+            // Disable notifications polling if inside the NitipMerchant WebView
+            // to avoid duplicate toast/notifications (which are handled natively by the Flutter app)
+            if (typeof navigator !== 'undefined' && navigator.userAgent.includes('NitipMerchant')) {
+                console.log('[Store-Notifications] Running inside NitipMerchant WebView: disabling web polling.')
+                return
+            }
+            
             // Ask permission if default
             this.requestPermission()
             
