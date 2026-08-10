@@ -740,16 +740,53 @@ const openHelp = () => {
           </div>
 
           <!-- QRIS Image -->
-          <div class="bg-slate-50 p-4 rounded-2xl flex flex-col items-center justify-center border border-slate-100 space-y-3">
-            <img 
-              :src="`https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=${encodeURIComponent(activeQrisString)}`" 
-              alt="QRIS Code" 
-              class="w-48 h-48 object-contain rounded-xl shadow-md bg-white border border-slate-100"
-            >
+          <div class="bg-slate-50 p-4 rounded-2xl flex flex-col items-center justify-center border border-slate-100 space-y-4">
+            <div class="w-full max-w-[240px] bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col items-center space-y-3">
+              <!-- Header: QRIS & GPN Logo -->
+              <div class="w-full flex items-center justify-between border-b border-slate-100 pb-1.5">
+                <!-- QRIS Logo -->
+                <div class="flex items-center gap-0.5">
+                  <span class="text-base font-[900] tracking-tighter text-[#0F265C] font-sans">QR</span>
+                  <span class="text-base font-[900] tracking-tighter text-[#DF2524] font-sans">IS</span>
+                </div>
+                
+                <!-- GPN Logo -->
+                <div class="flex items-center bg-[#DF2524]/5 px-1.5 py-0.5 rounded border border-[#DF2524]/10">
+                  <span class="text-[7px] font-black text-[#DF2524] tracking-widest">GPN</span>
+                </div>
+              </div>
+
+              <!-- Merchant Info -->
+              <div class="w-full text-center">
+                <h4 class="text-[10px] font-extrabold text-slate-800 uppercase tracking-wide">NITIP INDONESIA</h4>
+                <p class="text-[8px] text-slate-400 font-mono">NMID: ID1026556507279</p>
+              </div>
+
+              <!-- QR Code -->
+              <div class="relative w-40 h-40 bg-white p-1 border border-slate-100 rounded-lg flex items-center justify-center">
+                <img 
+                  :src="`https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=${encodeURIComponent(activeQrisString)}`" 
+                  alt="QRIS Code" 
+                  class="w-full h-full object-contain"
+                >
+              </div>
+
+              <!-- Supported Channels Grid at Bottom -->
+              <div class="w-full border-t border-slate-100 pt-2 flex flex-wrap items-center justify-center gap-1.5">
+                <img src="/images/providers/gopay.png" alt="Gopay" class="h-2 w-auto object-contain opacity-80" />
+                <img src="/images/providers/shopeepay.png" alt="ShopeePay" class="h-2 w-auto object-contain opacity-80" />
+                <img src="/images/providers/ovo.png" alt="OVO" class="h-2 w-auto object-contain opacity-80" />
+                <img src="/images/providers/dana.png" alt="DANA" class="h-2 w-auto object-contain opacity-80" />
+                <img src="/images/providers/mandiri.png" alt="Mandiri" class="h-2 w-auto object-contain opacity-80" />
+                <img src="/images/providers/bca.png" alt="BCA" class="h-2 w-auto object-contain opacity-80" />
+              </div>
+            </div>
+
+            <!-- Amount details -->
             <div class="text-center space-y-1">
               <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Pembayaran</span>
               <p class="text-lg font-black text-slate-900">{{ formatCurrency(activeTopUpAmount) }}</p>
-              <p class="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md inline-block">Ref: {{ activeTopUpReference }}</p>
+              <p class="text-[9px] font-semibold text-slate-500 bg-slate-200 px-2.5 py-1 rounded-md inline-block">Ref: {{ activeTopUpReference }}</p>
             </div>
           </div>
 

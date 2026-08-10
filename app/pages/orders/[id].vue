@@ -496,23 +496,56 @@ function openImage(url: string) {
             <p class="text-2xl font-extrabold text-amber-700 tracking-wider mt-0.5">{{ timeLeft }}</p>
           </div>
 
-          <!-- QRIS Image -->
-          <div class="relative w-56 h-56 mx-auto bg-slate-50 border border-slate-100 rounded-2xl p-3 shadow-inner flex items-center justify-center">
-            <img v-if="qrisImageUrl" :src="qrisImageUrl" alt="QRIS Code" class="w-full h-full object-contain" >
-            <div v-else class="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-            
-            <!-- Expired overlay -->
-            <div v-if="isExpired" class="absolute inset-0 bg-white/95 backdrop-blur-[1px] flex flex-col items-center justify-center p-4 rounded-2xl space-y-2">
-              <span class="text-rose-500 font-extrabold text-xs">QRIS Kedaluwarsa</span>
-              <p class="text-[9px] text-muted-foreground">Batas waktu pembayaran habis. Anda dapat memperbarui kode QRIS untuk memperpanjang waktu.</p>
-              <button
-                :disabled="ordersStore.actionLoading"
-                class="bg-primary hover:bg-primary/95 text-white text-[10px] font-bold py-2 px-3 rounded-xl transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-1 shadow-sm shadow-primary/20"
-                @click="handleRefreshQRIS"
-              >
-                <span v-if="ordersStore.actionLoading" class="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
-                Perbaharui QRIS
-              </button>
+          <!-- Official QRIS Sheet Card -->
+          <div class="max-w-[280px] mx-auto bg-white border border-slate-200 rounded-3xl p-5 shadow-sm flex flex-col items-center space-y-4">
+            <!-- Header: QRIS & GPN Logo -->
+            <div class="w-full flex items-center justify-between border-b border-slate-100 pb-2">
+              <!-- QRIS Logo -->
+              <div class="flex items-center gap-0.5">
+                <span class="text-xl font-[900] tracking-tighter text-[#0F265C] font-sans">QR</span>
+                <span class="text-xl font-[900] tracking-tighter text-[#DF2524] font-sans">IS</span>
+              </div>
+              
+              <!-- GPN Logo -->
+              <div class="flex items-center bg-[#DF2524]/5 px-2 py-0.5 rounded-md border border-[#DF2524]/10">
+                <span class="text-[9px] font-black text-[#DF2524] tracking-widest">GPN</span>
+              </div>
+            </div>
+
+            <!-- Merchant Info -->
+            <div class="w-full text-center">
+              <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wide">
+                {{ order.merchant_name || 'KEDAI KRIMMI' }}
+              </h4>
+              <p class="text-[9px] text-slate-400 font-mono">NMID: ID1026556507279</p>
+            </div>
+
+            <!-- QR Code -->
+            <div class="relative w-48 h-48 bg-white p-1 border border-slate-100 rounded-xl flex items-center justify-center">
+              <img v-if="qrisImageUrl" :src="qrisImageUrl" alt="QRIS Code" class="w-full h-full object-contain" >
+              <div v-else class="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              
+              <!-- Expired overlay -->
+              <div v-if="isExpired" class="absolute inset-0 bg-white/95 backdrop-blur-[1px] flex flex-col items-center justify-center p-4 rounded-xl space-y-2">
+                <span class="text-rose-500 font-extrabold text-[10px]">Kedaluwarsa</span>
+                <button
+                  :disabled="ordersStore.actionLoading"
+                  class="bg-primary hover:bg-primary/95 text-white text-[8px] font-bold py-1.5 px-2.5 rounded-lg transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-1 shadow-sm"
+                  @click="handleRefreshQRIS"
+                >
+                  Perbaharui
+                </button>
+              </div>
+            </div>
+
+            <!-- Supported Channels Grid at Bottom -->
+            <div class="w-full border-t border-slate-100 pt-3 flex flex-wrap items-center justify-center gap-2">
+              <img src="/images/providers/gopay.png" alt="Gopay" class="h-2.5 w-auto object-contain opacity-80" />
+              <img src="/images/providers/shopeepay.png" alt="ShopeePay" class="h-2.5 w-auto object-contain opacity-80" />
+              <img src="/images/providers/ovo.png" alt="OVO" class="h-2.5 w-auto object-contain opacity-80" />
+              <img src="/images/providers/dana.png" alt="DANA" class="h-2.5 w-auto object-contain opacity-80" />
+              <img src="/images/providers/mandiri.png" alt="Mandiri" class="h-2.5 w-auto object-contain opacity-80" />
+              <img src="/images/providers/bca.png" alt="BCA" class="h-2.5 w-auto object-contain opacity-80" />
             </div>
           </div>
 
