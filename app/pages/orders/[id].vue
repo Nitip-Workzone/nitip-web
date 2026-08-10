@@ -24,6 +24,19 @@ const checkingPayment = ref(false)
 let countdownInterval: ReturnType<typeof setInterval> | null = null
 let pollInterval: ReturnType<typeof setInterval> | null = null
 
+const isSandboxQris = computed(() => {
+  const qris = order.value?.qris_data || ''
+  return qris.includes('sandbox') || qris.includes('mock') || qris.includes('localhost') || qris.startsWith('000201')
+})
+
+const qrisImageUrl = computed(() => {
+  const qris = order.value?.qris_data || ''
+  if (qris.startsWith('000201')) {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(qris)}`
+  }
+  return qris
+})
+
 function startCountdown(createdAtStr: string) {
   if (countdownInterval) clearInterval(countdownInterval)
   
@@ -485,7 +498,7 @@ function openImage(url: string) {
 
           <!-- QRIS Image -->
           <div class="relative w-56 h-56 mx-auto bg-slate-50 border border-slate-100 rounded-2xl p-3 shadow-inner flex items-center justify-center">
-            <img v-if="order.qris_data" :src="order.qris_data" alt="QRIS Code" class="w-full h-full object-contain" >
+            <img v-if="qrisImageUrl" :src="qrisImageUrl" alt="QRIS Code" class="w-full h-full object-contain" >
             <div v-else class="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
             
             <!-- Expired overlay -->
@@ -501,6 +514,19 @@ function openImage(url: string) {
                 Perbaharui QRIS
               </button>
             </div>
+          </div>
+
+          <!-- Sandbox Warning Banner -->
+          <div v-if="isSandboxQris" class="bg-amber-50 border border-amber-200/60 p-3.5 rounded-2xl space-y-1 text-left max-w-[240px] mx-auto shadow-sm">
+            <div class="flex items-center gap-1.5 text-amber-800 text-[10px] font-bold">
+              <svg class="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span>Mode Sandbox / Simulasi</span>
+            </div>
+            <p class="text-[9px] text-amber-700 leading-normal">
+              QR ini dibuat dalam mode **Sandbox/Simulasi**. Jangan scan dengan aplikasi bank asli Anda. Selesaikan pembayaran tes ini via simulator atau tombol kirim test pada Android Listener Anda.
+            </p>
           </div>
 
           <div class="flex flex-col items-center gap-2 pt-2 border-t border-slate-100">
