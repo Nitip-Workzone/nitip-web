@@ -74,11 +74,15 @@ export const useUserOrdersStore = defineStore('user-orders', {
     },
 
     actions: {
-        async fetchMyOrders(page = 1, limit = 15) {
+        async fetchMyOrders(page = 1, limit = 15, startDate?: string, endDate?: string) {
             this.loading = page === 1
             const { request } = useApi()
             try {
-                const res = await request<{ data: UserOrder[] }>(`/orders/me?page=${page}&limit=${limit}`)
+                let url = `/orders/me?page=${page}&limit=${limit}`
+                if (startDate) url += `&start_date=${startDate}`
+                if (endDate) url += `&end_date=${endDate}`
+                
+                const res = await request<{ data: UserOrder[] }>(url)
                 if (res.data) {
                     if (page === 1) {
                         this.orders = res.data
