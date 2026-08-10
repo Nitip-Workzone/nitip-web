@@ -52,7 +52,7 @@ async function handleClaim(id: string) {
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-xl font-black tracking-tight">CS Support Panel</h1>
-        <p class="text-sm text-muted-foreground">Kelola antrian tiket & live chat (1 sesi per CS)</p>
+        <p class="text-sm text-muted-foreground">Kelola antrian tiket bantuan pelanggan</p>
       </div>
     </div>
 
@@ -65,7 +65,7 @@ async function handleClaim(id: string) {
           <p class="text-[11px] text-blue-700">{{ supportStore.activeCsTicket.title }} • #{{ supportStore.activeCsTicket.id.slice(0,8).toUpperCase() }}</p>
         </div>
       </div>
-      <NuxtLink :to="`/admin/support/${supportStore.activeCsTicket.id}`" class="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl">Buka Chat</NuxtLink>
+      <NuxtLink :to="`/admin/support/${supportStore.activeCsTicket.id}`" class="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl">Buka Tiket</NuxtLink>
     </div>
 
     <div v-else class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">

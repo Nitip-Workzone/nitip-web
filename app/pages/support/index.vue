@@ -47,7 +47,7 @@ function getStatusLabel(status: string) {
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-lg font-black text-slate-900 tracking-tight">Pusat Bantuan</h1>
-          <p class="text-[11px] text-slate-500 mt-0.5">Tiket bantuan & live chat CS</p>
+          <p class="text-[11px] text-slate-500 mt-0.5">Layanan bantuan & aduan pelanggan</p>
         </div>
         <NuxtLink to="/support/new" class="inline-flex items-center gap-1.5 bg-primary text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md">
           <Plus class="w-4 h-4" /> Tiket Baru
@@ -64,7 +64,7 @@ function getStatusLabel(status: string) {
             <MessageCircle class="w-7 h-7 text-slate-300" />
           </div>
           <h3 class="text-sm font-bold text-slate-700">Belum ada tiket bantuan</h3>
-          <p class="text-xs text-slate-400 max-w-[240px] mx-auto">Jika mengalami kendala, buat tiket dan CS kami akan membantu via chat.</p>
+          <p class="text-xs text-slate-400 max-w-[240px] mx-auto">Jika mengalami kendala, buat tiket dan CS kami akan membantu via WhatsApp.</p>
           <NuxtLink to="/support/new" class="inline-block mt-2 bg-primary text-white text-xs font-bold px-5 py-2.5 rounded-xl">Buat Tiket Pertama</NuxtLink>
         </div>
 

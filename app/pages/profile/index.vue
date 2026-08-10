@@ -588,7 +588,7 @@ const openLink = (url: string) => {
                 </div>
                 <div>
                   <span class="text-xs font-bold text-slate-800">Pusat Bantuan</span>
-                  <p class="text-[10px] text-slate-400 mt-0.5">Tiket bantuan & live chat CS (antrian)</p>
+                  <p class="text-[10px] text-slate-400 mt-0.5">Layanan bantuan & aduan (antrian)</p>
                 </div>
               </div>
               <ChevronRight class="w-4 h-4 text-slate-300 group-hover:translate-x-0.5 transition-transform" />

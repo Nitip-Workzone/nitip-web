@@ -66,17 +66,49 @@ async function handleAction(action: 'resolve' | 'release' | 'close') {
       </div>
 
       <div class="flex items-center gap-2" v-if="supportStore.currentTicket">
+        <!-- Hubungi Klien via WA -->
         <a 
-          v-if="supportStore.currentTicket.user_whatsapp"
+          v-if="supportStore.currentTicket.user_whatsapp && supportStore.currentTicket.assigned_cs_id && !['closed', 'resolved'].includes(supportStore.currentTicket.status)"
           :href="`https://wa.me/${supportStore.currentTicket.user_whatsapp.replace(/\D/g, '').replace(/^0/, '62')}?text=${encodeURIComponent('Halo, saya CS Nitip terkait tiket bantuan Anda #' + ticketId.slice(0,8).toUpperCase() + ': ' + supportStore.currentTicket.title)}`"
           target="_blank"
           class="text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white px-3.5 py-2 rounded-lg flex items-center gap-1 shadow-sm active:scale-95 transition-all"
         >
           Hubungi Klien via WA
         </a>
-        <button class="text-xs font-bold border px-3 py-2 rounded-lg hover:bg-slate-50" @click="handleAction('release')">Lepas</button>
-        <button class="text-xs font-bold bg-emerald-600 text-white px-3 py-2 rounded-lg hover:bg-emerald-700" @click="handleAction('resolve')">Selesaikan</button>
-        <button class="text-xs font-bold bg-slate-900 text-white px-3 py-2 rounded-lg hover:bg-slate-800" @click="handleAction('close')">Tutup</button>
+        <button 
+          v-else
+          disabled
+          class="text-xs font-bold bg-slate-100 text-slate-400 border border-slate-200 px-3.5 py-2 rounded-lg flex items-center gap-1 cursor-not-allowed"
+        >
+          Hubungi Klien via WA
+        </button>
+
+        <!-- Lepas -->
+        <button 
+          :disabled="!supportStore.currentTicket.assigned_cs_id || ['closed', 'resolved'].includes(supportStore.currentTicket.status)"
+          class="text-xs font-bold border px-3 py-2 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50" 
+          @click="handleAction('release')"
+        >
+          Lepas
+        </button>
+
+        <!-- Selesaikan -->
+        <button 
+          :disabled="!supportStore.currentTicket.assigned_cs_id || ['closed', 'resolved'].includes(supportStore.currentTicket.status)"
+          class="text-xs font-bold bg-emerald-600 text-white px-3 py-2 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-emerald-700" 
+          @click="handleAction('resolve')"
+        >
+          Selesaikan
+        </button>
+
+        <!-- Tutup -->
+        <button 
+          :disabled="['closed', 'resolved'].includes(supportStore.currentTicket.status)"
+          class="text-xs font-bold bg-slate-900 text-white px-3 py-2 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800" 
+          @click="handleAction('close')"
+        >
+          Tutup
+        </button>
       </div>
     </div>
 
@@ -150,7 +182,10 @@ async function handleAction(action: 'resolve' | 'release' | 'close') {
         </div>
 
         <!-- WhatsApp Action Handoff Panel -->
-        <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+        <div 
+          v-if="supportStore.currentTicket.assigned_cs_id && !['closed', 'resolved'].includes(supportStore.currentTicket.status)"
+          class="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm animate-fade-in"
+        >
           <div class="space-y-1 text-center md:text-left">
             <h3 class="text-sm font-extrabold text-emerald-800 flex items-center justify-center md:justify-start gap-1.5">
               <span>💬</span> Hubungkan CS & Klien Langsung via WhatsApp
@@ -167,6 +202,27 @@ async function handleAction(action: 'resolve' | 'release' | 'close') {
           >
             Hubungi Klien via WA
           </a>
+        </div>
+        
+        <!-- Released / Unassigned State Panel -->
+        <div 
+          v-else-if="!supportStore.currentTicket.assigned_cs_id && !['closed', 'resolved'].includes(supportStore.currentTicket.status)"
+          class="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm"
+        >
+          <div class="space-y-1 text-center md:text-left">
+            <h3 class="text-sm font-extrabold text-amber-800 flex items-center justify-center md:justify-start gap-1.5">
+              <span>⚠️</span> Tiket Dilepas (Belum Diklaim)
+            </h3>
+            <p class="text-xs text-amber-700 leading-relaxed">
+              Tiket ini berada dalam status dilepas (unassigned). Ambil tiket ini kembali dari antrian dashboard utama untuk mulai menghubungi klien.
+            </p>
+          </div>
+          <button 
+            disabled
+            class="whitespace-nowrap bg-slate-200 text-slate-400 text-xs font-extrabold px-6 py-3.5 rounded-xl transition-all cursor-not-allowed border border-slate-300"
+          >
+            Menunggu Pengambilan
+          </button>
         </div>
 
         <!-- Progress Log Timeline Card -->
