@@ -195,7 +195,9 @@ function isActiveOrder(status: string) {
 
 // Redesigned activity helpers
 const todayTotalSpending = computed(() =>
-  todayOrders.value.reduce((sum, o) => sum + (o.estimated_cost || 0) + (o.delivery_fee || 0) + (o.tip_amount || 0), 0)
+  todayOrders.value
+    .filter((o) => !['cancelled', 'expired'].includes(o.status))
+    .reduce((sum, o) => sum + (o.estimated_cost || 0) + (o.delivery_fee || 0) + (o.tip_amount || 0), 0)
 )
 
 function orderTotal(order: UserOrder): number {
