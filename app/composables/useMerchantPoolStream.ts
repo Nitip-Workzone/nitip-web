@@ -148,6 +148,18 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
           },
           signal: fetchController.signal,
         })
+        if (response.status === 401) {
+          console.error('[PoolStream] Got 401 Unauthorized: triggering logout.')
+          if (typeof window !== 'undefined') {
+            const win = window as any
+            if (win.triggerNativeLogout) {
+              win.triggerNativeLogout('api_401')
+            } else {
+              authStore.logout()
+            }
+          }
+          return
+        }
         if (response.ok && response.body) {
           isLive.value = true
           attempt = 0
