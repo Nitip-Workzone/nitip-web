@@ -515,7 +515,7 @@ function openImage(url: string) {
             <!-- Merchant Info -->
             <div class="w-full text-center">
               <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wide">
-                {{ order.merchant_name || 'KEDAI KRIMMI' }}
+                {{ order.pickup_name || 'KEDAI KRIMMI' }}
               </h4>
               <p class="text-[9px] text-slate-400 font-mono">NMID: ID1026556507279</p>
             </div>
@@ -592,7 +592,7 @@ function openImage(url: string) {
           </div>
           <div class="flex justify-between text-xs">
             <span class="text-muted-foreground">Biaya Titip / Ongkos Kirim</span>
-            <span class="font-medium text-foreground">{{ formatCurrency(order.delivery_fee) }}</span>
+            <span class="font-medium text-foreground">{{ formatCurrency(order.delivery_fee - (order.service_fee || 0) - (order.checking_fee || 0)) }}</span>
           </div>
           <div v-if="order.service_fee" class="flex justify-between text-xs">
             <span class="text-muted-foreground">Biaya Layanan</span>
@@ -845,7 +845,7 @@ function openImage(url: string) {
           </div>
           <div class="flex justify-between text-xs">
             <span class="text-muted-foreground">Biaya Titip / Ongkos Kirim</span>
-            <span class="font-medium text-foreground">{{ formatCurrency(order.delivery_fee) }}</span>
+            <span class="font-medium text-foreground">{{ formatCurrency(order.delivery_fee - (order.service_fee || 0) - (order.checking_fee || 0)) }}</span>
           </div>
           <div v-if="order.service_fee" class="flex justify-between text-xs">
             <span class="text-muted-foreground">Biaya Layanan</span>
