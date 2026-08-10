@@ -38,8 +38,10 @@ function startPolling() {
   polling.value = setInterval(async () => {
     try {
       const last = supportStore.messages[supportStore.messages.length - 1]
-      await supportStore.fetchMessages(ticketId, true, last?.id)
-      scrollToBottom()
+      const newMsgs = await supportStore.fetchMessages(ticketId, true, last?.id)
+      if (newMsgs && newMsgs.length > 0) {
+        scrollToBottom()
+      }
     } catch { /* noop */ }
   }, 5000)
 }

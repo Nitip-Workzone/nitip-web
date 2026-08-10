@@ -161,6 +161,19 @@ export const useSupportStore = defineStore('support', {
             const newMsgs = res.data.filter(m => !this.messages.some(existing => existing.id === m.id))
             if (newMsgs.length > 0) {
               this.messages = [...this.messages, ...newMsgs]
+              
+              // Play iconic sound for incoming chat messages
+              const hasIncoming = newMsgs.some(m => {
+                if (isAdmin) {
+                  return m.sender_role === 'user'
+                } else {
+                  return m.sender_role === 'cs' || m.sender_role === 'admin'
+                }
+              })
+              if (hasIncoming && typeof window !== 'undefined') {
+                const audio = new Audio('/sounds/nitip_chime.wav')
+                audio.play().catch(() => {})
+              }
             }
           } else {
             this.messages = res.data
