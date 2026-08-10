@@ -38,8 +38,12 @@ const isActive = (path: string) => {
 onMounted(() => {
   connectivityStore.initialize()
   if (authStore.isAuthenticated) {
-    notificationsStore.fetchUnreadCount()
+    notificationsStore.startPolling()
   }
+})
+
+onUnmounted(() => {
+  notificationsStore.stopPolling()
 })
 </script>
 

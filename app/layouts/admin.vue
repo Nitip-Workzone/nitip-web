@@ -17,9 +17,11 @@ import {
 } from '@lucide/vue'
 import { useAuthStore } from '~/stores/auth'
 import { useConnectivityStore } from '~/stores/connectivity'
+import { useNotificationsStore } from '~/stores/notifications'
 
 const authStore = useAuthStore()
 const connectivityStore = useConnectivityStore()
+const notificationsStore = useNotificationsStore()
 const { isOpen, toggle, close } = useSidebar()
 const route = useRoute()
 
@@ -51,9 +53,16 @@ const navigation = computed(() => {
 // Fetch profile on mount
 onMounted(async () => {
   connectivityStore.initialize()
-  if (authStore.isAuthenticated && !authStore.user) {
-    await authStore.fetchProfile()
+  if (authStore.isAuthenticated) {
+    if (!authStore.user) {
+      await authStore.fetchProfile()
+    }
+    notificationsStore.startPolling()
   }
+})
+
+onUnmounted(() => {
+  notificationsStore.stopPolling()
 })
 
 // Handle mobile responsiveness

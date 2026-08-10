@@ -202,6 +202,7 @@ const handleResetPassword = async () => {
 
 const roleVariant = (role: string) => {
   if (role === ROLE_ADMIN) return 'destructive'
+  if (role === ROLE_CS) return 'warning'
   if (role === ROLE_RUNNER) return 'info'
   return 'secondary'
 }

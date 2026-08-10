@@ -16,16 +16,45 @@ export const useNotificationsStore = defineStore('notifications', {
         notifications: [] as Notification[],
         unreadCount: 0,
         loading: false,
+        notifiedIds: [] as string[],
+        pollingIntervalId: null as any,
     }),
 
     actions: {
-        async fetchNotifications() {
+        async requestPermission() {
+            if (typeof window !== 'undefined' && 'Notification' in window) {
+                if (window.Notification.permission === 'default') {
+                    await window.Notification.requestPermission()
+                }
+            }
+        },
+
+        async fetchNotifications(triggerWebNotif = false) {
             this.loading = true
             const { request } = useApi()
             try {
                 const res = await request<{ data: Notification[] }>('/notifications')
                 if (res.data) {
                     this.notifications = res.data
+                    
+                    // Web/Desktop Notification trigger
+                    if (triggerWebNotif && typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'granted') {
+                        const newUnread = res.data.filter(n => !n.is_read && !this.notifiedIds.includes(n.id))
+                        for (const notif of newUnread) {
+                            this.notifiedIds.push(notif.id)
+                            new window.Notification(notif.title, {
+                                body: notif.message,
+                                icon: '/favicon.ico'
+                            })
+                        }
+                    } else {
+                        // Track existing notification IDs
+                        res.data.forEach(n => {
+                            if (!this.notifiedIds.includes(n.id)) {
+                                this.notifiedIds.push(n.id)
+                            }
+                        })
+                    }
                 }
                 await this.fetchUnreadCount()
             } catch (error) {
@@ -44,6 +73,29 @@ export const useNotificationsStore = defineStore('notifications', {
                 }
             } catch (error) {
                 console.error('Failed to fetch unread count:', error)
+            }
+        },
+
+        startPolling() {
+            if (typeof window === 'undefined') return
+            if (this.pollingIntervalId) return
+            
+            // Ask permission if default
+            this.requestPermission()
+            
+            // Initial load triggering web notification
+            this.fetchNotifications(true)
+            
+            // Poll every 15 seconds
+            this.pollingIntervalId = setInterval(() => {
+                this.fetchNotifications(true)
+            }, 15000)
+        },
+
+        stopPolling() {
+            if (this.pollingIntervalId) {
+                clearInterval(this.pollingIntervalId)
+                this.pollingIntervalId = null
             }
         },
 

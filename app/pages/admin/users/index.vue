@@ -13,6 +13,7 @@ const searchQuery = ref('')
 const selectedUser = ref<AdminUser | null>(null)
 const showDetail = ref(false)
 const showAddModal = ref(false)
+const activeSection = ref('all') // 'all', 'product', 'admin'
 
 const addForm = ref({
   name: '',
@@ -63,6 +64,7 @@ onMounted(() => {
 const roleOptions = [
   { label: 'All Roles', value: '' },
   { label: 'Admin', value: ROLE_ADMIN },
+  { label: 'CS (Customer Support)', value: ROLE_CS },
   { label: 'Runner', value: ROLE_RUNNER },
   { label: 'Requester', value: ROLE_REQUESTER },
   { label: 'Merchant', value: ROLE_MERCHANT },
@@ -75,9 +77,18 @@ const verifiedOptions = [
 ]
 
 const displayedUsers = computed(() => {
-  if (!searchQuery.value.trim()) return usersStore.users
+  let list = usersStore.users
+
+  // Section Tabs Filter
+  if (activeSection.value === 'product') {
+    list = list.filter(u => [ROLE_REQUESTER, ROLE_RUNNER, ROLE_MERCHANT].includes(u.role))
+  } else if (activeSection.value === 'admin') {
+    list = list.filter(u => [ROLE_ADMIN, ROLE_CS].includes(u.role))
+  }
+
+  if (!searchQuery.value.trim()) return list
   const q = searchQuery.value.toLowerCase()
-  return usersStore.users.filter(
+  return list.filter(
     (u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
   )
 })
@@ -97,6 +108,7 @@ const handleQuickVerify = async (user: AdminUser) => {
 
 const roleVariant = (role: string) => {
   if (role === ROLE_ADMIN) return 'destructive'
+  if (role === ROLE_CS) return 'warning'
   if (role === ROLE_RUNNER) return 'info'
   if (role === ROLE_MERCHANT) return 'default'
   return 'secondary'
@@ -139,6 +151,34 @@ const formatDate = (date: string) =>
           Refresh
         </UiButton>
       </div>
+    </div>
+
+    <!-- Segmented Tabs for Section Separation -->
+    <div class="flex p-1 bg-slate-100 rounded-xl max-w-md">
+      <button
+        type="button"
+        class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
+        :class="activeSection === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'"
+        @click="activeSection = 'all'"
+      >
+        Semua Pengguna
+      </button>
+      <button
+        type="button"
+        class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
+        :class="activeSection === 'product' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'"
+        @click="activeSection = 'product'"
+      >
+        Pengguna Produk
+      </button>
+      <button
+        type="button"
+        class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
+        :class="activeSection === 'admin' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'"
+        @click="activeSection = 'admin'"
+      >
+        Staf Administratif
+      </button>
     </div>
 
     <!-- Toolbar: Search + Filters -->
@@ -376,6 +416,7 @@ const formatDate = (date: string) =>
             <option :value="ROLE_REQUESTER">Requester (Penitip)</option>
             <option :value="ROLE_RUNNER">Runner (Jasa Titip)</option>
             <option :value="ROLE_ADMIN">Admin (Pengelola)</option>
+            <option :value="ROLE_CS">CS (Customer Service)</option>
             <option :value="ROLE_MERCHANT">Merchant (Mitra Toko)</option>
           </select>
         </div>
