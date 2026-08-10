@@ -16,7 +16,9 @@ export interface SupportTicket {
   closed_at?: string
   user_name?: string
   user_email?: string
+  user_whatsapp?: string
   assigned_cs_name?: string
+  assigned_cs_whatsapp?: string
 }
 
 export interface SupportMessage {

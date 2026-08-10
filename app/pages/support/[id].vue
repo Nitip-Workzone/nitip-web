@@ -87,7 +87,16 @@ function getStatusLabel(s: string) {
         </h1>
         <p class="text-[11px] text-slate-500">{{ supportStore.currentTicket ? getStatusLabel(supportStore.currentTicket.status) : '' }} • {{ supportStore.currentTicket?.category }}</p>
       </div>
-      <button v-if="supportStore.currentTicket && supportStore.currentTicket.status !== 'closed'" class="text-[11px] font-bold text-slate-600 border border-slate-200 rounded-full px-3 py-1.5" @click="handleClose">Tutup</button>
+      <div class="flex items-center gap-2">
+        <a 
+          :href="`https://wa.me/${(supportStore.currentTicket?.assigned_cs_whatsapp || '6282125197825').replace(/\D/g, '')}?text=${encodeURIComponent('Halo CS Nitip, saya butuh bantuan terkait tiket bantuan #' + ticketId.slice(0,8).toUpperCase() + ' saya: ' + (supportStore.currentTicket?.title || ''))}`"
+          target="_blank"
+          class="text-[11px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-full px-3 py-1.5 flex items-center gap-1 active:scale-95 transition-all shadow-sm"
+        >
+          Hubungi CS via WA
+        </a>
+        <button v-if="supportStore.currentTicket && supportStore.currentTicket.status !== 'closed'" class="text-[11px] font-bold text-slate-600 border border-slate-200 rounded-full px-3 py-1.5" @click="handleClose">Tutup</button>
+      </div>
     </div>
 
     <div v-if="loading" class="flex-1 flex items-center justify-center">

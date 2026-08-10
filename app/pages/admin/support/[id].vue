@@ -86,10 +86,18 @@ async function handleAction(action: 'resolve' | 'release' | 'close') {
           <p class="text-[11px] text-muted-foreground">#{{ ticketId.slice(0,8).toUpperCase() }} • {{ supportStore.currentTicket?.status }} • {{ supportStore.currentTicket?.category }}</p>
         </div>
       </div>
-      <div class="flex gap-2">
-        <button class="text-xs font-bold border px-3 py-1.5 rounded-lg" @click="handleAction('release')">Lepas</button>
-        <button class="text-xs font-bold bg-emerald-600 text-white px-3 py-1.5 rounded-lg" @click="handleAction('resolve')">Selesaikan</button>
-        <button class="text-xs font-bold bg-slate-900 text-white px-3 py-1.5 rounded-lg" @click="handleAction('close')">Tutup</button>
+      <div class="flex items-center gap-2">
+        <a 
+          v-if="supportStore.currentTicket?.user_whatsapp"
+          :href="`https://wa.me/${supportStore.currentTicket.user_whatsapp.replace(/\D/g, '').replace(/^0/, '62')}?text=${encodeURIComponent('Halo, saya CS Nitip terkait tiket bantuan Anda #' + ticketId.slice(0,8).toUpperCase() + ': ' + supportStore.currentTicket.title)}`"
+          target="_blank"
+          class="text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white px-3.5 py-2 rounded-lg flex items-center gap-1 shadow-sm active:scale-95 transition-all"
+        >
+          Hubungi Klien via WA
+        </a>
+        <button class="text-xs font-bold border px-3 py-2 rounded-lg" @click="handleAction('release')">Lepas</button>
+        <button class="text-xs font-bold bg-emerald-600 text-white px-3 py-2 rounded-lg" @click="handleAction('resolve')">Selesaikan</button>
+        <button class="text-xs font-bold bg-slate-900 text-white px-3 py-2 rounded-lg" @click="handleAction('close')">Tutup</button>
       </div>
     </div>
 
@@ -99,6 +107,7 @@ async function handleAction(action: 'resolve' | 'release' | 'close') {
         <div class="bg-white border rounded-xl p-4 space-y-2">
           <p class="text-[10px] font-bold uppercase text-muted-foreground">Detail Tiket</p>
           <p class="text-xs"><span class="font-bold">User:</span> {{ supportStore.currentTicket?.user_name || supportStore.currentTicket?.user_id }}</p>
+          <p class="text-xs"><span class="font-bold">WhatsApp:</span> {{ supportStore.currentTicket?.user_whatsapp || '-' }}</p>
           <p class="text-xs"><span class="font-bold">Order:</span> {{ supportStore.currentTicket?.order_id || '-' }}</p>
           <p class="text-xs"><span class="font-bold">Kategori:</span> {{ supportStore.currentTicket?.category }}</p>
           <p class="text-xs"><span class="font-bold">Prioritas:</span> {{ supportStore.currentTicket?.priority }}</p>
