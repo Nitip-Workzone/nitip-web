@@ -37,6 +37,13 @@ const qrisImageUrl = computed(() => {
   return qris
 })
 
+const qrisFee = computed(() => {
+  if (!order.value || order.value.payment_source !== 'qris') return 0
+  const accumulated = (order.value.estimated_cost || 0) + order.value.delivery_fee + (order.value.tip_amount || 0)
+  const diff = order.value.total_payment - accumulated
+  return diff > 0 ? diff : 0
+})
+
 function startCountdown(createdAtStr: string) {
   if (countdownInterval) clearInterval(countdownInterval)
   
@@ -586,25 +593,77 @@ function openImage(url: string) {
         <!-- Rincian Biaya -->
         <div class="bg-white border border-border/30 rounded-3xl p-5 shadow-sm space-y-3">
           <h3 class="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Rincian Pembayaran</h3>
-          <div v-if="order.service_category === 'beli'" class="flex justify-between text-xs">
-            <span class="text-muted-foreground">Harga Barang</span>
+          <div v-if="order.service_category === 'beli'" class="flex justify-between text-xs items-center">
+            <span class="text-muted-foreground flex items-center gap-1">
+              Harga Barang
+              <div class="group relative inline-block cursor-pointer">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-black text-slate-400 border border-slate-300 rounded-full hover:text-slate-600 hover:border-slate-500 transition-all select-none">!</span>
+                <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-slate-800 text-white text-[9px] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap z-50">
+                  Perkiraan harga barang yang akan dibeli oleh runner di toko
+                </span>
+              </div>
+            </span>
             <span class="font-medium text-foreground">{{ formatCurrency(order.estimated_cost) }}</span>
           </div>
-          <div class="flex justify-between text-xs">
-            <span class="text-muted-foreground">Biaya Titip / Ongkos Kirim</span>
+          <div class="flex justify-between text-xs items-center">
+            <span class="text-muted-foreground flex items-center gap-1">
+              Biaya Titip / Ongkos Kirim
+              <div class="group relative inline-block cursor-pointer">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-black text-slate-400 border border-slate-300 rounded-full hover:text-slate-600 hover:border-slate-500 transition-all select-none">!</span>
+                <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-slate-800 text-white text-[9px] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap z-50">
+                  Biaya jasa pengantaran yang akan diterima bersih oleh Runner
+                </span>
+              </div>
+            </span>
             <span class="font-medium text-foreground">{{ formatCurrency(order.delivery_fee - (order.service_fee || 0) - (order.checking_fee || 0)) }}</span>
           </div>
-          <div v-if="order.service_fee" class="flex justify-between text-xs">
-            <span class="text-muted-foreground">Biaya Layanan</span>
+          <div v-if="order.service_fee" class="flex justify-between text-xs items-center">
+            <span class="text-muted-foreground flex items-center gap-1">
+              Biaya Layanan
+              <div class="group relative inline-block cursor-pointer">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-black text-slate-400 border border-slate-300 rounded-full hover:text-slate-600 hover:border-slate-500 transition-all select-none">!</span>
+                <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-slate-800 text-white text-[9px] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap z-50">
+                  Biaya layanan platform untuk pemeliharaan sistem dan operasional Nitip
+                </span>
+              </div>
+            </span>
             <span class="font-medium text-foreground">{{ formatCurrency(order.service_fee) }}</span>
           </div>
-          <div v-if="order.checking_fee" class="flex justify-between text-xs">
-            <span class="text-muted-foreground">Biaya Pengecekan</span>
+          <div v-if="order.checking_fee" class="flex justify-between text-xs items-center">
+            <span class="text-muted-foreground flex items-center gap-1">
+              Biaya Pengecekan
+              <div class="group relative inline-block cursor-pointer">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-black text-slate-400 border border-slate-300 rounded-full hover:text-slate-600 hover:border-slate-500 transition-all select-none">!</span>
+                <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-slate-800 text-white text-[9px] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap z-50">
+                  Biaya penitipan/pengecekan kesesuaian barang di loker
+                </span>
+              </div>
+            </span>
             <span class="font-medium text-foreground">{{ formatCurrency(order.checking_fee) }}</span>
           </div>
-          <div v-if="order.tip_amount" class="flex justify-between text-xs">
-            <span class="text-muted-foreground">Tip untuk Runner</span>
+          <div v-if="order.tip_amount" class="flex justify-between text-xs items-center">
+            <span class="text-muted-foreground flex items-center gap-1">
+              Tip untuk Runner
+              <div class="group relative inline-block cursor-pointer">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-black text-slate-400 border border-slate-300 rounded-full hover:text-slate-600 hover:border-slate-500 transition-all select-none">!</span>
+                <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-slate-800 text-white text-[9px] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap z-50">
+                  Uang apresiasi tambahan yang diberikan secara sukarela untuk Runner
+                </span>
+              </div>
+            </span>
             <span class="font-medium text-foreground">{{ formatCurrency(order.tip_amount) }}</span>
+          </div>
+          <div v-if="qrisFee > 0" class="flex justify-between text-xs items-center">
+            <span class="text-muted-foreground flex items-center gap-1">
+              Biaya Layanan QRIS (0.7%)
+              <div class="group relative inline-block cursor-pointer">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-black text-slate-400 border border-slate-300 rounded-full hover:text-slate-600 hover:border-slate-500 transition-all select-none">!</span>
+                <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-slate-800 text-white text-[9px] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap z-50">
+                  Biaya penanganan gerbang pembayaran QRIS (MDR) sebesar 0.7%
+                </span>
+              </div>
+            </span>
+            <span class="font-medium text-foreground">{{ formatCurrency(qrisFee) }}</span>
           </div>
           <div class="flex justify-between text-sm font-extrabold text-foreground pt-3 border-t border-slate-100">
             <span>Total Pembayaran</span>
@@ -839,29 +898,89 @@ function openImage(url: string) {
               </span>
             </div>
           </div>
-          <div v-if="order.service_category === 'beli'" class="flex justify-between text-xs">
-            <span class="text-muted-foreground">Harga Barang</span>
+          <div v-if="order.service_category === 'beli'" class="flex justify-between text-xs items-center">
+            <span class="text-muted-foreground flex items-center gap-1">
+              Harga Barang
+              <div class="group relative inline-block cursor-pointer">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-black text-slate-400 border border-slate-300 rounded-full hover:text-slate-600 hover:border-slate-500 transition-all select-none">!</span>
+                <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-slate-800 text-white text-[9px] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap z-50">
+                  Perkiraan harga barang yang akan dibeli oleh runner di toko
+                </span>
+              </div>
+            </span>
             <span class="font-medium text-foreground">{{ formatCurrency(order.estimated_cost) }}</span>
           </div>
-          <div class="flex justify-between text-xs">
-            <span class="text-muted-foreground">Biaya Titip / Ongkos Kirim</span>
+          <div class="flex justify-between text-xs items-center">
+            <span class="text-muted-foreground flex items-center gap-1">
+              Biaya Titip / Ongkos Kirim
+              <div class="group relative inline-block cursor-pointer">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-black text-slate-400 border border-slate-300 rounded-full hover:text-slate-600 hover:border-slate-500 transition-all select-none">!</span>
+                <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-slate-800 text-white text-[9px] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap z-50">
+                  Biaya jasa pengantaran yang akan diterima bersih oleh Runner
+                </span>
+              </div>
+            </span>
             <span class="font-medium text-foreground">{{ formatCurrency(order.delivery_fee - (order.service_fee || 0) - (order.checking_fee || 0)) }}</span>
           </div>
-          <div v-if="order.service_fee" class="flex justify-between text-xs">
-            <span class="text-muted-foreground">Biaya Layanan</span>
+          <div v-if="order.service_fee" class="flex justify-between text-xs items-center">
+            <span class="text-muted-foreground flex items-center gap-1">
+              Biaya Layanan
+              <div class="group relative inline-block cursor-pointer">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-black text-slate-400 border border-slate-300 rounded-full hover:text-slate-600 hover:border-slate-500 transition-all select-none">!</span>
+                <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-slate-800 text-white text-[9px] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap z-50">
+                  Biaya layanan platform untuk pemeliharaan sistem dan operasional Nitip
+                </span>
+              </div>
+            </span>
             <span class="font-medium text-foreground">{{ formatCurrency(order.service_fee) }}</span>
           </div>
-          <div v-if="order.checking_fee && order.status !== 'completed'" class="flex justify-between text-xs">
-            <span class="text-muted-foreground">Biaya Pengecekan</span>
+          <div v-if="order.checking_fee && order.status !== 'completed'" class="flex justify-between text-xs items-center">
+            <span class="text-muted-foreground flex items-center gap-1">
+              Biaya Pengecekan
+              <div class="group relative inline-block cursor-pointer">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-black text-slate-400 border border-slate-300 rounded-full hover:text-slate-600 hover:border-slate-500 transition-all select-none">!</span>
+                <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-slate-800 text-white text-[9px] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap z-50">
+                  Biaya penitipan/pengecekan kesesuaian barang di loker
+                </span>
+              </div>
+            </span>
             <span class="font-medium text-foreground">{{ formatCurrency(order.checking_fee) }}</span>
           </div>
-          <div v-if="order.cod_handling_fee" class="flex justify-between text-xs">
-            <span class="text-muted-foreground">Biaya Penanganan COD</span>
+          <div v-if="order.cod_handling_fee" class="flex justify-between text-xs items-center">
+            <span class="text-muted-foreground flex items-center gap-1">
+              Biaya Penanganan COD
+              <div class="group relative inline-block cursor-pointer">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-black text-slate-400 border border-slate-300 rounded-full hover:text-slate-600 hover:border-slate-500 transition-all select-none">!</span>
+                <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-slate-800 text-white text-[9px] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap z-50">
+                  Biaya penanganan administrasi untuk metode pembayaran Cash on Delivery
+                </span>
+              </div>
+            </span>
             <span class="font-medium text-foreground">{{ formatCurrency(order.cod_handling_fee) }}</span>
           </div>
-          <div v-if="order.tip_amount" class="flex justify-between text-xs">
-            <span class="text-muted-foreground">Tip untuk Runner</span>
+          <div v-if="order.tip_amount" class="flex justify-between text-xs items-center">
+            <span class="text-muted-foreground flex items-center gap-1">
+              Tip untuk Runner
+              <div class="group relative inline-block cursor-pointer">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-black text-slate-400 border border-slate-300 rounded-full hover:text-slate-600 hover:border-slate-500 transition-all select-none">!</span>
+                <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-slate-800 text-white text-[9px] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap z-50">
+                  Uang apresiasi tambahan yang diberikan secara sukarela untuk Runner
+                </span>
+              </div>
+            </span>
             <span class="font-medium text-foreground">{{ formatCurrency(order.tip_amount) }}</span>
+          </div>
+          <div v-if="qrisFee > 0" class="flex justify-between text-xs items-center">
+            <span class="text-muted-foreground flex items-center gap-1">
+              Biaya Layanan QRIS (0.7%)
+              <div class="group relative inline-block cursor-pointer">
+                <span class="inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-black text-slate-400 border border-slate-300 rounded-full hover:text-slate-600 hover:border-slate-500 transition-all select-none">!</span>
+                <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-slate-800 text-white text-[9px] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap z-50">
+                  Biaya penanganan gerbang pembayaran QRIS (MDR) sebesar 0.7%
+                </span>
+              </div>
+            </span>
+            <span class="font-medium text-foreground">{{ formatCurrency(qrisFee) }}</span>
           </div>
           <div class="flex justify-between text-sm font-extrabold text-foreground pt-3 border-t border-slate-100">
             <span>Total Pembayaran</span>

@@ -783,10 +783,30 @@ const openHelp = () => {
             </div>
 
             <!-- Amount details -->
-            <div class="text-center space-y-1">
-              <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Pembayaran</span>
-              <p class="text-lg font-black text-slate-900">{{ formatCurrency(activeTopUpAmount) }}</p>
-              <p class="text-[9px] font-semibold text-slate-500 bg-slate-200 px-2.5 py-1 rounded-md inline-block">Ref: {{ activeTopUpReference }}</p>
+            <div class="w-full space-y-2 text-xs text-left pt-2 border-t border-slate-100">
+              <div class="flex justify-between text-slate-500">
+                <span>Nominal Top Up</span>
+                <span class="font-medium text-slate-800">{{ formatCurrency(activeTopUpAmount) }}</span>
+              </div>
+              <div class="flex justify-between text-slate-500">
+                <span class="flex items-center gap-1">
+                  Biaya Layanan QRIS (0.7%)
+                  <div class="group relative inline-block cursor-pointer">
+                    <span class="inline-flex items-center justify-center w-3.5 h-3.5 text-[9px] font-black text-slate-400 border border-slate-300 rounded-full hover:text-slate-600 hover:border-slate-500 transition-all select-none">!</span>
+                    <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-slate-800 text-white text-[9px] px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap z-50">
+                      Biaya transaksi gerbang pembayaran QRIS (MDR)
+                    </span>
+                  </div>
+                </span>
+                <span class="font-medium text-slate-800">{{ formatCurrency(Math.ceil(activeTopUpAmount / 0.993) - activeTopUpAmount) }}</span>
+              </div>
+              <div class="flex justify-between text-sm font-extrabold text-slate-900 pt-2 border-t border-slate-100 items-center">
+                <span>Total Pembayaran</span>
+                <span class="text-primary text-base">{{ formatCurrency(Math.ceil(activeTopUpAmount / 0.993)) }}</span>
+              </div>
+              <div class="text-center pt-1">
+                <p class="text-[9px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md inline-block">Ref: {{ activeTopUpReference }}</p>
+              </div>
             </div>
           </div>
 
