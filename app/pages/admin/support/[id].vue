@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useSupportStore } from '~/stores/support'
-import { ArrowLeft, Send } from '@lucide/vue'
+import { ArrowLeft, Send, RefreshCw } from '@lucide/vue'
 
 definePageMeta({ layout: 'admin' })
 
@@ -14,10 +14,14 @@ const messageText = ref('')
 const isInternal = ref(false)
 const sending = ref(false)
 const loading = ref(true)
-const polling = ref<NodeJS.Timeout | null>(null)
 const bottomRef = ref<HTMLElement | null>(null)
 
 onMounted(async () => {
+  await handleRefresh()
+  scrollToBottom()
+})
+
+async function handleRefresh() {
   try {
     await supportStore.fetchTicketDetail(ticketId, true)
     await supportStore.fetchMessages(ticketId, true)
@@ -26,24 +30,6 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-  startPolling()
-})
-
-onUnmounted(() => {
-  if (polling.value) clearInterval(polling.value)
-})
-
-function startPolling() {
-  if (polling.value) clearInterval(polling.value)
-  polling.value = setInterval(async () => {
-    try {
-      const last = supportStore.messages[supportStore.messages.length - 1]
-      const newMsgs = await supportStore.fetchMessages(ticketId, true, last?.id)
-      if (newMsgs && newMsgs.length > 0) {
-        scrollToBottom()
-      }
-    } catch { /* noop */ }
-  }, 5000)
 }
 
 function scrollToBottom() {
@@ -88,7 +74,15 @@ async function handleAction(action: 'resolve' | 'release' | 'close') {
       <div class="flex items-center gap-3">
         <button class="p-2 -ml-2" @click="router.push('/admin/support')"><ArrowLeft class="w-5 h-5" /></button>
         <div>
-          <h1 class="text-sm font-black">{{ supportStore.currentTicket?.title || 'Detail Tiket' }}</h1>
+          <h1 class="text-sm font-black flex items-center gap-2">
+            <span>{{ supportStore.currentTicket?.title || 'Detail Tiket' }}</span>
+            <button 
+              class="p-1 rounded-lg text-muted-foreground hover:bg-slate-100 active:scale-95 transition-all"
+              @click="handleRefresh"
+            >
+              <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': supportStore.loading }" />
+            </button>
+          </h1>
           <p class="text-[11px] text-muted-foreground">#{{ ticketId.slice(0,8).toUpperCase() }} • {{ supportStore.currentTicket?.status }} • {{ supportStore.currentTicket?.category }}</p>
         </div>
       </div>

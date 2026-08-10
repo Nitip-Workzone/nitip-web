@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useSupportStore } from '~/stores/support'
-import { ArrowLeft, Send } from '@lucide/vue'
+import { ArrowLeft, Send, RefreshCw } from '@lucide/vue'
 
 definePageMeta({ layout: 'user' })
 
@@ -12,11 +12,15 @@ const toastStore = useToastStore()
 const ticketId = route.params.id as string
 const messageText = ref('')
 const sending = ref(false)
-const polling = ref<NodeJS.Timeout | null>(null)
 const loading = ref(true)
 const bottomRef = ref<HTMLElement | null>(null)
 
 onMounted(async () => {
+  await handleRefresh()
+  scrollToBottom()
+})
+
+async function handleRefresh() {
   try {
     await supportStore.fetchTicketDetail(ticketId, false)
     await supportStore.fetchMessages(ticketId, false)
@@ -26,25 +30,6 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-  startPolling()
-  scrollToBottom()
-})
-
-onUnmounted(() => {
-  if (polling.value) clearInterval(polling.value)
-})
-
-function startPolling() {
-  if (polling.value) clearInterval(polling.value)
-  polling.value = setInterval(async () => {
-    try {
-      const last = supportStore.messages[supportStore.messages.length - 1]
-      const newMsgs = await supportStore.fetchMessages(ticketId, false, last?.id)
-      if (newMsgs && newMsgs.length > 0) {
-        scrollToBottom()
-      }
-    } catch { /* noop */ }
-  }, 5000)
 }
 
 function scrollToBottom() {
@@ -91,7 +76,15 @@ function getStatusLabel(s: string) {
     <div class="bg-white border-b border-slate-100 px-5 py-4 flex items-center gap-3">
       <button class="p-2 -ml-2" @click="router.push('/support')"><ArrowLeft class="w-5 h-5" /></button>
       <div class="flex-1 min-w-0">
-        <h1 class="text-sm font-black truncate">{{ supportStore.currentTicket?.title || 'Detail Tiket' }}</h1>
+        <h1 class="text-sm font-black flex items-center gap-2 truncate">
+          <span>{{ supportStore.currentTicket?.title || 'Detail Tiket' }}</span>
+          <button 
+            class="p-1 rounded-lg text-muted-foreground hover:bg-slate-100 active:scale-95 transition-all"
+            @click="handleRefresh"
+          >
+            <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': supportStore.loading }" />
+          </button>
+        </h1>
         <p class="text-[11px] text-slate-500">{{ supportStore.currentTicket ? getStatusLabel(supportStore.currentTicket.status) : '' }} • {{ supportStore.currentTicket?.category }}</p>
       </div>
       <button v-if="supportStore.currentTicket && supportStore.currentTicket.status !== 'closed'" class="text-[11px] font-bold text-slate-600 border border-slate-200 rounded-full px-3 py-1.5" @click="handleClose">Tutup</button>
