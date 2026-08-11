@@ -13,6 +13,8 @@ export interface Merchant {
   auto_confirm: boolean
   max_active_orders: number
   rating: number
+  image_url?: string
+  cover_url?: string
   created_at: string
   updated_at: string
 }

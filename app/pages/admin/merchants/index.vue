@@ -235,7 +235,36 @@ onMounted(async () => {
           </UiTableHeader>
           <UiTableBody>
             <UiTableRow v-for="merchant in filteredMerchants" :key="merchant.id">
-              <UiTableCell class="font-semibold">{{ merchant.name }}</UiTableCell>
+              <UiTableCell>
+                <div class="flex items-center gap-3">
+                  <!-- Merchant Image Stack (Cover + Profile Logo overlay) -->
+                  <div class="relative w-12 h-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0">
+                    <img
+                      v-if="merchant.cover_url"
+                      :src="merchant.cover_url"
+                      class="absolute inset-0 w-full h-full object-cover"
+                      alt="Cover"
+                    />
+                    <div v-else class="absolute inset-0 bg-slate-100 flex items-center justify-center text-[8px] font-bold text-muted-foreground uppercase">Cover</div>
+                    
+                    <!-- Logo/Avatar overlay -->
+                    <div class="absolute bottom-0.5 left-0.5 w-5 h-5 rounded-full overflow-hidden border border-white shadow-sm bg-white flex items-center justify-center">
+                      <img
+                        v-if="merchant.image_url"
+                        :src="merchant.image_url"
+                        class="w-full h-full object-cover"
+                        alt="Logo"
+                      />
+                      <Store v-else class="w-2.5 h-2.5 text-muted-foreground" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <p class="font-semibold text-sm leading-tight text-slate-800">{{ merchant.name }}</p>
+                    <p class="text-[10px] text-muted-foreground line-clamp-1 max-w-[180px] mt-0.5">{{ merchant.description || 'Tidak ada deskripsi' }}</p>
+                  </div>
+                </div>
+              </UiTableCell>
               <UiTableCell>
                 <div>
                   <p class="font-medium text-xs">{{ getOwnerName(merchant.owner_id) }}</p>
