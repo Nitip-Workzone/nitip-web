@@ -142,6 +142,23 @@ export const useUsersStore = defineStore('users', {
             }
         },
 
+        async createInvitation(payload: { phone_number: string; role: string }) {
+            this.actionLoading = true
+            const { request } = useApi()
+            try {
+                const res = await request<{ data: { token: string; phone_number: string; role: string } }>('/admin/users/invitations', {
+                    method: 'POST',
+                    body: payload,
+                })
+                return res && res.data ? res.data : null
+            } catch (error) {
+                console.error('Failed to create invitation:', error)
+                throw error
+            } finally {
+                this.actionLoading = false
+            }
+        },
+
         async adminDisableTotp(id: string) {
             this.actionLoading = true
             const { request } = useApi()

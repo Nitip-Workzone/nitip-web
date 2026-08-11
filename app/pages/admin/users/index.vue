@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Users, Search, ShieldCheck, ShieldX, ShieldAlert, Star, Eye, RefreshCw, Plus } from '@lucide/vue'
+import { Users, Search, ShieldCheck, ShieldX, ShieldAlert, Star, Eye, RefreshCw, Plus, Copy } from '@lucide/vue'
 import type { AdminUser } from '~/stores/users'
 
 definePageMeta({
@@ -54,6 +54,55 @@ const handleAddUser = async () => {
     const msg = errorObj?.data?.message || 'Gagal menambahkan user. Pastikan data benar dan password admin valid.'
     error(msg)
     showAddModal.value = false
+  }
+}
+
+// Invite Partner States & Actions
+const showInviteModal = ref(false)
+const inviteForm = ref({
+  phone_number: '',
+  role: ROLE_RUNNER,
+})
+const generatedLink = ref<string | null>(null)
+const isGenerating = ref(false)
+
+const openInviteModal = () => {
+  inviteForm.value = {
+    phone_number: '',
+    role: ROLE_RUNNER,
+  }
+  generatedLink.value = null
+  showInviteModal.value = true
+}
+
+const handleGenerateInvite = async () => {
+  if (!inviteForm.value.phone_number) {
+    error('Mohon masukkan nomor WhatsApp penerima.')
+    return
+  }
+  isGenerating.value = true
+  try {
+    const res = await usersStore.createInvitation(inviteForm.value)
+    if (res && res.token) {
+      // Menentukan base URL website profile
+      const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://nihtip.com'
+      generatedLink.value = `${baseUrl}/join/${inviteForm.value.role}?token=${res.token}`
+      success('Link undangan pendaftaran berhasil dibuat!')
+    } else {
+      error('Gagal membuat undangan pendaftaran.')
+    }
+  } catch (err: any) {
+    const msg = err.data?.message || 'Gagal membuat undangan pendaftaran.'
+    error(msg)
+  } finally {
+    isGenerating.value = false
+  }
+}
+
+const copyInviteLink = () => {
+  if (generatedLink.value) {
+    navigator.clipboard.writeText(generatedLink.value)
+    success('Tautan undangan berhasil disalin!')
   }
 }
 
@@ -133,6 +182,14 @@ const formatDate = (date: string) =>
         </p>
       </div>
       <div class="flex items-center gap-2">
+        <UiButton
+          variant="secondary"
+          size="sm"
+          @click="openInviteModal"
+        >
+          <Plus class="w-4 h-4 mr-2" />
+          Undang Partner
+        </UiButton>
         <UiButton
           variant="primary"
           size="sm"
@@ -475,6 +532,90 @@ const formatDate = (date: string) =>
             Tambah Pengguna
           </UiButton>
         </div>
+      </div>
+    </UiModal>
+
+    <!-- Invite Partner Modal -->
+    <UiModal v-model:open="showInviteModal" title="Undang Mitra Baru (Runner/Merchant)">
+      <div class="space-y-4 p-1">
+        
+        <template v-if="generatedLink">
+          <div class="p-4 bg-emerald-50 border border-emerald-100 rounded-xl space-y-3">
+            <p class="text-xs font-semibold text-emerald-800 leading-relaxed">
+              Tautan undangan pendaftaran berhasil dibuat! Tautan ini bersifat rahasia, sekali pakai, dan kedaluwarsa dalam 7 hari.
+            </p>
+            <div class="flex items-center gap-2 bg-white border border-emerald-200 rounded-lg p-2.5">
+              <span class="text-xs font-mono text-slate-600 truncate flex-1">{{ generatedLink }}</span>
+              <button 
+                type="button" 
+                @click="copyInviteLink"
+                class="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-700 transition"
+                title="Salin tautan"
+              >
+                <Copy class="w-4 h-4" />
+              </button>
+            </div>
+            <p class="text-[10px] text-emerald-600/80">
+              * Tautan pendaftaran secara otomatis mengunci nomor WhatsApp tujuan.
+            </p>
+          </div>
+
+          <div class="pt-2">
+            <UiButton
+              class="w-full"
+              variant="secondary"
+              @click="showInviteModal = false"
+            >
+              Tutup
+            </UiButton>
+          </div>
+        </template>
+
+        <template v-else>
+          <!-- WhatsApp -->
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-muted-foreground uppercase">Nomor WhatsApp Tujuan</label>
+            <input
+              v-model="inviteForm.phone_number"
+              type="text"
+              placeholder="Contoh: 0881088xxx atau 6281088xxx"
+              class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all"
+            >
+          </div>
+
+          <!-- Role -->
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-muted-foreground uppercase">Peran (Role) Kemitraan</label>
+            <select
+              v-model="inviteForm.role"
+              class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all cursor-pointer"
+            >
+              <option :value="ROLE_RUNNER">Runner (Jasa Titip / Driver)</option>
+              <option :value="ROLE_MERCHANT">Merchant (Mitra Toko / Warung)</option>
+            </select>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex items-center gap-3 pt-3">
+            <UiButton
+              class="flex-1"
+              variant="secondary"
+              :disabled="isGenerating"
+              @click="showInviteModal = false"
+            >
+              Batal
+            </UiButton>
+            <UiButton
+              class="flex-1"
+              variant="primary"
+              :loading="isGenerating"
+              @click="handleGenerateInvite"
+            >
+              Generate Link Undangan
+            </UiButton>
+          </div>
+        </template>
+
       </div>
     </UiModal>
   </div>
