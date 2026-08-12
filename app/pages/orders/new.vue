@@ -237,7 +237,9 @@ function formatCurrency(amount: number) {
         <ArrowLeft class="w-5 h-5" />
       </button>
       <div>
-        <h1 class="text-lg font-bold text-foreground">Titip Beli Baru</h1>
+        <h1 class="text-lg font-bold text-foreground">
+          {{ serviceCategory === 'beli' ? 'Titip Beli Baru' : 'Kirim Barang Baru' }}
+        </h1>
         <p class="text-[11px] text-muted-foreground">Langkah {{ step }} dari 3</p>
       </div>
     </div>
