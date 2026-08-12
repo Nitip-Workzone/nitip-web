@@ -504,7 +504,7 @@ function openImage(url: string) {
           </div>
 
           <!-- Official QRIS Sheet Card -->
-          <div class="max-w-[280px] mx-auto bg-white border border-slate-200 rounded-3xl p-5 shadow-sm flex flex-col items-center space-y-4">
+          <div class="max-w-[340px] mx-auto bg-white border border-slate-200 rounded-3xl p-5 shadow-sm flex flex-col items-center space-y-4">
             <!-- Header: QRIS & GPN Logo -->
             <div class="w-full flex items-center justify-between border-b border-slate-100 pb-2">
               <!-- QRIS Logo -->
@@ -528,7 +528,7 @@ function openImage(url: string) {
             </div>
 
             <!-- QR Code -->
-            <div class="relative w-48 h-48 bg-white p-1 border border-slate-100 rounded-xl flex items-center justify-center">
+            <div class="relative w-64 h-64 bg-white p-1 border border-slate-100 rounded-xl flex items-center justify-center">
               <img v-if="qrisImageUrl" :src="qrisImageUrl" alt="QRIS Code" class="w-full h-full object-contain" >
               <div v-else class="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
               
@@ -554,19 +554,6 @@ function openImage(url: string) {
               <img src="/images/providers/mandiri.png" alt="Mandiri" class="h-2.5 w-auto object-contain opacity-80" />
               <img src="/images/providers/bca.png" alt="BCA" class="h-2.5 w-auto object-contain opacity-80" />
             </div>
-          </div>
-
-          <!-- Sandbox Warning Banner -->
-          <div v-if="isSandboxQris" class="bg-amber-50 border border-amber-200/60 p-3.5 rounded-2xl space-y-1 text-left max-w-[240px] mx-auto shadow-sm">
-            <div class="flex items-center gap-1.5 text-amber-800 text-[10px] font-bold">
-              <svg class="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span>Mode Sandbox / Simulasi</span>
-            </div>
-            <p class="text-[9px] text-amber-700 leading-normal">
-              QR ini dibuat dalam mode **Sandbox/Simulasi**. Jangan scan dengan aplikasi bank asli Anda. Selesaikan pembayaran tes ini via simulator atau tombol kirim test pada Android Listener Anda.
-            </p>
           </div>
 
           <div class="flex flex-col items-center gap-2 pt-2 border-t border-slate-100">
@@ -1142,8 +1129,8 @@ function openImage(url: string) {
       </div>
 
       <!-- Dispute Modal -->
-      <div v-if="showDisputeModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
+      <div v-if="showDisputeModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="showDisputeModal = false">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
           <div class="text-center">
             <h3 class="text-base font-extrabold text-foreground flex items-center justify-center gap-1.5">
               <ShieldAlert class="w-5 h-5 text-red-500" />
@@ -1170,7 +1157,7 @@ function openImage(url: string) {
       </div>
 
       <!-- Review Modal -->
-      <div v-if="showReviewModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div v-if="showReviewModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="showReviewModal = false">
         <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
           <div class="text-center">
             <h3 class="text-base font-extrabold text-foreground">Beri Ulasan Pesanan</h3>

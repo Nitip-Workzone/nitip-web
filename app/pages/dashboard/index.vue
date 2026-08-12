@@ -671,7 +671,7 @@ const openHelp = () => {
       leave-to-class="opacity-0"
     >
       <div v-if="showTopUpModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="showTopUpModal = false">
-        <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl space-y-5" style="animation: slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1);">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl space-y-5 max-h-[85vh] overflow-y-auto" style="animation: slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1);">
           <!-- Handle -->
           <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto sm:hidden" />
 
@@ -728,7 +728,7 @@ const openHelp = () => {
       leave-to-class="opacity-0"
     >
       <div v-if="showQrisModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="showQrisModal = false">
-        <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl space-y-5 animate-in slide-in-from-bottom-5 duration-300">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl space-y-5 max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom-5 duration-300">
           <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto sm:hidden" />
 
           <div class="text-center space-y-2">
@@ -741,7 +741,7 @@ const openHelp = () => {
 
           <!-- QRIS Image -->
           <div class="bg-slate-50 p-4 rounded-2xl flex flex-col items-center justify-center border border-slate-100 space-y-4">
-            <div class="w-full max-w-[240px] bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col items-center space-y-3">
+            <div class="w-full max-w-[300px] bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col items-center space-y-3">
               <!-- Header: QRIS & GPN Logo -->
               <div class="w-full flex items-center justify-between border-b border-slate-100 pb-1.5">
                 <!-- QRIS Logo -->
@@ -763,9 +763,9 @@ const openHelp = () => {
               </div>
 
               <!-- QR Code -->
-              <div class="relative w-40 h-40 bg-white p-1 border border-slate-100 rounded-lg flex items-center justify-center">
+              <div class="relative w-56 h-56 bg-white p-1 border border-slate-100 rounded-lg flex items-center justify-center">
                 <img 
-                  :src="`https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=${encodeURIComponent(activeQrisString)}`" 
+                  :src="`https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(activeQrisString)}`" 
                   alt="QRIS Code" 
                   class="w-full h-full object-contain"
                 >
@@ -808,17 +808,6 @@ const openHelp = () => {
                 <p class="text-[9px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md inline-block">Ref: {{ activeTopUpReference }}</p>
               </div>
             </div>
-          </div>
-
-          <!-- Sandbox Instruction -->
-          <div class="bg-amber-50 border border-amber-200/50 p-3.5 rounded-xl space-y-1">
-            <div class="flex items-center gap-1.5 text-amber-800 text-xs font-bold">
-              <HelpCircle class="w-4 h-4 shrink-0" />
-              <span>Mode Sandbox (Simulasi)</span>
-            </div>
-            <p class="text-[10px] text-amber-700 leading-normal text-left">
-              Silakan lakukan simulasi bayar melalui <strong>Midtrans MAP Dashboard</strong> pada detail transaksi dengan ID order <code>{{ activeTopUpReference }}</code> agar status menjadi sukses.
-            </p>
           </div>
 
           <!-- Actions -->
