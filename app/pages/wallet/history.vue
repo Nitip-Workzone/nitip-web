@@ -48,6 +48,9 @@ function getTxTypeLabel(type: string) {
     case 'WITHDRAWAL': return 'Penarikan Dana'
     case 'ESCROW_HOLD': return 'Pembayaran Pesanan'
     case 'ESCROW_RELEASE': return 'Dana Diterima'
+    case 'LIABILITY_HOLD': return 'Jaminan Ditahan'
+    case 'LIABILITY_RELEASE': return 'Jaminan Dikembalikan'
+    case 'LIABILITY_CONFISCATED': return 'Jaminan Ditarik'
     case 'PLATFORM_FEE': return 'Biaya Layanan'
     case 'REFUND': return 'Pengembalian Dana'
     default: return type
