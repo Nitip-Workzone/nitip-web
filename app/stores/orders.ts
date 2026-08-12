@@ -15,6 +15,7 @@ export interface AdminOrder {
     receipt_image_url?: string
     delivery_image_url?: string
     dispute_reason?: string
+    unique_code?: number
 }
 
 export const useOrdersStore = defineStore('orders', {

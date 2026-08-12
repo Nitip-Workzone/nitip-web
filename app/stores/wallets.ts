@@ -9,6 +9,7 @@ interface WalletTransaction {
     reference?: string
     status: string
     created_at: string
+    unique_code?: number
 }
 
 export interface SystemBalanceSummary {

@@ -729,7 +729,10 @@ const formatDate = (date: string) =>
                   </p>
                 </UiTableCell>
                 <UiTableCell>
-                  <span class="text-[12px] font-bold">{{ formatCurrency(order.estimated_cost + order.delivery_fee) }}</span>
+                  <div class="flex flex-col">
+                    <span class="text-[12px] font-bold">{{ formatCurrency(order.estimated_cost + order.delivery_fee) }}</span>
+                    <span v-if="order.unique_code" class="text-[9px] text-amber-600 font-bold mt-0.5">Unik: +{{ order.unique_code }}</span>
+                  </div>
                 </UiTableCell>
                 <UiTableCell>
                   <UiBadge :variant="getPaymentStatusBadge(order.payment_status)" class="text-[10px]">
@@ -815,7 +818,10 @@ const formatDate = (date: string) =>
                   <span class="text-[11px] text-muted-foreground">{{ formatDate(tx.created_at) }}</span>
                 </UiTableCell>
                 <UiTableCell>
-                  <span class="text-[12px] font-bold text-emerald-600">+ {{ formatCurrency(tx.amount) }}</span>
+                  <div class="flex flex-col">
+                    <span class="text-[12px] font-bold text-emerald-600">+ {{ formatCurrency(tx.amount) }}</span>
+                    <span v-if="tx.unique_code" class="text-[9px] text-amber-600 font-bold mt-0.5">Unik: +{{ tx.unique_code }}</span>
+                  </div>
                 </UiTableCell>
                 <UiTableCell>
                   <UiBadge :variant="getTopupStatusBadge(tx.status)" class="text-[10px]">
