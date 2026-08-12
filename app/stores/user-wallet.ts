@@ -91,7 +91,7 @@ export const useUserWalletStore = defineStore('user-wallet', {
             this.actionLoading = true
             const { request } = useApi()
             try {
-                const res = await request<{ data: { redirect_url?: string; qris_string?: string; reference?: string } }>('/wallets/topup', {
+                const res = await request<{ data: { redirect_url?: string; qris_string?: string; reference?: string; pg_fee?: number } }>('/wallets/topup', {
                     method: 'POST',
                     body: { amount }
                 })
