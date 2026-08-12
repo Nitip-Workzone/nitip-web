@@ -41,14 +41,15 @@ const handleSave = async (key: string) => {
 const getConfigLabel = (key: string): string => {
   const labels: Record<string, string> = {
     // Tarif Regular
-    fee_base: 'Tarif Dasar Reguler (Jarak Jauh)',
-    fee_per_km: 'Tarif per Kilometer (Reguler)',
-    fee_per_kg: 'Tarif per Kilogram (Reguler)',
-    fee_per_liter: 'Tarif per Liter Volume (Reguler)',
+    fee_base: 'Tarif Dasar Awal Reguler (Flat)',
+    fee_per_km: 'Tarif Jarak per Kilometer (Reguler)',
+    fee_per_kg: 'Tarif Berat per Kilogram (Reguler)',
+    fee_per_liter: 'Tarif Volume per Liter (Reguler)',
 
     // Tarif Instant
-    fee_short_base: 'Tarif Dasar Instan (Jarak Dekat)',
-    fee_short_per_kg: 'Tarif per Kilogram (Instan)',
+    fee_short_base: 'Tarif Dasar Awal Instan (Flat)',
+    fee_short_per_km: 'Tarif Jarak per Kilometer (Instan)',
+    fee_short_per_kg: 'Tarif Berat per Kilogram (Instan)',
 
     // Jasa & Layanan
     platform_fee_percent: 'Persentase Biaya Layanan Platform',
@@ -84,8 +85,8 @@ const getConfigLabel = (key: string): string => {
 // Group configs for better UI organization
 const groupedConfigs = computed(() => {
   const groups = {
-    'Tarif Reguler (Jarak Jauh > 5km)': [] as typeof configsStore.configs,
-    'Tarif Instan (Jarak Dekat ≤ 5km)': [] as typeof configsStore.configs,
+    'Tarif Instan (Pengiriman Kilat)': [] as typeof configsStore.configs,
+    'Tarif Reguler (Hemat Searah)': [] as typeof configsStore.configs,
     'Biaya Layanan & Pemeriksaan': [] as typeof configsStore.configs,
     'Tarif Layanan Merchant (Bertingkat)': [] as typeof configsStore.configs,
     'Batas Transaksi & COD': [] as typeof configsStore.configs,
@@ -95,9 +96,9 @@ const groupedConfigs = computed(() => {
 
   configsStore.configs.forEach((c) => {
     if (c.key.startsWith('fee_short_')) {
-      groups['Tarif Instan (Jarak Dekat ≤ 5km)'].push(c)
+      groups['Tarif Instan (Pengiriman Kilat)'].push(c)
     } else if (c.key.startsWith('fee_')) {
-      groups['Tarif Reguler (Jarak Jauh > 5km)'].push(c)
+      groups['Tarif Reguler (Hemat Searah)'].push(c)
     } else if (c.key === 'platform_fee_percent' || c.key === 'order_checking_fee' || c.key === 'qris_pg_fee') {
       groups['Biaya Layanan & Pemeriksaan'].push(c)
     } else if (c.key.startsWith('merchant_fee_')) {

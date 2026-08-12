@@ -39,6 +39,7 @@ const volumeOptions = [
 ]
 const selectedWeight = ref(0.5)
 const selectedVolume = ref(1)
+const orderType = ref<'instant' | 'regular'>('regular')
 
 // Location data
 const pickupAddress = ref('')
@@ -145,6 +146,7 @@ async function estimateFee() {
         delivery_lng: deliveryLng.value,
         weight_kg: selectedWeight.value,
         volume_liters: selectedVolume.value,
+        order_type: orderType.value,
       }
     })
     if (res.data) {
@@ -210,6 +212,7 @@ async function submitOrder() {
     weight_kg: selectedWeight.value,
     volume_liters: selectedVolume.value,
     service_category: serviceCategory.value,
+    order_type: orderType.value,
   }
 
   const order = await ordersStore.createOrder(payload)
@@ -381,6 +384,39 @@ function formatCurrency(amount: number) {
         </button>
 
         <p class="text-[10px] text-muted-foreground text-center">Tap kartu untuk memilih lokasi dari peta atau cari alamat</p>
+      </div>
+
+      <!-- Selektor Tipe Pengiriman (Instant vs Reguler) -->
+      <div class="bg-white border border-border/40 rounded-3xl p-5 shadow-sm space-y-3">
+        <label class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">Metode Pengiriman</label>
+        
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Opsi Reguler -->
+          <button 
+            type="button"
+            :class="[
+              'p-4 border rounded-2xl text-left transition-all flex flex-col gap-1 active:scale-[0.98]',
+              orderType === 'regular' ? 'border-primary bg-primary/5 text-primary' : 'border-border/60 text-muted-foreground'
+            ]"
+            @click="orderType = 'regular'; estimateFee()"
+          >
+            <span class="text-xs font-extrabold block">Reguler (Hemat)</span>
+            <span class="text-[9px] opacity-80 leading-normal block">Pengantaran terjadwal searah. Lebih terjangkau.</span>
+          </button>
+
+          <!-- Opsi Instant -->
+          <button 
+            type="button"
+            :class="[
+              'p-4 border rounded-2xl text-left transition-all flex flex-col gap-1 active:scale-[0.98]',
+              orderType === 'instant' ? 'border-primary bg-primary/5 text-primary' : 'border-border/60 text-muted-foreground'
+            ]"
+            @click="orderType = 'instant'; estimateFee()"
+          >
+            <span class="text-xs font-extrabold block">Instant (Kilat)</span>
+            <span class="text-[9px] opacity-80 leading-normal block">Pengantaran langsung tanpa menunggu rute lain.</span>
+          </button>
+        </div>
       </div>
 
       <button 
