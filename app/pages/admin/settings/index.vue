@@ -53,6 +53,7 @@ const getConfigLabel = (key: string): string => {
     // Jasa & Layanan
     platform_fee_percent: 'Persentase Biaya Layanan Platform',
     order_checking_fee: 'Biaya Pemeriksaan / Deposit Pembatalan',
+    qris_pg_fee: 'Biaya Layanan/PG Fee QRIS Flat (Rupiah)',
 
     // Tarif Layanan Merchant (Bertingkat)
     merchant_fee_tier1_limit: 'Batas Harga Makanan Tier 1 (Murah)',
@@ -97,7 +98,7 @@ const groupedConfigs = computed(() => {
       groups['Tarif Instan (Jarak Dekat ≤ 5km)'].push(c)
     } else if (c.key.startsWith('fee_')) {
       groups['Tarif Reguler (Jarak Jauh > 5km)'].push(c)
-    } else if (c.key === 'platform_fee_percent' || c.key === 'order_checking_fee') {
+    } else if (c.key === 'platform_fee_percent' || c.key === 'order_checking_fee' || c.key === 'qris_pg_fee') {
       groups['Biaya Layanan & Pemeriksaan'].push(c)
     } else if (c.key.startsWith('merchant_fee_')) {
       groups['Tarif Layanan Merchant (Bertingkat)'].push(c)
