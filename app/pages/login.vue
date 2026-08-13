@@ -103,6 +103,11 @@ const handleLogin = async () => {
           >
             Masuk
           </UiButton>
+
+          <p v-if="!showTotp" class="text-xs text-center text-muted-foreground pt-2">
+            Belum memiliki akun? 
+            <NuxtLink to="/register" class="text-primary hover:underline font-bold">Daftar Sekarang</NuxtLink>
+          </p>
         </form>
       </div>
     </div>

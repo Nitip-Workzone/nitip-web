@@ -103,7 +103,7 @@ export const useAuthStore = defineStore('auth', {
                 this.loading = false
             }
         },
-        async register(payload: { name: string; email: string; password: string; whatsapp_number: string }) {
+        async register(payload: { name: string; email: string; password: string; whatsapp_number: string; latitude?: number; longitude?: number }) {
             this.loading = true
             const { request } = useApi()
             try {
