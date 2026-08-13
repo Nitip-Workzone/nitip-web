@@ -95,6 +95,13 @@ export const useApi = () => {
                         try {
                         const errorStore = useErrorStore()
                         let msg = (response._data as { message?: string })?.message || 'Terjadi kesalahan sistem. Silakan coba beberapa saat lagi.'
+                        
+                        // Extract and join validation errors if present
+                        const validationErrors = (response._data as { errors?: Array<{ field: string; message: string }> })?.errors
+                        if (validationErrors && validationErrors.length > 0) {
+                            msg = validationErrors.map(e => e.message).join(', ')
+                        }
+
                         const lowerMsg = msg.toLowerCase()
                         if (lowerMsg.includes('connection refused') || lowerMsg.includes('failed to connect') || lowerMsg.includes('network error')) {
                             msg = 'Gagal terhubung ke server. Pastikan koneksi internet Anda aktif.'

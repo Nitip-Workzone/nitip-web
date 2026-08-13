@@ -82,17 +82,18 @@ const syncChannel = () => {
   if (!channels || channels.length === 0) return
 
   if (selectedType.value === 'TRANSFER' && registeredAccount.value) {
-    const matched = channels.find(c => c.code.toLowerCase() === registeredAccount.value.bank_name.toLowerCase())
+    const bankName = registeredAccount.value.bank_name.toLowerCase()
+    const matched = channels.find(c => c.code.toLowerCase() === bankName)
     if (matched) {
       selectedChannelId.value = matched.id
-    } else {
+    } else if (channels[0]) {
       selectedChannelId.value = channels[0].id
     }
   } else if (selectedType.value === 'CASH') {
     const matched = channels.find(c => c.code.toLowerCase() === 'manual')
     if (matched) {
       selectedChannelId.value = matched.id
-    } else {
+    } else if (channels[0]) {
       selectedChannelId.value = channels[0].id
     }
   }
