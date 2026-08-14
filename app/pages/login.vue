@@ -54,7 +54,7 @@ const handleLogin = async () => {
       <div class="bg-card border border-border/50 rounded-2xl p-6 shadow-xl">
         <form class="space-y-5" @submit.prevent="handleLogin">
           <template v-if="!showTotp">
-            <UiInput v-model="email" label="Alamat Email" type="email" placeholder="email@gmail.com" required />
+            <UiInput v-model="email" label="Email atau Nomor WhatsApp" type="text" placeholder="email@gmail.com atau 0812xxxx" required />
             
             <div class="relative">
               <UiInput v-model="password" label="Kata Sandi" :type="isObscured ? 'password' : 'text'" placeholder="••••••••••••" required />

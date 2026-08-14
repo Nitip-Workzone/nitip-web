@@ -33,6 +33,91 @@ const pin = ref('')
 const pinError = ref('')
 const submitting = ref(false)
 
+// Account Self-Registration State
+const isRegisteringAccount = ref(false)
+const regBankName = ref('')
+const regAccountNo = ref('')
+const regAccountName = ref('')
+const regErrorMsg = ref('')
+
+const handleRegisterBankAccount = async () => {
+  if (!regBankName.value || !regAccountNo.value || !regAccountName.value) {
+    regErrorMsg.value = 'Harap isi semua kolom rekening'
+    return
+  }
+  isRegisteringAccount.value = true
+  regErrorMsg.value = ''
+  try {
+    const { request } = useApi()
+    await request('/users/me/bank-account', {
+      method: 'POST',
+      body: {
+        bank_name: regBankName.value,
+        account_no: regAccountNo.value,
+        account_name: regAccountName.value,
+      }
+    })
+    toastStore.add('Rekening berhasil didaftarkan!')
+    registeredAccount.value = {
+      bank_name: regBankName.value,
+      account_no: regAccountNo.value,
+      account_name: regAccountName.value,
+    }
+    accountNo.value = regAccountNo.value
+    verifiedAccountName.value = regAccountName.value
+    step.value = 1
+  } catch (err: unknown) {
+    const error = err as { data?: { message?: string } }
+    regErrorMsg.value = error.data?.message || 'Gagal mendaftarkan rekening'
+  } finally {
+    isRegisteringAccount.value = false
+  }
+}
+
+// Change Request Ticket State
+const showChangeTicketModal = ref(false)
+const ticketNewBankName = ref('')
+const ticketNewAccountNo = ref('')
+const ticketNewAccountName = ref('')
+const ticketSubmitting = ref(false)
+const ticketErrorMsg = ref('')
+
+const handleCreateChangeTicket = async () => {
+  if (!ticketNewBankName.value || !ticketNewAccountNo.value || !ticketNewAccountName.value) {
+    ticketErrorMsg.value = 'Harap isi seluruh kolom rekening baru'
+    return
+  }
+  ticketSubmitting.value = true
+  ticketErrorMsg.value = ''
+  try {
+    const { request } = useApi()
+    const description = `Saya mengajukan perubahan rekening bank terdaftar dengan detail sebagai berikut:
+
+Nama Bank: ${ticketNewBankName.value}
+Nomor Rekening: ${ticketNewAccountNo.value}
+Atas Nama: ${ticketNewAccountName.value}`
+
+    await request('/support/tickets', {
+      method: 'POST',
+      body: {
+        category: 'account',
+        title: 'Pengajuan Perubahan Rekening Bank',
+        description: description,
+      }
+    })
+    toastStore.add('Tiket pengajuan perubahan rekening berhasil dibuat!')
+    showChangeTicketModal.value = false
+    ticketNewBankName.value = ''
+    ticketNewAccountNo.value = ''
+    ticketNewAccountName.value = ''
+  } catch (err: unknown) {
+    const error = err as { data?: { message?: string } }
+    ticketErrorMsg.value = error.data?.message || 'Gagal mengirimkan pengajuan tiket'
+  } finally {
+    ticketSubmitting.value = false
+  }
+}
+
 onMounted(async () => {
   await walletStore.fetchBalance()
   await walletStore.fetchWithdrawalChannels()
@@ -208,22 +293,64 @@ function formatCurrency(val: number) {
           <p class="text-xs text-slate-400 font-bold">Memeriksa rekening terdaftar...</p>
         </div>
 
-        <!-- Account Not Registered Warning -->
-        <div v-else-if="!registeredAccount" class="py-6 text-center space-y-4">
-          <div class="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto border border-amber-100">
-            <AlertCircle class="w-8 h-8 text-amber-600" />
+        <!-- Form Pendaftaran Rekening Mandiri -->
+        <div v-else-if="!registeredAccount" class="space-y-4 py-4 animate-in fade-in duration-300">
+          <div class="text-center space-y-1.5 mb-2">
+            <h3 class="text-base font-extrabold text-slate-900">Pendaftaran Rekening Tujuan</h3>
+            <p class="text-xs text-slate-400">Silakan daftarkan rekening bank Anda untuk menerima pencairan dana.</p>
           </div>
-          <div class="space-y-1">
-            <h3 class="text-base font-extrabold text-slate-900">Rekening Belum Terdaftar</h3>
-            <p class="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
-              Pendaftaran rekening tujuan pencairan dana hanya dapat dilakukan oleh admin demi alasan keamanan. Silakan hubungi admin atau CS untuk mendaftarkan rekening Anda.
-            </p>
+
+          <div class="space-y-3">
+            <div class="space-y-1">
+              <label class="text-xs font-bold text-slate-700">Pilih Bank</label>
+              <select 
+                v-model="regBankName" 
+                class="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-800 focus:bg-white focus:outline-none focus:border-primary transition-all"
+              >
+                <option value="" disabled>Pilih nama bank...</option>
+                <option value="BCA">Bank Central Asia (BCA)</option>
+                <option value="MANDIRI">Bank Mandiri</option>
+                <option value="BRI">Bank Rakyat Indonesia (BRI)</option>
+                <option value="BNI">Bank Negara Indonesia (BNI)</option>
+                <option value="DANA">DANA (E-Wallet)</option>
+                <option value="OVO">OVO (E-Wallet)</option>
+                <option value="GOPAY">GoPay (E-Wallet)</option>
+              </select>
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-xs font-bold text-slate-700">Nomor Rekening / E-Wallet</label>
+              <input 
+                v-model="regAccountNo" 
+                type="text" 
+                placeholder="Contoh: 1234567890" 
+                class="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-800 focus:bg-white focus:outline-none focus:border-primary transition-all"
+              >
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-xs font-bold text-slate-700">Atas Nama Rekening</label>
+              <input 
+                v-model="regAccountName" 
+                type="text" 
+                placeholder="Nama pemilik rekening sesuai bank" 
+                class="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-800 focus:bg-white focus:outline-none focus:border-primary transition-all"
+              >
+            </div>
           </div>
+
+          <div v-if="regErrorMsg" class="flex items-center gap-2 p-3 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 text-xs">
+            <AlertCircle class="w-4.5 h-4.5 shrink-0" />
+            <span>{{ regErrorMsg }}</span>
+          </div>
+
           <button 
-            class="w-full h-11 bg-slate-900 text-white text-xs font-bold rounded-xl transition-all active:scale-[0.98]"
-            @click="router.push('/dashboard')"
+            :disabled="isRegisteringAccount"
+            class="w-full h-12 bg-primary text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 hover-lift transition-all active:scale-[0.98] disabled:opacity-50 mt-4 shadow-sm shadow-primary/20"
+            @click="handleRegisterBankAccount"
           >
-            Kembali ke Dashboard
+            <span v-if="isRegisteringAccount" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            Daftarkan Rekening Baru
           </button>
         </div>
 
@@ -280,7 +407,16 @@ function formatCurrency(val: number) {
 
           <!-- 2. Account Details Card (Read Only) -->
           <div v-if="selectedChannelId && selectedType === 'TRANSFER'" class="space-y-2">
-            <label class="text-xs font-bold text-slate-700 tracking-wide">Rekening Tujuan Terdaftar</label>
+            <div class="flex justify-between items-center">
+              <label class="text-xs font-bold text-slate-700 tracking-wide">Rekening Tujuan Terdaftar</label>
+              <button 
+                type="button" 
+                class="text-[10px] font-bold text-primary hover:underline transition-colors"
+                @click="showChangeTicketModal = true"
+              >
+                Ajukan Perubahan
+              </button>
+            </div>
             <div class="flex items-center gap-4 p-4 bg-slate-50 text-slate-800 rounded-2xl border border-slate-100">
               <img 
                 v-if="['BCA', 'MANDIRI', 'BRI', 'DANA', 'OVO'].includes(registeredAccount.bank_name.toUpperCase())" 
@@ -400,5 +536,73 @@ function formatCurrency(val: number) {
 
       </div>
     </div>
+
+    <!-- Modal Ajukan Perubahan Rekening -->
+    <UiModal v-model:open="showChangeTicketModal" title="Ajukan Perubahan Rekening" description="Perubahan rekening bank harus melalui persetujuan admin/CS demi keamanan. Silakan isi form pengajuan tiket berikut.">
+      <div class="space-y-4">
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-slate-700">Pilih Bank Baru</label>
+          <select 
+            v-model="ticketNewBankName" 
+            class="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-800 focus:bg-white focus:outline-none focus:border-primary transition-all"
+          >
+            <option value="" disabled>Pilih nama bank baru...</option>
+            <option value="BCA">Bank Central Asia (BCA)</option>
+            <option value="MANDIRI">Bank Mandiri</option>
+            <option value="BRI">Bank Rakyat Indonesia (BRI)</option>
+            <option value="BNI">Bank Negara Indonesia (BNI)</option>
+            <option value="DANA">DANA (E-Wallet)</option>
+            <option value="OVO">OVO (E-Wallet)</option>
+            <option value="GOPAY">GoPay (E-Wallet)</option>
+          </select>
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-slate-700">Nomor Rekening / E-Wallet Baru</label>
+          <input 
+            v-model="ticketNewAccountNo" 
+            type="text" 
+            placeholder="Contoh: 9876543210" 
+            class="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-800 focus:bg-white focus:outline-none focus:border-primary transition-all"
+          >
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-slate-700">Atas Nama Rekening Baru</label>
+          <input 
+            v-model="ticketNewAccountName" 
+            type="text" 
+            placeholder="Nama pemilik rekening baru sesuai bank" 
+            class="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-800 focus:bg-white focus:outline-none focus:border-primary transition-all"
+          >
+        </div>
+
+        <div v-if="ticketErrorMsg" class="flex items-center gap-2 p-3 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 text-xs">
+          <AlertCircle class="w-4.5 h-4.5 shrink-0" />
+          <span>{{ ticketErrorMsg }}</span>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex gap-3 justify-end mt-4">
+          <button 
+            type="button"
+            class="px-4 h-10 border border-slate-200 text-slate-600 font-bold rounded-lg text-xs hover:bg-slate-50 active:scale-95 transition-all"
+            @click="showChangeTicketModal = false"
+          >
+            Batal
+          </button>
+          <button 
+            type="button"
+            :disabled="ticketSubmitting"
+            class="px-4 h-10 bg-primary text-white font-bold rounded-lg text-xs flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+            @click="handleCreateChangeTicket"
+          >
+            <span v-if="ticketSubmitting" class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            Kirim Pengajuan
+          </button>
+        </div>
+      </template>
+    </UiModal>
   </div>
 </template>
