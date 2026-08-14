@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Users, Search, ShieldCheck, ShieldX, ShieldAlert, Star, Eye, RefreshCw, Plus, Copy, AlertCircle } from '@lucide/vue'
 import type { AdminUser } from '~/stores/users'
+import { useErrorStore } from '~/stores/error'
 
 definePageMeta({
   layout: 'admin',
@@ -128,6 +129,15 @@ const copyFullMessage = () => {
   navigator.clipboard.writeText(msg)
   success('Pesan undangan berhasil disalin!')
 }
+
+const errorStore = useErrorStore()
+watch(() => errorStore.isVisible, (visible) => {
+  if (visible) {
+    showInviteModal.value = false
+    showAddModal.value = false
+    showDetail.value = false
+  }
+})
 
 onMounted(() => {
   usersStore.fetchUsers()
