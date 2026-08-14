@@ -405,7 +405,7 @@ const openHelp = () => {
           <div 
             v-for="banner in bannersStore.banners" 
             :key="banner.id"
-            class="min-w-full snap-start snap-always relative aspect-[21/9] rounded-2xl overflow-hidden bg-slate-100 shadow-sm border border-slate-100/50 flex-shrink-0"
+            class="min-w-full snap-start snap-always relative aspect-[3/1] rounded-2xl overflow-hidden bg-slate-100 shadow-sm border border-slate-100/50 flex-shrink-0"
           >
             <NuxtLink
               v-if="banner.redirect_url && banner.redirect_url.startsWith('/')"
