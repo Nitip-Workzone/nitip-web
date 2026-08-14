@@ -320,14 +320,15 @@ const openHelp = () => {
           <div 
             v-for="banner in bannersStore.banners" 
             :key="banner.id"
-            class="min-w-full snap-start snap-always relative aspect-[16/7] rounded-2xl overflow-hidden bg-slate-100 shadow-sm border border-slate-100/50 flex-shrink-0"
+            class="min-w-full snap-start snap-always relative rounded-2xl overflow-hidden bg-white shadow-sm border border-slate-100/80 flex-shrink-0"
+            style="height: 150px;"
           >
             <NuxtLink
               v-if="banner.redirect_url && banner.redirect_url.startsWith('/')"
               :to="banner.redirect_url"
               class="block w-full h-full"
             >
-              <img :src="banner.image_url" :alt="banner.title" class="w-full h-full object-cover object-center">
+              <img :src="banner.image_url" :alt="banner.title" class="w-full h-full object-contain">
             </NuxtLink>
             <a 
               v-else-if="banner.redirect_url" 
@@ -336,9 +337,9 @@ const openHelp = () => {
               rel="noopener noreferrer"
               class="block w-full h-full"
             >
-              <img :src="banner.image_url" :alt="banner.title" class="w-full h-full object-cover object-center">
+              <img :src="banner.image_url" :alt="banner.title" class="w-full h-full object-contain">
             </a>
-            <img v-else :src="banner.image_url" :alt="banner.title" class="w-full h-full object-cover object-center">
+            <img v-else :src="banner.image_url" :alt="banner.title" class="w-full h-full object-contain">
           </div>
         </div>
 
@@ -351,91 +352,6 @@ const openHelp = () => {
             :class="index === currentBannerIndex ? 'w-4 bg-primary' : 'bg-slate-300'"
             @click="scrollToBanner(index)"
           />
-        </div>
-      </div>
-
-      <!-- ── 2. NITIP PAY WALLET CARD — 3 Actions (Flutter _PayCard) ── -->
-      <div class="relative overflow-hidden rounded-[1.75rem] text-white shadow-2xl shadow-primary/25 transition-all duration-500 hover:scale-[1.015]" style="background: linear-gradient(135deg, #3730A3 0%, #4F46E5 50%, #6366F1 100%);">
-        <!-- Card mesh overlay -->
-        <div
-          class="absolute inset-0 opacity-30 pointer-events-none"
-          style="background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjAuMyI b3BhY2l0eT0iMC4xNSI+PHBhdGggZD0iTTAgMGw2MCA2ME02MCAw TDAgNjAiLz48L2c+PC9zdmc+');" />
-        <div
-          class="absolute -top-16 -right-16 w-40 h-40 rounded-full pointer-events-none"
-          style="background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);" />
-        <div
-          class="absolute -bottom-12 -left-12 w-36 h-36 rounded-full pointer-events-none"
-          style="background: radial-gradient(circle, rgba(79,70,229,0.5) 0%, transparent 70%);" />
-
-        <div class="relative z-10 p-6">
-          <!-- Card header row -->
-          <div class="flex items-center justify-between mb-5">
-            <div class="flex items-center gap-2">
-              <div class="p-1.5 rounded-xl bg-white/15 border border-white/10">
-                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-                </svg>
-              </div>
-              <span class="text-[11px] font-bold tracking-widest text-white/70 uppercase">Nitip Pay</span>
-            </div>
-
-            <!-- Toggle visibility (Flutter style: pill button) -->
-            <button
-              class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/10 transition-all active:scale-95"
-              aria-label="Toggle saldo visibility"
-              @click="toggleBalance"
-            >
-              <EyeOff v-if="isBalanceVisible" class="w-3.5 h-3.5 text-white/70" />
-              <Eye v-else class="w-3.5 h-3.5 text-white/70" />
-              <span class="text-[10px] text-white/70 font-semibold">{{ isBalanceVisible ? 'Sembunyikan' : 'Tampilkan' }}</span>
-            </button>
-          </div>
-
-          <!-- Saldo -->
-          <div class="mb-5">
-            <p class="text-[10px] text-white/60 uppercase tracking-widest font-bold mb-1.5">Saldo Tersedia</p>
-            <div v-if="loading || walletStore.loading" class="h-9 w-36 bg-white/15 rounded-xl animate-pulse" />
-            <p v-else class="text-[28px] font-black tracking-tight leading-none">
-              {{ isBalanceVisible ? formatCurrency(walletStore.balance) : '••••••••' }}
-            </p>
-          </div>
-
-          <!-- 3 Card Actions (Flutter _CardAction style: icon box + label) -->
-          <div class="border-t border-white/10 pt-4 flex items-center gap-4">
-            <!-- Top Up -->
-            <button
-              id="btn-topup-wallet"
-              class="flex flex-col items-center gap-1.5 transition-all active:scale-90"
-              @click="showTopUpModal = true"
-            >
-              <div class="w-10 h-10 rounded-[12px] bg-white/20 border border-white/10 flex items-center justify-center hover:bg-white/30 transition-all">
-                <Plus class="w-5 h-5 text-white" stroke-width="2.5" />
-              </div>
-              <span class="text-[10px] text-white/70 font-semibold">Top Up</span>
-            </button>
-
-            <!-- Tarik Saldo -->
-            <NuxtLink
-              to="/wallet/withdraw"
-              class="flex flex-col items-center gap-1.5 transition-all active:scale-90"
-            >
-              <div class="w-10 h-10 rounded-[12px] bg-white/20 border border-white/10 flex items-center justify-center hover:bg-white/30 transition-all">
-                <Wallet class="w-5 h-5 text-white" />
-              </div>
-              <span class="text-[10px] text-white/70 font-semibold">Tarik</span>
-            </NuxtLink>
-
-            <!-- Riwayat -->
-            <NuxtLink
-              to="/wallet/history"
-              class="flex flex-col items-center gap-1.5 transition-all active:scale-90"
-            >
-              <div class="w-10 h-10 rounded-[12px] bg-white/20 border border-white/10 flex items-center justify-center hover:bg-white/30 transition-all">
-                <RotateCcw class="w-5 h-5 text-white" />
-              </div>
-              <span class="text-[10px] text-white/70 font-semibold">Riwayat</span>
-            </NuxtLink>
-          </div>
         </div>
       </div>
 
