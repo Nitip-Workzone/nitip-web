@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Users, Search, ShieldCheck, ShieldX, ShieldAlert, Star, Eye, RefreshCw, Plus, Copy } from '@lucide/vue'
+import { Users, Search, ShieldCheck, ShieldX, ShieldAlert, Star, Eye, RefreshCw, Plus, Copy, AlertCircle } from '@lucide/vue'
 import type { AdminUser } from '~/stores/users'
 
 definePageMeta({
@@ -65,6 +65,7 @@ const inviteForm = ref({
 })
 const generatedLink = ref<string | null>(null)
 const isGenerating = ref(false)
+const inviteErrorMsg = ref('')
 
 const openInviteModal = () => {
   inviteForm.value = {
@@ -72,15 +73,17 @@ const openInviteModal = () => {
     role: ROLE_RUNNER,
   }
   generatedLink.value = null
+  inviteErrorMsg.value = ''
   showInviteModal.value = true
 }
 
 const handleGenerateInvite = async () => {
   if (!inviteForm.value.phone_number) {
-    error('Mohon masukkan nomor WhatsApp penerima.')
+    inviteErrorMsg.value = 'Mohon masukkan nomor WhatsApp penerima.'
     return
   }
   isGenerating.value = true
+  inviteErrorMsg.value = ''
   try {
     const res = await usersStore.createInvitation(inviteForm.value)
     if (res && res.token) {
@@ -89,11 +92,10 @@ const handleGenerateInvite = async () => {
       generatedLink.value = `${baseUrl}/join/${inviteForm.value.role}?token=${res.token}`
       success('Link undangan pendaftaran berhasil dibuat!')
     } else {
-      error('Gagal membuat undangan pendaftaran.')
+      inviteErrorMsg.value = 'Gagal membuat undangan pendaftaran.'
     }
   } catch (err: any) {
-    const msg = err.data?.message || 'Gagal membuat undangan pendaftaran.'
-    error(msg)
+    inviteErrorMsg.value = err.data?.message || 'Gagal membuat undangan pendaftaran.'
   } finally {
     isGenerating.value = false
   }
@@ -104,6 +106,27 @@ const copyInviteLink = () => {
     navigator.clipboard.writeText(generatedLink.value)
     success('Tautan undangan berhasil disalin!')
   }
+}
+
+const getInvitationMessage = () => {
+  const roleName = inviteForm.value.role === ROLE_RUNNER ? 'Runner (Jasa Titip / Driver)' : 'Merchant (Mitra Toko / Warung)'
+  return `Halo! Anda diundang untuk bergabung sebagai ${roleName} di Nitip. Silakan melakukan pendaftaran melalui tautan resmi berikut:\n\n${generatedLink.value}`
+}
+
+const getWhatsAppShareLink = () => {
+  if (!generatedLink.value) return '#'
+  let phone = inviteForm.value.phone_number.replace(/\D/g, '')
+  if (phone.startsWith('0')) {
+    phone = '62' + phone.substring(1)
+  }
+  const text = encodeURIComponent(getInvitationMessage())
+  return `https://wa.me/${phone}?text=${text}`
+}
+
+const copyFullMessage = () => {
+  const msg = getInvitationMessage()
+  navigator.clipboard.writeText(msg)
+  success('Pesan undangan berhasil disalin!')
 }
 
 onMounted(() => {
@@ -544,17 +567,50 @@ const formatDate = (date: string) =>
             <p class="text-xs font-semibold text-emerald-800 leading-relaxed">
               Tautan undangan pendaftaran berhasil dibuat! Tautan ini bersifat rahasia, sekali pakai, dan kedaluwarsa dalam 7 hari.
             </p>
-            <div class="flex items-center gap-2 bg-white border border-emerald-200 rounded-lg p-2.5">
-              <span class="text-xs font-mono text-slate-600 truncate flex-1">{{ generatedLink }}</span>
+            
+            <div class="space-y-1">
+              <label class="text-[10px] font-bold text-slate-500 uppercase">Tautan Pendaftaran</label>
+              <div class="flex items-center gap-2 bg-white border border-emerald-200 rounded-lg p-2.5">
+                <span class="text-xs font-mono text-slate-600 truncate flex-1">{{ generatedLink }}</span>
+                <button 
+                  type="button" 
+                  @click="copyInviteLink"
+                  class="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-700 transition"
+                  title="Salin tautan"
+                >
+                  <Copy class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div class="space-y-1 pt-1">
+              <label class="text-[10px] font-bold text-slate-500 uppercase">Pesan Undangan WhatsApp</label>
+              <div class="bg-white border border-slate-200 rounded-lg p-3 text-xs text-slate-700 whitespace-pre-wrap font-medium leading-relaxed">
+                {{ getInvitationMessage() }}
+              </div>
+            </div>
+            
+            <div class="flex gap-2 pt-2">
+              <a 
+                :href="getWhatsAppShareLink()" 
+                target="_blank"
+                class="flex-1 h-10 bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition active:scale-95 shadow-sm"
+              >
+                <svg class="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.835-2.281c1.554.92 2.85 1.403 4.693 1.404 5.334 0 9.674-4.34 9.678-9.686.002-2.589-1.01-5.021-2.853-6.865C16.524 4.727 14.093 3.71 11.5 3.71c-5.341 0-9.681 4.34-9.685 9.686-.001 1.83.493 3.226 1.439 4.7l-.988 3.604 3.791-.989zM15.82 17.5c-.279-.139-1.65-.815-1.905-.907-.256-.092-.442-.139-.628.139-.186.279-.722.907-.885 1.093-.163.186-.326.209-.605.07-1.121-.56-2.01-.986-2.754-2.281-.19-.331-.383-.663-.047-.969.301-.274.605-.628.756-.837.151-.209.201-.349.302-.558.101-.209.05-.395-.025-.535-.075-.14-0.628-1.512-.86-2.07-.224-.544-.451-.471-.628-.48-.163-.008-.349-.01-.535-.01-.186 0-.489.07-.745.349-.256.279-.977.953-.977 2.325s.999 2.697 1.139 2.883c.14.186 1.968 3.005 4.767 4.21 2.05.883 2.946.993 4.029.832.612-.092 1.65-.674 1.882-1.325.233-.651.233-1.209.163-1.325-.07-.116-.256-.209-.535-.349z"/>
+                </svg>
+                Kirim via WhatsApp
+              </a>
               <button 
                 type="button" 
-                @click="copyInviteLink"
-                class="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-700 transition"
-                title="Salin tautan"
+                @click="copyFullMessage"
+                class="flex-1 h-10 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition active:scale-95"
               >
                 <Copy class="w-4 h-4" />
+                Salin Pesan
               </button>
             </div>
+            
             <p class="text-[10px] text-emerald-600/80">
               * Tautan pendaftaran secara otomatis mengunci nomor WhatsApp tujuan.
             </p>
@@ -572,6 +628,12 @@ const formatDate = (date: string) =>
         </template>
 
         <template v-else>
+          <!-- Local Error Message -->
+          <div v-if="inviteErrorMsg" class="flex items-center gap-2 p-3 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 text-xs mb-2">
+            <AlertCircle class="w-4 h-4 shrink-0" />
+            <span>{{ inviteErrorMsg }}</span>
+          </div>
+
           <!-- WhatsApp -->
           <div class="space-y-1">
             <label class="text-[10px] font-bold text-muted-foreground uppercase">Nomor WhatsApp Tujuan</label>
