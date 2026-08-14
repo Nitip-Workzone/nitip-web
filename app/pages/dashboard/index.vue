@@ -407,8 +407,15 @@ const openHelp = () => {
             :key="banner.id"
             class="min-w-full snap-start snap-always relative aspect-[21/9] rounded-2xl overflow-hidden bg-slate-100 shadow-sm border border-slate-100/50 flex-shrink-0"
           >
+            <NuxtLink
+              v-if="banner.redirect_url && banner.redirect_url.startsWith('/')"
+              :to="banner.redirect_url"
+              class="block w-full h-full"
+            >
+              <img :src="banner.image_url" :alt="banner.title" class="w-full h-full object-cover">
+            </NuxtLink>
             <a 
-              v-if="banner.redirect_url" 
+              v-else-if="banner.redirect_url" 
               :href="banner.redirect_url" 
               target="_blank" 
               rel="noopener noreferrer"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Image, Search, Plus, Trash2, Edit, RefreshCw, Upload } from '@lucide/vue'
 import { useBannersStore, type Banner } from '~/stores/banners'
+import { useMerchantsStore } from '~/stores/merchants'
 
 definePageMeta({
   layout: 'admin',
@@ -25,6 +26,15 @@ const editId = ref('')
 const selectedFile = ref<File | null>(null)
 const uploadMode = ref<'file' | 'url'>('file')
 
+const merchantsStore = useMerchantsStore()
+const selectedMerchantId = ref('')
+
+watch(selectedMerchantId, (newVal) => {
+  if (newVal) {
+    form.value.redirect_url = `/food/${newVal}`
+  }
+})
+
 const openAddModal = () => {
   form.value = {
     title: '',
@@ -32,6 +42,7 @@ const openAddModal = () => {
     redirect_url: '',
     is_active: true,
   }
+  selectedMerchantId.value = ''
   selectedFile.value = null
   uploadMode.value = 'file'
   showAddModal.value = true
@@ -97,6 +108,11 @@ const openEditModal = (banner: Banner) => {
     image_url: banner.image_url,
     redirect_url: banner.redirect_url || '',
     is_active: banner.is_active,
+  }
+  if (banner.redirect_url && banner.redirect_url.startsWith('/food/')) {
+    selectedMerchantId.value = banner.redirect_url.replace('/food/', '')
+  } else {
+    selectedMerchantId.value = ''
   }
   selectedFile.value = null
   uploadMode.value = 'url' // Default to show existing URL, can switch to file
@@ -168,6 +184,7 @@ const handleToggleActive = async (banner: Banner) => {
 
 onMounted(() => {
   bannersStore.adminFetchAllBanners()
+  merchantsStore.adminFetchAllMerchants()
 })
 
 const displayedBanners = computed(() => {
@@ -401,6 +418,20 @@ const displayedBanners = computed(() => {
           >
         </div>
 
+        <!-- Tautkan ke Mitra (Merchant) -->
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-muted-foreground uppercase">Tautkan ke Mitra / Toko (Opsional)</label>
+          <select
+            v-model="selectedMerchantId"
+            class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all cursor-pointer"
+          >
+            <option value="">-- Jangan Tautkan --</option>
+            <option v-for="m in merchantsStore.adminMerchants" :key="m.id" :value="m.id">
+              {{ m.name }} ({{ m.category }})
+            </option>
+          </select>
+        </div>
+
         <!-- Redirect URL -->
         <div class="space-y-1">
           <label class="text-[10px] font-bold text-muted-foreground uppercase">Redirect URL (Opsional)</label>
@@ -515,6 +546,20 @@ const displayedBanners = computed(() => {
             placeholder="https://link-gambar.com/banner.jpg"
             class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all"
           >
+        </div>
+
+        <!-- Tautkan ke Mitra (Merchant) -->
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-muted-foreground uppercase">Tautkan ke Mitra / Toko (Opsional)</label>
+          <select
+            v-model="selectedMerchantId"
+            class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all cursor-pointer"
+          >
+            <option value="">-- Jangan Tautkan --</option>
+            <option v-for="m in merchantsStore.adminMerchants" :key="m.id" :value="m.id">
+              {{ m.name }} ({{ m.category }})
+            </option>
+          </select>
         </div>
 
         <!-- Redirect URL -->
