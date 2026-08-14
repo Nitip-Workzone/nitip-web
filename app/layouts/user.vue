@@ -22,6 +22,7 @@ const navItems = computed(() => {
     { path: '/dashboard', label: 'Beranda', icon: Home },
     { path: '/trips', label: 'Cari Trip', icon: Truck },
     { path: '/orders', label: 'Order Saya', icon: Package },
+    { path: '/wallet', label: 'Wallet', icon: CreditCard },
     { path: '/profile', label: 'Profil', icon: User },
   ]
 })
