@@ -309,47 +309,51 @@ const openHelp = () => {
       </div>
 
       <!-- ── PROMOTIONS/BANNERS CAROUSEL (Auto-scrolling) ── -->
-      <div v-if="bannersStore.banners.length > 0" class="relative group">
-        <div 
-          ref="carouselRef" 
-          class="flex overflow-x-auto gap-3 snap-x snap-mandatory scroll-smooth scrollbar-none rounded-2xl"
-          @scroll="handleScroll"
-          @mouseenter="stopAutoplay"
-          @mouseleave="startAutoplay"
-        >
+      <div v-if="bannersStore.banners.length > 0" class="relative">
+        <!-- Outer: clips border-radius cleanly -->
+        <div class="rounded-2xl overflow-hidden shadow-sm border border-slate-100/80 bg-white">
+          <!-- Inner scrollable track: no gap so each min-w-full slide snaps exactly -->
           <div 
-            v-for="banner in bannersStore.banners" 
-            :key="banner.id"
-            class="min-w-full snap-start snap-always relative rounded-2xl overflow-hidden bg-white shadow-sm border border-slate-100/80 flex-shrink-0"
+            ref="carouselRef" 
+            class="flex overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none"
             style="height: 150px;"
+            @scroll="handleScroll"
+            @mouseenter="stopAutoplay"
+            @mouseleave="startAutoplay"
           >
-            <NuxtLink
-              v-if="banner.redirect_url && banner.redirect_url.startsWith('/')"
-              :to="banner.redirect_url"
-              class="block w-full h-full"
+            <div 
+              v-for="banner in bannersStore.banners" 
+              :key="banner.id"
+              class="min-w-full w-full snap-start snap-always flex-shrink-0 flex items-center justify-center"
             >
-              <img :src="banner.image_url" :alt="banner.title" class="w-full h-full object-contain">
-            </NuxtLink>
-            <a 
-              v-else-if="banner.redirect_url" 
-              :href="banner.redirect_url" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              class="block w-full h-full"
-            >
-              <img :src="banner.image_url" :alt="banner.title" class="w-full h-full object-contain">
-            </a>
-            <img v-else :src="banner.image_url" :alt="banner.title" class="w-full h-full object-contain">
+              <NuxtLink
+                v-if="banner.redirect_url && banner.redirect_url.startsWith('/')"
+                :to="banner.redirect_url"
+                class="block w-full h-full"
+              >
+                <img :src="banner.image_url" :alt="banner.title" class="w-full h-full object-contain">
+              </NuxtLink>
+              <a 
+                v-else-if="banner.redirect_url" 
+                :href="banner.redirect_url" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                class="block w-full h-full"
+              >
+                <img :src="banner.image_url" :alt="banner.title" class="w-full h-full object-contain">
+              </a>
+              <img v-else :src="banner.image_url" :alt="banner.title" class="w-full h-full object-contain">
+            </div>
           </div>
         </div>
 
-        <!-- Indicator dots -->
-        <div class="flex justify-center gap-1.5 mt-2">
+        <!-- Indicator dots — only show if more than one banner -->
+        <div v-if="bannersStore.banners.length > 1" class="flex justify-center gap-1.5 mt-2">
           <button 
             v-for="(_, index) in bannersStore.banners" 
             :key="index"
-            class="w-1.5 h-1.5 rounded-full transition-all duration-300"
-            :class="index === currentBannerIndex ? 'w-4 bg-primary' : 'bg-slate-300'"
+            class="h-1.5 rounded-full transition-all duration-300"
+            :class="index === currentBannerIndex ? 'w-4 bg-primary' : 'w-1.5 bg-slate-300'"
             @click="scrollToBanner(index)"
           />
         </div>
