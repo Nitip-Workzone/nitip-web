@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Users, Search, ShieldCheck, ShieldX, ShieldAlert, Star, Eye, RefreshCw, Plus, Copy, AlertCircle } from '@lucide/vue'
+import { Users, Search, ShieldCheck, ShieldX, ShieldAlert, Star, Eye, EyeOff, RefreshCw, Plus, Copy, AlertCircle } from '@lucide/vue'
 import type { AdminUser } from '~/stores/users'
 import { useErrorStore } from '~/stores/error'
 
@@ -26,6 +26,11 @@ const addForm = ref({
   admin_password: '',
 })
 
+const isAddUserPasswordObscured = ref(true)
+const isAddUserConfirmPasswordObscured = ref(true)
+const isAddAdminPasswordObscured = ref(true)
+const confirmPassword = ref('')
+
 const openAddModal = () => {
   addForm.value = {
     name: '',
@@ -36,12 +41,20 @@ const openAddModal = () => {
     is_verified: false,
     admin_password: '',
   }
+  confirmPassword.value = ''
+  isAddUserPasswordObscured.value = true
+  isAddUserConfirmPasswordObscured.value = true
+  isAddAdminPasswordObscured.value = true
   showAddModal.value = true
 }
 
 const handleAddUser = async () => {
-  if (!addForm.value.name || !addForm.value.email || !addForm.value.whatsapp_number || !addForm.value.password || !addForm.value.admin_password) {
+  if (!addForm.value.name || !addForm.value.email || !addForm.value.whatsapp_number || !addForm.value.password || !addForm.value.admin_password || !confirmPassword.value) {
     error('Mohon lengkapi seluruh kolom profil beserta kata sandi Admin Anda.')
+    return
+  }
+  if (addForm.value.password !== confirmPassword.value) {
+    error('Password konfirmasi tidak cocok.')
     return
   }
   try {
@@ -514,12 +527,43 @@ const formatDate = (date: string) =>
         <!-- Password -->
         <div class="space-y-1">
           <label class="text-[10px] font-bold text-muted-foreground uppercase">Password Pengguna Baru</label>
-          <input
-            v-model="addForm.password"
-            type="password"
-            placeholder="Minimal 8 karakter"
-            class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all"
-          >
+          <div class="relative">
+            <input
+              v-model="addForm.password"
+              :type="isAddUserPasswordObscured ? 'password' : 'text'"
+              placeholder="Minimal 8 karakter"
+              class="h-9 w-full rounded-md border border-input bg-background pl-3 pr-10 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all"
+            >
+            <button
+              type="button"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              @click="isAddUserPasswordObscured = !isAddUserPasswordObscured"
+            >
+              <EyeOff v-if="isAddUserPasswordObscured" class="w-4 h-4" />
+              <Eye v-else class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-muted-foreground uppercase">Konfirmasi Password</label>
+          <div class="relative">
+            <input
+              v-model="confirmPassword"
+              :type="isAddUserConfirmPasswordObscured ? 'password' : 'text'"
+              placeholder="Ulangi password baru"
+              class="h-9 w-full rounded-md border border-input bg-background pl-3 pr-10 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all"
+            >
+            <button
+              type="button"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              @click="isAddUserConfirmPasswordObscured = !isAddUserConfirmPasswordObscured"
+            >
+              <EyeOff v-if="isAddUserConfirmPasswordObscured" class="w-4 h-4" />
+              <Eye v-else class="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         <!-- Is Verified Toggle -->
@@ -538,12 +582,22 @@ const formatDate = (date: string) =>
         <!-- Admin Password (Authorization) -->
         <div class="space-y-1 border-t border-slate-100 pt-3">
           <label class="text-[10px] font-bold text-destructive uppercase">Konfirmasi Password Admin Anda</label>
-          <input
-            v-model="addForm.admin_password"
-            type="password"
-            placeholder="Masukkan password admin Anda"
-            class="h-9 w-full rounded-md border border-destructive bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-destructive transition-all"
-          >
+          <div class="relative">
+            <input
+              v-model="addForm.admin_password"
+              :type="isAddAdminPasswordObscured ? 'password' : 'text'"
+              placeholder="Masukkan password admin Anda"
+              class="h-9 w-full rounded-md border border-destructive bg-background pl-3 pr-10 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-destructive transition-all"
+            >
+            <button
+              type="button"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              @click="isAddAdminPasswordObscured = !isAddAdminPasswordObscured"
+            >
+              <EyeOff v-if="isAddAdminPasswordObscured" class="w-4 h-4" />
+              <Eye v-else class="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         <!-- Action Buttons -->
