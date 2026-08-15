@@ -34,7 +34,10 @@ export default defineNuxtConfig({
       title: 'Nihtip - Kirim & Titip Barang',
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        { charset: 'utf-8' }
+        { charset: 'utf-8' },
+        { 'http-equiv': 'Cache-Control', content: 'no-cache, no-store, must-revalidate' },
+        { 'http-equiv': 'Pragma', content: 'no-cache' },
+        { 'http-equiv': 'Expires', content: '0' }
       ],
       link: [
         { rel: 'icon', type: 'image/png', href: '/favicon.png' },
@@ -91,6 +94,11 @@ export default defineNuxtConfig({
       }
     },
     routeRules: {
+      '/': { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate', 'Pragma': 'no-cache', 'Expires': '0' } },
+      '/login': { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate', 'Pragma': 'no-cache', 'Expires': '0' } },
+      '/register': { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate', 'Pragma': 'no-cache', 'Expires': '0' } },
+      '/dashboard': { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate', 'Pragma': 'no-cache', 'Expires': '0' } },
+      '/profile': { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate', 'Pragma': 'no-cache', 'Expires': '0' } },
       // Jangan pernah cache halaman merchant di WebView / SW
       '/merchant/**': {
         headers: {

@@ -22,6 +22,17 @@ const lng = ref<number | null>(null)
 const gpsState = ref<'pending' | 'success' | 'denied' | 'unsupported'>('pending')
 const gpsErrorMsg = ref('')
 
+const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const earth = 6371.0
+  const dLat = (lat2 - lat1) * (Math.PI / 180.0)
+  const dLon = (lon2 - lon1) * (Math.PI / 180.0)
+  const lat1r = lat1 * (Math.PI / 180.0)
+  const lat2r = lat2 * (Math.PI / 180.0)
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1r) * Math.cos(lat2r)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return earth * c
+}
+
 const requestLocation = () => {
   if (!navigator.geolocation) {
     gpsState.value = 'unsupported'
@@ -32,7 +43,14 @@ const requestLocation = () => {
     (pos) => {
       lat.value = pos.coords.latitude
       lng.value = pos.coords.longitude
-      gpsState.value = 'success'
+      
+      const distance = getDistance(0.741049, 124.312988, lat.value, lng.value)
+      if (distance > 60.0) {
+        gpsState.value = 'denied'
+        gpsErrorMsg.value = 'Pendaftaran ditutup karena lokasi Anda saat ini berada di luar wilayah operasional Kotamobagu & Bolaang Mongondow.'
+      } else {
+        gpsState.value = 'success'
+      }
     },
     (err) => {
       gpsState.value = 'denied'
@@ -53,7 +71,13 @@ onMounted(() => {
 const handleRegister = async () => {
   // Guard GPS
   if (gpsState.value !== 'success' || !lat.value || !lng.value) {
-    toastStore.add('Akses lokasi (GPS) wajib aktif untuk mendaftar akun baru.')
+    toastStore.add(gpsErrorMsg.value || 'Akses lokasi (GPS) wajib aktif untuk mendaftar akun baru.')
+    return
+  }
+
+  const distance = getDistance(0.741049, 124.312988, lat.value, lng.value)
+  if (distance > 60.0) {
+    toastStore.add('Pendaftaran ditutup karena lokasi Anda saat ini berada di luar wilayah operasional Kotamobagu & Bolaang Mongondow.')
     return
   }
 
