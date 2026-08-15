@@ -266,7 +266,7 @@ const scrollToTop = () => {
           :key="m.id"
           :to="`/food/${m.id}`"
           class="group bg-white rounded-3xl border border-slate-100 overflow-hidden flex gap-0 shadow-sm hover:shadow-md hover:border-primary/15 active:scale-[0.99] transition-all duration-200"
-          :class="!m.is_open ? 'opacity-70' : ''"
+          :class="!m.is_open ? 'opacity-65 bg-slate-50/60 grayscale border-slate-200/50' : ''"
         >
           <!-- Left: Visual Avatar -->
           <div class="w-[72px] shrink-0 relative self-stretch">
@@ -279,6 +279,11 @@ const scrollToTop = () => {
               ]"
             >
               {{ getCategoryEmoji(m.category) }}
+            </div>
+            
+            <!-- Closed overlay badge on avatar -->
+            <div v-if="!m.is_open" class="absolute inset-0 bg-black/35 backdrop-blur-[0.5px] flex items-center justify-center">
+              <span class="text-[9px] font-black text-white tracking-widest uppercase bg-rose-500/90 px-1.5 py-0.5 rounded shadow-sm">TUTUP</span>
             </div>
             <!-- Rank badge for top 3 open merchants -->
             <div
