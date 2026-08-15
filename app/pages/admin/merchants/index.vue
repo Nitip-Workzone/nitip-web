@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Store, Search, Plus, Trash2, Edit, RefreshCw } from '@lucide/vue'
+import { Store, Search, Plus, Trash2, Edit, RefreshCw, Copy } from '@lucide/vue'
 import { useMerchantsStore, type Merchant } from '~/stores/merchants'
 import { useUsersStore } from '~/stores/users'
 
@@ -168,6 +168,29 @@ const refresh = async () => {
   await usersStore.fetchUsers()
 }
 
+function getImageUrl(url: string | undefined) {
+  if (!url) return ''
+  if (url.startsWith('http://localhost:8000') || url.startsWith('http://nitip-core:8000')) {
+    const relativePath = url.replace(/^http:\/\/[^/]+/, '')
+    return relativePath
+  }
+  if (url.startsWith('/storage') || url.startsWith('storage') || url.startsWith('/uploads') || url.startsWith('uploads')) {
+    const cleanPath = url.startsWith('/') ? url : `/${url}`
+    return cleanPath
+  }
+  return url
+}
+
+function copyToClipboard(text: string) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => {
+      success('Redirect URL berhasil disalin: ' + text)
+    })
+  } else {
+    error('Clipboard tidak didukung di browser ini.')
+  }
+}
+
 onMounted(async () => {
   await merchantsStore.adminFetchAllMerchants()
   await usersStore.fetchUsers()
@@ -241,7 +264,7 @@ onMounted(async () => {
                   <div class="relative w-12 h-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0">
                     <img
                       v-if="merchant.cover_url"
-                      :src="merchant.cover_url"
+                      :src="getImageUrl(merchant.cover_url)"
                       class="absolute inset-0 w-full h-full object-cover"
                       alt="Cover"
                     />
@@ -251,7 +274,7 @@ onMounted(async () => {
                     <div class="absolute bottom-0.5 left-0.5 w-5 h-5 rounded-full overflow-hidden border border-white shadow-sm bg-white flex items-center justify-center">
                       <img
                         v-if="merchant.image_url"
-                        :src="merchant.image_url"
+                        :src="getImageUrl(merchant.image_url)"
                         class="w-full h-full object-cover"
                         alt="Logo"
                       />
@@ -293,6 +316,13 @@ onMounted(async () => {
               <UiTableCell>⭐ {{ merchant.rating.toFixed(1) }}</UiTableCell>
               <UiTableCell class="text-right">
                 <div class="flex items-center justify-end gap-1">
+                  <button
+                    class="h-8 w-8 rounded-md flex items-center justify-center hover:bg-accent text-primary transition-colors"
+                    title="Salin Link Redirect Banner (/food/id)"
+                    @click="copyToClipboard(`/food/${merchant.id}`)"
+                  >
+                    <Copy class="w-4 h-4" />
+                  </button>
                   <button
                     class="h-8 w-8 rounded-md flex items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                     title="Edit merchant"

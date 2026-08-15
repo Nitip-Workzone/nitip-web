@@ -35,6 +35,12 @@ export const useApi = () => {
             // If path starts with /, combine manually with baseURL to avoid ofetch overriding baseURL
             const targetPath = path.startsWith('/') ? `${baseURL}${path}` : `${baseURL}/${path}`
 
+            const connectivityStore = useConnectivityStore()
+            // Proactive watchdog: if the request takes more than 3 seconds, show the poor connection banner immediately
+            const poorConnectionTimeout = setTimeout(() => {
+                connectivityStore.setPoorConnection(true)
+            }, 3000)
+
             return $fetch<T>(targetPath, {
                 method: options.method,
                 body: options.body,
@@ -44,76 +50,82 @@ export const useApi = () => {
                     // verbose request logging removed for performance & security (2026-07-28 cleanup)
                 },
                 onResponse() {
+                    clearTimeout(poorConnectionTimeout)
                     const duration = Date.now() - startTime
                     try {
-                        const connectivityStore = useConnectivityStore()
-                        if (duration > 3000) {
-                            connectivityStore.setPoorConnection(true)
-                        } else if (duration < 1500) {
+                        if (duration < 1500) {
                             connectivityStore.setPoorConnection(false)
                         }
                     } catch {}
                 },
                 async onResponseError({ request, response }) {
+                    clearTimeout(poorConnectionTimeout)
                     try {
-                        const connectivityStore = useConnectivityStore()
-                        if (response.status === 0 || response.status >= 502) {
-                            connectivityStore.setPoorConnection(true)
-                        }
+                        connectivityStore.setPoorConnection(true)
                     } catch {}
 
                     const isLoginRequest = request.toString().includes('/auth/login')
+                    const status = response?.status
 
-                    if (response.status === 401) {
+                    if (!response) {
+                        // Network error / connection refused
+                        try {
+                            const errorStore = useErrorStore()
+                            errorStore.showError('Gagal terhubung ke server. Pastikan koneksi internet Anda aktif.', 'Kesalahan Jaringan')
+                        } catch {}
+                        return
+                    }
+
+                    if (status === 401) {
                         if (!isLoginRequest) {
                             try {
-                            if (import.meta.client) {
-                                authStore.logout()
-                            } else {
-                                authStore.token = null
-                            }
+                                if (import.meta.client) {
+                                    authStore.logout()
+                                } else {
+                                    authStore.token = null
+                                }
                             } catch {}
                         } else {
                             try {
-                            const errorStore = useErrorStore()
-                            const serverMessage = (response._data as { message?: string })?.message
-                            let humanMessage = 'Email atau kata sandi Anda salah. Silakan periksa kembali detail masuk Anda.'
-                            if (serverMessage) {
-                                const lowerMsg = serverMessage.toLowerCase()
-                                if (lowerMsg.includes('missing x-grant-token') || lowerMsg.includes('grant token')) {
-                                    humanMessage = 'Keamanan login gagal (Grant Token tidak valid). Coba muat ulang halaman ini.'
-                                } else if (lowerMsg.includes('suspended')) {
-                                    humanMessage = 'Akun Anda sedang ditangguhkan. Silakan hubungi dukungan pelanggan/admin.'
-                                } else if (lowerMsg.includes('administrator')) {
-                                    humanMessage = 'Akses ditolak: Administrator harus masuk melalui panel admin.'
+                                const errorStore = useErrorStore()
+                                const serverMessage = (response._data as { message?: string })?.message
+                                let humanMessage = 'Email atau kata sandi Anda salah. Silakan periksa kembali detail masuk Anda.'
+                                if (serverMessage) {
+                                    const lowerMsg = serverMessage.toLowerCase()
+                                    if (lowerMsg.includes('missing x-grant-token') || lowerMsg.includes('grant token')) {
+                                        humanMessage = 'Keamanan login gagal (Grant Token tidak valid). Coba muat ulang halaman ini.'
+                                    } else if (lowerMsg.includes('suspended')) {
+                                        humanMessage = 'Akun Anda sedang ditangguhkan. Silakan hubungi dukungan pelanggan/admin.'
+                                    } else if (lowerMsg.includes('administrator')) {
+                                        humanMessage = 'Akses ditolak: Administrator harus masuk melalui panel admin.'
+                                    }
                                 }
-                            }
-                            errorStore.showError(humanMessage, 'Gagal Masuk')
+                                errorStore.showError(humanMessage, 'Gagal Masuk')
                             } catch {}
                         }
-                    } else if (response.status >= 400 && response.status <= 599) {
+                    } else if (status && status >= 400 && status <= 599) {
                         try {
-                        const errorStore = useErrorStore()
-                        let msg = (response._data as { message?: string })?.message || 'Terjadi kesalahan sistem. Silakan coba beberapa saat lagi.'
-                        
-                        // Extract and join validation errors if present
-                        const validationErrors = (response._data as { errors?: Array<{ field: string; message: string }> })?.errors
-                        if (validationErrors && validationErrors.length > 0) {
-                            msg = validationErrors.map(e => e.message).join(', ')
-                        }
+                            const errorStore = useErrorStore()
+                            let msg = (response._data as { message?: string })?.message || 'Terjadi kesalahan sistem. Silakan coba beberapa saat lagi.'
+                            
+                            // Extract and join validation errors if present
+                            const validationErrors = (response._data as { errors?: Array<{ field: string; message: string }> })?.errors
+                            if (validationErrors && validationErrors.length > 0) {
+                                msg = validationErrors.map(e => e.message).join(', ')
+                            }
 
-                        const lowerMsg = msg.toLowerCase()
-                        if (lowerMsg.includes('connection refused') || lowerMsg.includes('failed to connect') || lowerMsg.includes('network error')) {
-                            msg = 'Gagal terhubung ke server. Pastikan koneksi internet Anda aktif.'
-                        } else if (response.status === 502) {
-                            msg = 'Server sedang tidak dapat diakses (502). Silakan coba beberapa saat lagi.'
-                        } else if (response.status === 503) {
-                            msg = 'Server sedang dalam pemeliharaan (503). Silakan coba beberapa saat lagi.'
-                        } else if (response.status === 504) {
-                            msg = 'Server membutuhkan waktu terlalu lama untuk merespons (504). Silakan coba beberapa saat lagi.'
-                        }
-                        // Jangan throw 500 ke error.vue, cukup toast
-                        errorStore.showError(msg, 'Permintaan Gagal')
+                            const lowerMsg = msg.toLowerCase()
+                            if (lowerMsg.includes('connection refused') || lowerMsg.includes('failed to connect') || lowerMsg.includes('network error')) {
+                                msg = 'Gagal terhubung ke server. Pastikan koneksi internet Anda aktif.'
+                            } else if (status === 502) {
+                                msg = 'Server sedang tidak dapat diakses (502). Silakan coba beberapa saat lagi.'
+                            } else if (status === 503) {
+                                msg = 'Server sedang dalam pemeliharaan (503). Silakan coba beberapa saat lagi.'
+                            } else if (status === 504) {
+                                msg = 'Server membutuhkan waktu terlalu lama untuk merespons (504). Silakan coba beberapa saat lagi.'
+                            }
+                            // Jangan throw 500 ke error.vue, cukup toast
+                            errorStore.showError(msg, 'Permintaan Gagal')
                         } catch {}
                     }
                 },

@@ -182,6 +182,19 @@ const handleToggleActive = async (banner: Banner) => {
   }
 }
 
+function getImageUrl(url: string | undefined) {
+  if (!url) return ''
+  if (url.startsWith('http://localhost:8000') || url.startsWith('http://nitip-core:8000')) {
+    const relativePath = url.replace(/^http:\/\/[^/]+/, '')
+    return relativePath
+  }
+  if (url.startsWith('/storage') || url.startsWith('storage') || url.startsWith('/uploads') || url.startsWith('uploads')) {
+    const cleanPath = url.startsWith('/') ? url : `/${url}`
+    return cleanPath
+  }
+  return url
+}
+
 onMounted(() => {
   bannersStore.adminFetchAllBanners()
   merchantsStore.adminFetchAllMerchants()
@@ -280,7 +293,7 @@ const displayedBanners = computed(() => {
         <!-- Banner Image Showcase -->
         <div class="relative aspect-[3/1] bg-slate-50 overflow-hidden border-b border-border">
           <img
-            :src="banner.image_url"
+            :src="getImageUrl(banner.image_url)"
             :alt="banner.title"
             class="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
           >
@@ -367,7 +380,7 @@ const displayedBanners = computed(() => {
             <UiTableCell>
               <div class="flex items-center gap-3">
                 <img
-                  :src="banner.image_url"
+                  :src="getImageUrl(banner.image_url)"
                   :alt="banner.title"
                   class="w-16 h-9 rounded-lg object-cover bg-slate-100 border border-border flex-shrink-0"
                 >
@@ -756,7 +769,7 @@ const displayedBanners = computed(() => {
 
               <!-- Carousel Showcase Banner -->
               <div class="relative aspect-[3/1] rounded-xl overflow-hidden shadow-md border border-slate-100/50 bg-slate-50 group">
-                <img :src="previewBanner.image_url" :alt="previewBanner.title" class="w-full h-full object-cover">
+                <img :src="getImageUrl(previewBanner.image_url)" :alt="previewBanner.title" class="w-full h-full object-cover">
                 <!-- Clickable indicator if it has redirect_url -->
                 <div v-if="previewBanner.redirect_url" class="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                   <span class="bg-black/60 text-white text-[8px] font-bold px-2 py-0.5 rounded-full">🔗 Clickable</span>
