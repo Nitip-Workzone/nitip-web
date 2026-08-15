@@ -665,14 +665,18 @@ onUnmounted(() => {
       </div>
       
       <!-- Quick Navigation Action Bar -->
-      <div class="flex gap-3">
-        <NuxtLink to="/wallet" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 h-11 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition-all">
-          <Wallet class="w-4 h-4 text-slate-500" />
+      <div class="grid grid-cols-3 gap-2">
+        <NuxtLink to="/wallet" class="bg-slate-100 hover:bg-slate-200 text-slate-700 h-12 rounded-2xl text-[10px] font-black flex flex-col items-center justify-center active:scale-95 transition-all shadow-sm">
+          <Wallet class="w-4.5 h-4.5 text-slate-500 mb-1" />
           Dompet Saya
         </NuxtLink>
-        <NuxtLink to="/profile" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 h-11 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition-all">
-          <ShieldCheck class="w-4 h-4 text-slate-500" />
-          Akun Toko
+        <NuxtLink to="/merchant/profile" class="bg-slate-100 hover:bg-slate-200 text-slate-700 h-12 rounded-2xl text-[10px] font-black flex flex-col items-center justify-center active:scale-95 transition-all shadow-sm">
+          <Store class="w-4.5 h-4.5 text-slate-500 mb-1" />
+          Profil Toko
+        </NuxtLink>
+        <NuxtLink to="/profile" class="bg-slate-100 hover:bg-slate-200 text-slate-700 h-12 rounded-2xl text-[10px] font-black flex flex-col items-center justify-center active:scale-95 transition-all shadow-sm">
+          <ShieldCheck class="w-4.5 h-4.5 text-slate-500 mb-1" />
+          Akun Saya
         </NuxtLink>
       </div>
     </div>
