@@ -251,11 +251,6 @@ const triggerTopUp = async () => {
 }
 
 // Quick action helpers
-const openHelp = () => {
-  if (import.meta.client) {
-    window.open('https://wa.me/628123456789', '_blank')
-  }
-}
 </script>
 
 <template>
@@ -424,13 +419,13 @@ const openHelp = () => {
         </div>
 
         <!-- Bantuan — slim full-width pill -->
-        <button
+        <NuxtLink
+          to="/support/new"
           class="group w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 active:scale-[0.98] transition-all duration-150"
-          @click="openHelp"
         >
           <HelpCircle class="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-colors" />
-          <span class="text-[10px] font-semibold text-slate-500 group-hover:text-slate-700 transition-colors">Butuh bantuan? Hubungi kami</span>
-        </button>
+          <span class="text-[10px] font-semibold text-slate-500 group-hover:text-slate-700 transition-colors">Butuh bantuan? Buat tiket aduan</span>
+        </NuxtLink>
       </div>
 
       <!-- ── 5. AKTIVITAS HARI INI (Redesigned) ── -->

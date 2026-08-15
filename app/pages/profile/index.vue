@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LogOut, ChevronRight, Lock, ShieldCheck, Mail, Phone, UserCheck, KeySquare, HelpCircle, Store } from '@lucide/vue'
+import { LogOut, ChevronRight, Lock, ShieldCheck, Mail, Phone, UserCheck, KeySquare, HelpCircle, Store, MessageSquare } from '@lucide/vue'
 import { useAuthStore } from '~/stores/auth'
 import { useToastStore } from '~/stores/toast'
 import { useUserOrdersStore } from '~/stores/user-orders'
@@ -593,21 +593,21 @@ const openLink = (url: string) => {
               </div>
               <ChevronRight class="w-4 h-4 text-slate-300 group-hover:translate-x-0.5 transition-transform" />
             </NuxtLink>
-            <button
+            <NuxtLink
+              to="/support/new"
               class="flex items-center justify-between px-5 py-4 w-full text-left hover:bg-slate-50 transition-colors group"
-              @click="openLink('https://wa.me/628123456789')"
             >
               <div class="flex items-center gap-3.5">
                 <div class="p-2.5 rounded-xl bg-slate-50 text-slate-500 border border-slate-200/50">
-                  <Phone class="w-5 h-5" />
+                  <MessageSquare class="w-5 h-5" />
                 </div>
                 <div>
-                  <span class="text-xs font-bold text-slate-800">Hubungi CS WhatsApp</span>
-                  <p class="text-[10px] text-slate-400 mt-0.5">Pertanyaan cepat via WhatsApp</p>
+                  <span class="text-xs font-bold text-slate-800">Buat Tiket Bantuan</span>
+                  <p class="text-[10px] text-slate-400 mt-0.5">Ajukan keluhan atau pertanyaan baru</p>
                 </div>
               </div>
               <ChevronRight class="w-4 h-4 text-slate-300 group-hover:translate-x-0.5 transition-transform" />
-            </button>
+            </NuxtLink>
           </div>
         </div>
 

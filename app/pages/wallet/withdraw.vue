@@ -477,7 +477,7 @@ function formatCurrency(val: number) {
 
           <!-- Continue Button -->
           <button
-            v-if="selectedChannelId && amount >= Math.max(selectedChannel?.min_amount || 50000, 50000)"
+            v-if="selectedChannelId"
             class="w-full h-12 bg-primary text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 hover-lift transition-all active:scale-[0.98] shadow-sm shadow-primary/20"
             @click="proceedToPin"
           >
