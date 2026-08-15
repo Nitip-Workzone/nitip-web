@@ -174,11 +174,15 @@ function getImageUrl(url: string | undefined) {
     const relativePath = url.replace(/^http:\/\/[^/]+/, '')
     return relativePath
   }
-  if (url.startsWith('/storage') || url.startsWith('storage') || url.startsWith('/uploads') || url.startsWith('uploads')) {
-    const cleanPath = url.startsWith('/') ? url : `/${url}`
-    return cleanPath
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
   }
-  return url
+  if (url.startsWith('/uploads') || url.startsWith('uploads')) {
+    return url.startsWith('/') ? url : `/${url}`
+  }
+  // If it's a relative path starting with 'merchants/' etc., prepend '/uploads/'
+  const cleanPath = url.startsWith('/') ? url : `/${url}`
+  return `/uploads${cleanPath}`
 }
 
 function copyToClipboard(text: string) {
