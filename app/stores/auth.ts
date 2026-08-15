@@ -225,6 +225,75 @@ export const useAuthStore = defineStore('auth', {
                 this.loading = false
             }
         },
+        async webauthnRegisterBegin() {
+            this.loading = true
+            const { request } = useApi()
+            try {
+                const res = await request<{ data: any }>('/auth/webauthn/register/begin', {
+                    method: 'POST'
+                })
+                return res.data
+            } catch (error) {
+                console.error('WebAuthn register begin failed:', error)
+                throw error
+            } finally {
+                this.loading = false
+            }
+        },
+        async webauthnRegisterFinish(credential: any) {
+            this.loading = true
+            const { request } = useApi()
+            try {
+                await request('/auth/webauthn/register/finish', {
+                    method: 'POST',
+                    body: credential
+                })
+                return true
+            } catch (error) {
+                console.error('WebAuthn register finish failed:', error)
+                throw error
+            } finally {
+                this.loading = false
+            }
+        },
+        async webauthnLoginBegin(email: string) {
+            this.loading = true
+            const { request } = useApi()
+            try {
+                // Since this is standard login flow, we can use useApi which points to the correct baseURL
+                const res = await request<{ data: any }>('/auth/webauthn/login/begin', {
+                    method: 'POST',
+                    body: { email }
+                })
+                return res.data
+            } catch (error) {
+                console.error('WebAuthn login begin failed:', error)
+                throw error
+            } finally {
+                this.loading = false
+            }
+        },
+        async webauthnLoginFinish(email: string, credential: any) {
+            this.loading = true
+            const { request } = useApi()
+            try {
+                const res = await request<{ data: { token: string; user: User } }>(`/auth/webauthn/login/finish?email=${encodeURIComponent(email)}`, {
+                    method: 'POST',
+                    body: credential
+                })
+                if (res.data?.token) {
+                    this.setToken(res.data.token)
+                    this.setUser(res.data.user)
+                    return { success: true }
+                }
+                return { success: false }
+            } catch (error) {
+                console.error('WebAuthn login finish failed:', error)
+                throw error
+            } finally {
+                this.loading = false
+            }
+        },
         logout() {
             this.setUser(null)
             this.setToken(null)

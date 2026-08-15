@@ -13,6 +13,7 @@
     "typecheck": "npx nuxi typecheck"
   },
   "dependencies": {
+    "@github/webauthn-json": "^2.1.1",
     "@lucide/vue": "^1.0.2",
     "@pinia/nuxt": "^0.11.3",
     "@vueuse/core": "^14.2.1",
