@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, Edit2, Trash2, MapPin, ToggleLeft, ToggleRight, Store, X, Check, Loader2 } from '@lucide/vue'
+import { Plus, Edit2, Trash2, MapPin, ToggleLeft, ToggleRight, Store, X, Check, Loader2, Upload } from '@lucide/vue'
 
 definePageMeta({
   layout: 'admin',
@@ -35,6 +35,68 @@ const stores = ref<StoreItem[]>([])
 const loading = ref(true)
 const saving = ref(false)
 const deleting = ref<string | null>(null)
+
+// Batch upload state
+const fileInput = ref<HTMLInputElement | null>(null)
+const uploadingBatch = ref(false)
+
+const triggerFileInput = () => {
+  fileInput.value?.click()
+}
+
+const handleBatchUpload = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    try {
+      const json = JSON.parse(e.target?.result as string)
+      if (!Array.isArray(json)) {
+        alert('File JSON harus bertipe array [] berisi daftar tokoh.')
+        return
+      }
+
+      // Check format
+      const valid = json.every(item => item && item.name && typeof item.lat === 'number' && typeof item.lng === 'number')
+      if (!valid) {
+        alert('Setiap item di file JSON wajib memiliki properti "name" (string), "lat" (number), dan "lng" (number).')
+        return
+      }
+
+      const confirmMsg = `Ditemukan ${json.length} tokoh di file. Lanjutkan import batch ke database?`
+      if (!confirm(confirmMsg)) return
+
+      uploadingBatch.value = true
+      const res = await request<{ data: { processed: number; inserted: number } }>('/admin/stores/batch', {
+        method: 'POST',
+        body: json.map(item => ({
+          name: item.name,
+          address: item.address || '',
+          lat: item.lat,
+          lng: item.lng,
+          category: item.category || 'toko',
+          description: item.description || '',
+          image_url: item.image_url || '',
+          is_active: true
+        })) as any
+      })
+
+      if (res.data) {
+        alert(`Berhasil import batch! ${res.data.inserted} dari ${res.data.processed} tokoh berhasil dimasukkan.`)
+        await fetchStores()
+      }
+    } catch (err) {
+      alert('Gagal membaca atau mengunggah file JSON. Pastikan format valid.')
+      console.error(err)
+    } finally {
+      uploadingBatch.value = false
+      if (fileInput.value) fileInput.value.value = ''
+    }
+  }
+  reader.readAsText(file)
+}
 
 // Modal state
 const showModal = ref(false)
@@ -219,14 +281,36 @@ onMounted(() => {
         <h1 class="text-2xl font-bold text-foreground">Direktori Tokoh</h1>
         <p class="text-sm text-muted-foreground mt-0.5">Kelola daftar tokoh & toko untuk fitur Titip Beli</p>
       </div>
-      <button
-        id="btn-add-store"
-        class="flex items-center gap-2 bg-primary text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-sm hover:bg-primary/90 transition-all"
-        @click="openCreateModal"
-      >
-        <Plus class="w-4 h-4" />
-        Tambah Tokoh
-      </button>
+      <div class="flex items-center gap-2">
+        <!-- Hidden file input for batch upload -->
+        <input 
+          ref="fileInput"
+          type="file"
+          accept=".json"
+          class="hidden"
+          @change="handleBatchUpload"
+        />
+        
+        <button
+          id="btn-import-stores"
+          :disabled="uploadingBatch"
+          class="flex items-center gap-2 bg-white border border-border/80 text-slate-700 text-sm font-bold px-4 py-2.5 rounded-xl shadow-sm hover:bg-slate-50 transition-all disabled:opacity-50"
+          @click="triggerFileInput"
+        >
+          <Loader2 v-if="uploadingBatch" class="w-4 h-4 animate-spin" />
+          <Upload v-else class="w-4 h-4" />
+          Import JSON
+        </button>
+
+        <button
+          id="btn-add-store"
+          class="flex items-center gap-2 bg-primary text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-sm hover:bg-primary/90 transition-all"
+          @click="openCreateModal"
+        >
+          <Plus class="w-4 h-4" />
+          Tambah Tokoh
+        </button>
+      </div>
     </div>
 
     <!-- Stats Card -->
