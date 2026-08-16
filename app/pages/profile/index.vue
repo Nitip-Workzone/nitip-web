@@ -545,7 +545,10 @@ const openLink = (url: string) => {
             </button>
 
             <!-- Verification Info / KYB Status link if needed -->
-            <div class="flex items-center justify-between px-5 py-4 w-full text-left text-slate-500">
+            <NuxtLink 
+              to="/kyc/intro"
+              class="flex items-center justify-between px-5 py-4 w-full text-left hover:bg-slate-50 transition-colors group"
+            >
               <div class="flex items-center gap-3.5">
                 <div class="p-2.5 rounded-xl bg-indigo-50 text-indigo-500 border border-indigo-200/50">
                   <UserCheck class="w-5 h-5" />
@@ -557,10 +560,13 @@ const openLink = (url: string) => {
                   </p>
                 </div>
               </div>
-              <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md" :class="kycStatusClass">
-                {{ kycStatusLabel }}
-              </span>
-            </div>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md" :class="kycStatusClass">
+                  {{ kycStatusLabel }}
+                </span>
+                <ChevronRight class="w-4 h-4 text-slate-300 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+            </NuxtLink>
 
             <!-- TOTP Menu Item -->
             <button

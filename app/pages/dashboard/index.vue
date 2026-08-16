@@ -371,7 +371,7 @@ const triggerTopUp = async () => {
       <!-- ── KYC Warning Banner (Web Requester) ── -->
       <NuxtLink 
         v-if="kycVerificationRequired && !authStore.user?.is_verified" 
-        to="/profile"
+        to="/kyc/intro"
         class="block bg-amber-50 border border-amber-200 rounded-2xl p-4 hover:bg-amber-100/50 transition-all active:scale-[0.98] duration-150 shadow-soft"
       >
         <div class="flex items-start gap-3">
@@ -380,9 +380,6 @@ const triggerTopUp = async () => {
           </div>
           <div class="flex-1 min-w-0">
             <p class="text-xs font-black text-amber-800 leading-tight">Verifikasi e-KYC Diperlukan</p>
-            <p class="text-[10px] text-amber-600 mt-1.5 leading-relaxed">
-              Akun Anda belum terverifikasi e-KYC. Lengkapi verifikasi (Facebook & Selfie) untuk membuka akses penuh tanpa batas.
-            </p>
           </div>
           <ChevronRight class="w-4 h-4 text-amber-400 self-center shrink-0" />
         </div>
