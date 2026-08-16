@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ChevronLeft, Camera, Upload, AlertCircle, Trash2 } from '@lucide/vue'
+import { ArrowLeft, Camera, Upload, AlertCircle, Trash2, Users2 } from '@lucide/vue'
 import { useToastStore } from '~/stores/toast'
 import { useApi } from '~/composables/useApi'
 
 definePageMeta({
-  layout: 'user',
+  layout: 'default',
 })
 
 const router = useRouter()
@@ -101,111 +101,192 @@ const submitKyc = async () => {
     loading.value = false
   }
 }
+
+// Step indicator labels for appbar
+const stepLabel = 'Langkah 1 dari 2'
 </script>
 
 <template>
-  <div class="relative min-h-screen bg-slate-50">
-    <div class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100">
-      <div class="flex items-center justify-between px-4 h-14">
-        <button 
-          class="p-2 -ml-2 rounded-xl hover:bg-slate-100 transition-colors text-slate-700"
-          @click="router.back()"
-        >
-          <ChevronLeft class="w-5 h-5" />
-        </button>
-        <h1 class="text-sm font-extrabold text-slate-900">Formulir Verifikasi</h1>
-        <div class="w-9" />
-      </div>
-    </div>
-
-    <div class="px-5 pt-6 pb-32 max-w-md mx-auto space-y-6">
-      <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3 text-blue-700">
-        <AlertCircle class="w-5 h-5 shrink-0 mt-0.5" />
-        <div>
-          <p class="text-xs font-bold leading-tight">Syarat Verifikasi e-KYC</p>
-          <p class="text-[11px] mt-1 opacity-90 leading-relaxed">
-            Pastikan nama profil Facebook sesuai, dan wajah pada foto selfie terlihat jelas tanpa penutup (masker/kacamata gelap).
-          </p>
-        </div>
-      </div>
-
-      <div class="space-y-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-soft">
-        <div class="space-y-1.5">
-          <label class="text-[11px] font-bold text-slate-600">Nama Profil Facebook <span class="text-red-500">*</span></label>
-          <input 
-            v-model="facebookName" 
-            type="text" 
-            :class="['w-full h-12 rounded-xl border px-4 text-xs font-semibold focus:outline-none focus:border-primary/50 bg-slate-50 focus:bg-white transition-all', errors.facebookName ? 'border-red-300' : 'border-slate-200']"
-            placeholder="Masukkan nama profil Facebook Anda" 
-          >
-          <p v-if="errors.facebookName" class="text-[10px] text-red-500 font-semibold">{{ errors.facebookName }}</p>
-        </div>
-
-        <div class="space-y-1.5 pt-2">
-          <label class="text-[11px] font-bold text-slate-600">Screenshot Halaman Profil Facebook <span class="text-red-500">*</span></label>
-          <div v-if="!facebookScreenshotPreview" class="relative">
-            <input 
-              type="file" 
-              accept="image/*" 
-              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-              @change="e => onFileChange(e, 'facebook')"
-            >
-            <div :class="['border-2 border-dashed rounded-2xl p-6 text-center flex flex-col items-center justify-center bg-slate-50 transition-colors', errors.facebookScreenshot ? 'border-red-300' : 'border-slate-300 hover:border-primary/50']">
-              <Upload class="w-8 h-8 text-slate-400 mb-2" />
-              <p class="text-xs font-bold text-slate-700">Pilih gambar dari galeri</p>
-              <p class="text-[10px] text-slate-400 mt-1">Maks 20MB (JPG/PNG)</p>
-            </div>
-          </div>
-          <div v-else class="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border border-slate-200 group bg-black">
-            <img :src="facebookScreenshotPreview" class="w-full h-full object-contain" alt="Facebook Screenshot">
-            <button 
-              class="absolute top-2 right-2 p-2 bg-black/50 hover:bg-red-500 text-white rounded-lg backdrop-blur-sm transition-colors"
-              @click="clearFile('facebook')"
-            >
-              <Trash2 class="w-4 h-4" />
-            </button>
-          </div>
-          <p v-if="errors.facebookScreenshot" class="text-[10px] text-red-500 font-semibold">{{ errors.facebookScreenshot }}</p>
-        </div>
-
-        <div class="space-y-1.5 pt-2">
-          <label class="text-[11px] font-bold text-slate-600">Foto Selfie Terkini <span class="text-red-500">*</span></label>
-          <div v-if="!selfiePreview" class="relative">
-            <input 
-              type="file" 
-              accept="image/*" 
-              capture="user"
-              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-              @change="e => onFileChange(e, 'selfie')"
-            >
-            <div :class="['border-2 border-dashed rounded-2xl p-6 text-center flex flex-col items-center justify-center bg-slate-50 transition-colors', errors.selfie ? 'border-red-300' : 'border-slate-300 hover:border-primary/50']">
-              <Camera class="w-8 h-8 text-slate-400 mb-2" />
-              <p class="text-xs font-bold text-slate-700">Ambil foto selfie / pilih galeri</p>
-              <p class="text-[10px] text-slate-400 mt-1">Pastikan wajah terlihat jelas</p>
-            </div>
-          </div>
-          <div v-else class="relative w-full aspect-[3/4] rounded-2xl overflow-hidden border border-slate-200 group bg-black">
-            <img :src="selfiePreview" class="w-full h-full object-cover" alt="Selfie">
-            <button 
-              class="absolute top-2 right-2 p-2 bg-black/50 hover:bg-red-500 text-white rounded-lg backdrop-blur-sm transition-colors"
-              @click="clearFile('selfie')"
-            >
-              <Trash2 class="w-4 h-4" />
-            </button>
-          </div>
-          <p v-if="errors.selfie" class="text-[10px] text-red-500 font-semibold">{{ errors.selfie }}</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 p-5 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)] z-40 max-w-md mx-auto">
+  <div class="min-h-screen bg-white flex flex-col max-w-md mx-auto">
+    <!-- AppBar with step indicator -->
+    <div class="flex items-center justify-between px-4 h-14 mt-6">
       <button
-        :disabled="loading"
-        class="w-full h-12 rounded-xl font-bold text-sm bg-primary text-white shadow-sm shadow-primary/30 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+        class="p-2 -ml-2 rounded-full hover:bg-slate-100 transition-colors text-slate-800"
+        @click="router.back()"
+      >
+        <ArrowLeft class="w-5 h-5" />
+      </button>
+      <!-- Step dots -->
+      <div class="flex items-center gap-1.5">
+        <div class="w-7 h-7 rounded-full bg-primary flex items-center justify-center">
+          <span class="text-white text-xs font-bold">1</span>
+        </div>
+        <div class="w-6 h-0.5 bg-slate-200" />
+        <div class="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center">
+          <span class="text-slate-500 text-xs font-bold">2</span>
+        </div>
+        <div class="w-6 h-0.5 bg-slate-200" />
+        <div class="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center">
+          <span class="text-slate-500 text-xs font-bold">3</span>
+        </div>
+      </div>
+      <div class="w-9" />
+    </div>
+
+    <!-- Scrollable Content -->
+    <div class="flex-1 px-6 pb-6 space-y-6 overflow-y-auto">
+      <!-- Header -->
+      <div class="pt-4 space-y-2 text-center">
+        <div class="w-[140px] h-[140px] mx-auto bg-white flex items-center justify-center">
+          <div class="w-28 h-28 rounded-3xl bg-primary/10 flex items-center justify-center">
+            <Users2 class="w-14 h-14 text-primary" />
+          </div>
+        </div>
+        <h2 class="text-[22px] font-extrabold text-slate-900">Profil Facebook</h2>
+        <p class="text-sm text-slate-500 leading-relaxed">
+          Masukkan nama profil Facebook Anda dan unggah screenshot profil Anda.
+        </p>
+      </div>
+
+      <!-- Facebook Name -->
+      <div class="space-y-1.5">
+        <label class="text-sm font-semibold text-slate-700">Nama Profil Facebook</label>
+        <div class="relative">
+          <Users2 class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            v-model="facebookName"
+            type="text"
+            :class="['w-full h-12 rounded-xl border pl-10 pr-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all', errors.facebookName ? 'border-red-400 bg-red-50' : 'border-slate-300 bg-white focus:border-primary']"
+            placeholder="Nama akun profil Facebook Anda"
+          >
+        </div>
+        <p v-if="errors.facebookName" class="text-xs text-red-500 font-medium">{{ errors.facebookName }}</p>
+      </div>
+
+      <!-- Screenshot Upload -->
+      <div class="space-y-2">
+        <label class="text-sm font-semibold text-slate-700">Screenshot Profil Facebook</label>
+        
+        <!-- Preview -->
+        <div v-if="facebookScreenshotPreview" class="relative w-full rounded-2xl overflow-hidden border border-slate-200 bg-black" style="aspect-ratio: 4/3;">
+          <img :src="facebookScreenshotPreview" class="w-full h-full object-contain" alt="Facebook Screenshot">
+          <button
+            class="absolute top-2 right-2 p-2 bg-black/50 hover:bg-primary text-white rounded-xl backdrop-blur-sm transition-colors flex items-center gap-1.5 text-xs font-bold"
+            @click="clearFile('facebook')"
+          >
+            <Trash2 class="w-3.5 h-3.5" />
+            Ambil Ulang
+          </button>
+        </div>
+
+        <!-- Upload options -->
+        <div v-else class="space-y-3">
+          <label class="relative block cursor-pointer">
+            <input type="file" accept="image/*" capture="environment" class="hidden" @change="e => onFileChange(e, 'facebook')">
+            <div :class="['rounded-2xl p-4 border-2 flex items-center gap-4 hover:border-primary/50 transition-colors', errors.facebookScreenshot ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white']">
+              <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Camera class="w-6 h-6 text-primary" />
+              </div>
+              <div class="text-left">
+                <p class="text-sm font-bold text-slate-800">Ambil Foto Langsung</p>
+                <p class="text-xs text-slate-500 mt-0.5">Gunakan kamera untuk mengambil foto screen profil</p>
+              </div>
+              <span class="ml-auto text-slate-300">›</span>
+            </div>
+          </label>
+
+          <label class="relative block cursor-pointer">
+            <input type="file" accept="image/*" class="hidden" @change="e => onFileChange(e, 'facebook')">
+            <div :class="['rounded-2xl p-4 border-2 flex items-center gap-4 hover:border-primary/50 transition-colors', errors.facebookScreenshot ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white']">
+              <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Upload class="w-6 h-6 text-primary" />
+              </div>
+              <div class="text-left">
+                <p class="text-sm font-bold text-slate-800">Pilih dari Galeri <span class="text-primary text-xs">(Sangat Disarankan)</span></p>
+                <p class="text-xs text-slate-500 mt-0.5">Upload screenshot profil Facebook dari galeri</p>
+              </div>
+              <span class="ml-auto text-slate-300">›</span>
+            </div>
+          </label>
+        </div>
+        <p v-if="errors.facebookScreenshot" class="text-xs text-red-500 font-medium">{{ errors.facebookScreenshot }}</p>
+      </div>
+
+      <!-- Selfie Upload -->
+      <div class="space-y-2">
+        <label class="text-sm font-semibold text-slate-700">Foto Selfie Terkini</label>
+        
+        <!-- Preview -->
+        <div v-if="selfiePreview" class="relative w-full rounded-2xl overflow-hidden border border-slate-200 bg-black" style="aspect-ratio: 3/4;">
+          <img :src="selfiePreview" class="w-full h-full object-cover" alt="Selfie">
+          <button
+            class="absolute top-2 right-2 p-2 bg-black/50 hover:bg-primary text-white rounded-xl backdrop-blur-sm transition-colors flex items-center gap-1.5 text-xs font-bold"
+            @click="clearFile('selfie')"
+          >
+            <Trash2 class="w-3.5 h-3.5" />
+            Ambil Ulang
+          </button>
+        </div>
+
+        <!-- Upload options -->
+        <div v-else class="space-y-3">
+          <label class="relative block cursor-pointer">
+            <input type="file" accept="image/*" capture="user" class="hidden" @change="e => onFileChange(e, 'selfie')">
+            <div :class="['rounded-2xl p-4 border-2 flex items-center gap-4 hover:border-primary/50 transition-colors', errors.selfie ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white']">
+              <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Camera class="w-6 h-6 text-primary" />
+              </div>
+              <div class="text-left">
+                <p class="text-sm font-bold text-slate-800">Ambil Selfie Sekarang</p>
+                <p class="text-xs text-slate-500 mt-0.5">Pastikan wajah terlihat jelas, tanpa masker</p>
+              </div>
+              <span class="ml-auto text-slate-300">›</span>
+            </div>
+          </label>
+
+          <label class="relative block cursor-pointer">
+            <input type="file" accept="image/*" class="hidden" @change="e => onFileChange(e, 'selfie')">
+            <div :class="['rounded-2xl p-4 border-2 flex items-center gap-4 hover:border-primary/50 transition-colors', errors.selfie ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white']">
+              <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Upload class="w-6 h-6 text-primary" />
+              </div>
+              <div class="text-left">
+                <p class="text-sm font-bold text-slate-800">Pilih dari Galeri</p>
+                <p class="text-xs text-slate-500 mt-0.5">Pilih foto selfie terbaru dari galeri Anda</p>
+              </div>
+              <span class="ml-auto text-slate-300">›</span>
+            </div>
+          </label>
+        </div>
+        <p v-if="errors.selfie" class="text-xs text-red-500 font-medium">{{ errors.selfie }}</p>
+      </div>
+
+      <!-- Tips Box -->
+      <div class="rounded-2xl p-4 bg-primary/5 border border-primary/10 space-y-2.5">
+        <div class="flex items-start gap-3">
+          <AlertCircle class="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <p class="text-xs text-primary/80 font-medium">Profil Facebook tidak boleh dikunci/private</p>
+        </div>
+        <div class="flex items-start gap-3">
+          <AlertCircle class="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <p class="text-xs text-primary/80 font-medium">Foto wajah di profil harus mirip dengan selfie Anda</p>
+        </div>
+        <div class="flex items-start gap-3">
+          <AlertCircle class="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <p class="text-xs text-primary/80 font-medium">Akun baru / palsu akan ditolak saat verifikasi</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom CTA -->
+    <div class="px-6 pt-4 pb-10 bg-white shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.06)] border-t border-slate-100">
+      <button
+        :disabled="loading || (!facebookScreenshotFile && !selfieFile)"
+        class="w-full h-14 rounded-2xl font-bold text-base bg-primary text-white shadow-sm shadow-primary/30 active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
         @click="submitKyc"
       >
-        <span v-if="loading" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-        Kirim Pengajuan
+        <span v-if="loading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+        Lanjut ke Selfie
       </button>
     </div>
   </div>
