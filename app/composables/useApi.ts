@@ -106,12 +106,21 @@ export const useApi = () => {
                     } else if (status && status >= 400 && status <= 599) {
                         try {
                             const errorStore = useErrorStore()
-                            let msg = (response._data as { message?: string })?.message || 'Terjadi kesalahan sistem. Silakan coba beberapa saat lagi.'
+                            const errData = response._data as { message?: string; error_code?: string; errors?: Array<{ field: string; message: string }> }
+                            let msg = errData?.message || 'Terjadi kesalahan sistem. Silakan coba beberapa saat lagi.'
                             
                             // Extract and join validation errors if present
-                            const validationErrors = (response._data as { errors?: Array<{ field: string; message: string }> })?.errors
+                            const validationErrors = errData?.errors
                             if (validationErrors && validationErrors.length > 0) {
                                 msg = validationErrors.map(e => e.message).join(', ')
+                            }
+
+                            if (errData?.error_code === 'KYC_REQUIRED') {
+                                errorStore.showError(
+                                    `${msg}\n\nSilakan lengkapi verifikasi e-KYC (Facebook & Selfie) Anda di halaman Profil untuk membuka akses tanpa batas.`,
+                                    'Verifikasi e-KYC Diperlukan'
+                                )
+                                return
                             }
 
                             const lowerMsg = msg.toLowerCase()

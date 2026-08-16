@@ -9,8 +9,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  select: [payload: { lat: number; lng: number; address: string }]
+  select: [payload: { lat: number; lng: number; address: string; name?: string }]
 }>()
+
+const selectedStoreName = ref('')
 
 const mapContainer = ref<HTMLElement | null>(null)
 const searchQuery = ref('')
@@ -76,7 +78,7 @@ async function loadStoreMarkers() {
           ${s.image_url ? `<img src="${s.image_url}" alt="${s.name}" style="width:100%;height:70px;object-fit:cover;border-radius:8px;margin-bottom:6px;">` : ''}
           <strong style="font-size:13px;display:block;">${s.name}</strong>
           ${s.address ? `<span style="font-size:11px;color:#64748b;display:block;margin-top:2px;">${s.address}</span>` : ''}
-          <button onclick="window.__selectStoreFromPicker && window.__selectStoreFromPicker(${s.lat}, ${s.lng}, '${storeAddress.replace(/'/g, "\\'")}'); return false;"
+          <button onclick="window.__selectStoreFromPicker && window.__selectStoreFromPicker(${s.lat}, ${s.lng}, '${storeAddress.replace(/'/g, "\\'")}', '${s.name.replace(/'/g, "\\'")}'); return false;"
             style="margin-top:8px;width:100%;padding:6px;background:#22c55e;color:white;border:none;border-radius:8px;font-size:12px;font-weight:bold;cursor:pointer;">
             Pilih Toko Ini
           </button>
@@ -146,6 +148,7 @@ function selectSearchResult(place: { display_name: string; lat: number; lng: num
   currentLat.value = place.lat
   currentLng.value = place.lng
   currentAddress.value = place.display_name
+  selectedStoreName.value = '' // Clear store name when a search result is chosen
   searchResults.value = []
   searchQuery.value = ''
 
@@ -188,6 +191,7 @@ function handleConfirm() {
     lat: currentLat.value,
     lng: currentLng.value,
     address: currentAddress.value,
+    name: selectedStoreName.value,
   })
 }
 
@@ -222,6 +226,7 @@ onMounted(async () => {
     marker.setLatLng(e.latlng)
     currentLat.value = e.latlng.lat
     currentLng.value = e.latlng.lng
+    selectedStoreName.value = '' // Clear store name when custom coordinates are clicked
     await reverseGeocode(e.latlng.lat, e.latlng.lng)
   })
 
@@ -230,15 +235,20 @@ onMounted(async () => {
     const pos = marker.getLatLng()
     currentLat.value = pos.lat
     currentLng.value = pos.lng
+    selectedStoreName.value = '' // Clear store name when marker is manually dragged
     await reverseGeocode(pos.lat, pos.lng)
   })
 
   // Expose global selectStoreFromPicker so the popup button can call it
   if (import.meta.client) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).__selectStoreFromPicker = (lat: number, lng: number, _address: string) => {
+    (window as any).__selectStoreFromPicker = (lat: number, lng: number, _address: string, name?: string) => {
       moveMapTo(lat, lng)
       if (map) map.closePopup()
+      currentAddress.value = _address
+      if (name) {
+        selectedStoreName.value = name
+      }
     }
   }
 

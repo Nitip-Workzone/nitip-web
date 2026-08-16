@@ -46,8 +46,22 @@ const orderType = ref<'instant' | 'regular'>('regular')
 
 // Location data
 const pickupAddress = ref('')
+const pickupName = ref('')
 const pickupLat = ref<number | null>(null)
 const pickupLng = ref<number | null>(null)
+
+const pickupDisplayName = computed(() => {
+  if (pickupName.value && pickupAddress.value) {
+    if (pickupName.value === pickupAddress.value) {
+      return pickupName.value
+    }
+    if (pickupAddress.value.toLowerCase() === 'toko' || pickupAddress.value.toLowerCase() === 'warung') {
+      return pickupName.value
+    }
+    return `${pickupName.value} - ${pickupAddress.value}`
+  }
+  return pickupAddress.value || pickupName.value || ''
+})
 const deliveryAddress = ref('')
 const deliveryLat = ref<number | null>(null)
 const deliveryLng = ref<number | null>(null)
@@ -90,6 +104,7 @@ async function fetchNearbyStores(lat: number, lng: number) {
 function selectNearbyStore(store: NearbyStore) {
   pickupLat.value = store.lat
   pickupLng.value = store.lng
+  pickupName.value = store.name
   pickupAddress.value = store.address || store.name
 }
 
@@ -173,10 +188,11 @@ async function reverseGeocodeDelivery(lat: number, lng: number) {
   }
 }
 
-function onPickupSelected(payload: { lat: number; lng: number; address: string }) {
+function onPickupSelected(payload: { lat: number; lng: number; address: string; name?: string }) {
   pickupLat.value = payload.lat
   pickupLng.value = payload.lng
   pickupAddress.value = payload.address
+  pickupName.value = payload.name || ''
   showPickupPicker.value = false
 }
 
@@ -265,6 +281,7 @@ async function submitOrder() {
   const payload = {
     item_details: itemDetails.value,
     estimated_cost: serviceCategory.value === 'kirim' ? 0 : cost,
+    pickup_name: pickupName.value || pickupAddress.value,
     pickup_address: pickupAddress.value,
     pickup_lat: pickupLat.value!,
     pickup_lng: pickupLng.value!,
@@ -421,10 +438,10 @@ function formatCurrency(amount: number) {
           <div class="min-w-0 flex-1">
             <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Lokasi Belanja / Penjemputan</p>
             <p
-              :class="pickupAddress ? 'text-xs font-semibold text-foreground' : 'text-xs text-muted-foreground'"
+              :class="pickupDisplayName ? 'text-xs font-semibold text-foreground' : 'text-xs text-muted-foreground'"
               class="mt-0.5 truncate"
             >
-              {{ pickupAddress || 'Pilih lokasi toko/warung...' }}
+              {{ pickupDisplayName || 'Pilih lokasi toko/warung...' }}
             </p>
           </div>
           <ChevronRight class="w-4 h-4 text-muted-foreground shrink-0" />
