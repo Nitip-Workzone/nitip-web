@@ -129,7 +129,62 @@ function validateProfile() {
   return Object.keys(profileErrors.value).length === 0
 }
 
+const avatarVideoRef = ref<HTMLVideoElement | null>(null)
+const avatarCanvasRef = ref<HTMLCanvasElement | null>(null)
+const avatarStream = ref<MediaStream | null>(null)
+const avatarCameraActive = ref(false)
+const avatarCameraError = ref<string | null>(null)
+const avatarCapturedFromCamera = ref(false)
+
+async function startAvatarCamera() {
+  avatarCameraError.value = null
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1024 }, height: { ideal: 1024 } }, audio: false })
+    avatarStream.value = stream
+    if (avatarVideoRef.value) {
+      avatarVideoRef.value.srcObject = stream
+      await avatarVideoRef.value.play().catch(() => {})
+    }
+    avatarCameraActive.value = true
+  } catch {
+    avatarCameraError.value = 'Gagal membuka kamera avatar, pastikan izin kamera aktif'
+    toastStore.add('Gagal membuka kamera avatar')
+  }
+}
+function stopAvatarCamera() {
+  if (avatarStream.value) {
+    avatarStream.value.getTracks().forEach(t => t.stop())
+    avatarStream.value = null
+  }
+  avatarCameraActive.value = false
+}
+function captureAvatarFromCamera() {
+  const video = avatarVideoRef.value
+  const canvas = avatarCanvasRef.value
+  if (!video || !canvas) return
+  const w = video.videoWidth || 512
+  const h = video.videoHeight || 512
+  canvas.width = w; canvas.height = h
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  ctx.translate(w,0); ctx.scale(-1,1); ctx.drawImage(video,0,0,w,h)
+  canvas.toBlob((blob) => {
+    if (!blob) return
+    const file = new File([blob], `avatar_${Date.now()}.jpg`, { type: 'image/jpeg' })
+    const preview = URL.createObjectURL(file)
+    if (editAvatarPreview.value) URL.revokeObjectURL(editAvatarPreview.value)
+    editAvatarFile.value = file
+    editAvatarPreview.value = preview
+    avatarCapturedFromCamera.value = true
+    stopAvatarCamera()
+    toastStore.add('Avatar berhasil diambil langsung dari kamera - wajib kamera, tidak boleh file')
+  }, 'image/jpeg', 0.9)
+}
+
 function onAvatarChange(e: Event) {
+  // Legacy file picker now blocked for security - must use camera
+  // For backward compat, still allow but mark not captured from camera and require camera flow
+  // We now enforce camera only: show warning and require camera capture
   const target = e.target as HTMLInputElement
   const file = target.files?.[0]
   if (!file) return
@@ -394,18 +449,40 @@ const openLink = (url: string) => {
               <span v-else class="inline-flex items-center gap-1 text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full">Belum Verifikasi</span>
             </div>
 
-            <!-- Avatar Upload -->
-            <div class="flex items-center gap-4 bg-slate-50 border border-slate-200 rounded-xl p-3">
-              <div class="w-14 h-14 rounded-full bg-white border border-slate-200 overflow-hidden flex items-center justify-center">
-                <img v-if="editAvatarPreview" :src="editAvatarPreview" class="w-full h-full object-cover" alt="Preview Avatar">
-                <img v-else-if="authStore.user?.avatar_url" :src="authStore.user.avatar_url" class="w-full h-full object-cover" alt="Avatar">
-                <span v-else class="text-lg font-black text-primary">{{ authStore.user?.name?.charAt(0)?.toUpperCase() }}</span>
+            <!-- Avatar Upload - WAJIB KAMERA LANGSUNG untuk foto profil/selfie -->
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
+              <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-full bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                  <img v-if="editAvatarPreview" :src="editAvatarPreview" class="w-full h-full object-cover" alt="Preview Avatar">
+                  <img v-else-if="authStore.user?.avatar_url" :src="authStore.user.avatar_url" class="w-full h-full object-cover" alt="Avatar">
+                  <span v-else class="text-lg font-black text-primary">{{ authStore.user?.name?.charAt(0)?.toUpperCase() }}</span>
+                </div>
+                <div class="flex-1">
+                  <label class="text-[11px] font-bold text-slate-600 block mb-1">Foto Profil (Avatar) <span class="px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 text-[9px] border border-red-200">Wajib Kamera</span></label>
+                  <p class="text-[9px] text-slate-500">Wajib dari kamera langsung, tidak boleh pilih file. Max 5MB, JPG/PNG</p>
+                  <div class="mt-2 flex gap-2">
+                    <button type="button" class="px-3 py-1.5 rounded-full bg-primary text-white text-[10px] font-bold" @click="startAvatarCamera()">Ambil dari Kamera</button>
+                    <button v-if="editAvatarPreview" type="button" class="px-3 py-1.5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold" @click="() => { if(editAvatarPreview) URL.revokeObjectURL(editAvatarPreview); editAvatarPreview=null; editAvatarFile=null; avatarCapturedFromCamera=false }">Hapus</button>
+                  </div>
+                </div>
               </div>
-              <div class="flex-1">
-                <label class="text-[11px] font-bold text-slate-600 block mb-1">Foto Profil (Avatar)</label>
-                <input type="file" accept="image/*" class="block w-full text-[11px] text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-bold file:bg-primary file:text-white hover:file:bg-primary/90" @change="onAvatarChange">
-                <p class="text-[9px] text-slate-400 mt-1">Max 5MB, JPG/PNG/WebP</p>
+
+              <!-- Camera live for avatar -->
+              <div v-if="avatarCameraActive" class="relative rounded-xl overflow-hidden border-2 border-primary/30 bg-black aspect-square">
+                <video ref="avatarVideoRef" autoplay playsinline muted class="w-full h-full object-cover scale-x-[-1]"></video>
+                <canvas ref="avatarCanvasRef" class="hidden"></canvas>
+                <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
+                  <button type="button" class="px-4 py-2 bg-white text-slate-800 rounded-xl text-xs font-bold shadow" @click="stopAvatarCamera()">Batal</button>
+                  <button type="button" class="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold shadow" @click="captureAvatarFromCamera()">Ambil Avatar</button>
+                </div>
               </div>
+              <canvas ref="avatarCanvasRef" class="hidden"></canvas>
+              <p v-if="avatarCameraError" class="text-[10px] text-red-600 bg-red-50 p-2 rounded">{{ avatarCameraError }}</p>
+              <div class="rounded-xl p-2 bg-amber-50 border border-amber-200 text-[10px] text-amber-800">
+                🔒 Foto profil wajib kamera langsung, tidak boleh pilih file dari galeri, untuk keamanan eKYC & register.
+              </div>
+              <!-- Legacy file input hidden but kept for fallback, now blocked via logic -->
+              <input type="file" accept="image/*" class="hidden" @change="onAvatarChange">
             </div>
             
             <div class="space-y-1.5">

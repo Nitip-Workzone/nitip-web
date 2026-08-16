@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Camera, Upload, AlertCircle, Trash2, Users2 } from '@lucide/vue'
+import { ArrowLeft, Camera, Upload, AlertCircle, Trash2, Users2, Video } from '@lucide/vue'
 import { useToastStore } from '~/stores/toast'
 import { useApi } from '~/composables/useApi'
 
@@ -18,10 +18,18 @@ const facebookScreenshotPreview = ref<string | null>(null)
 const selfieFile = ref<File | null>(null)
 const selfiePreview = ref<string | null>(null)
 
+// Camera live state for selfie (must be from camera directly, no file picker)
+const selfieVideoRef = ref<HTMLVideoElement | null>(null)
+const selfieCanvasRef = ref<HTMLCanvasElement | null>(null)
+const selfieStream = ref<MediaStream | null>(null)
+const selfieCameraActive = ref(false)
+const selfieCameraError = ref<string | null>(null)
+const selfieCapturedFromCamera = ref(false) // must be true to ensure camera capture, not file
+
 const loading = ref(false)
 const errors = ref<Record<string, string>>({})
 
-const onFileChange = (e: Event, type: 'facebook' | 'selfie') => {
+const onFileChange = (e: Event, type: 'facebook') => {
   const target = e.target as HTMLInputElement
   const file = target.files?.[0]
   if (!file) return
@@ -36,15 +44,9 @@ const onFileChange = (e: Event, type: 'facebook' | 'selfie') => {
   }
 
   const preview = URL.createObjectURL(file)
-  if (type === 'facebook') {
-    facebookScreenshotFile.value = file
-    facebookScreenshotPreview.value = preview
-    delete errors.value.facebookScreenshot
-  } else {
-    selfieFile.value = file
-    selfiePreview.value = preview
-    delete errors.value.selfie
-  }
+  facebookScreenshotFile.value = file
+  facebookScreenshotPreview.value = preview
+  delete errors.value.facebookScreenshot
 }
 
 const clearFile = (type: 'facebook' | 'selfie') => {
@@ -56,8 +58,76 @@ const clearFile = (type: 'facebook' | 'selfie') => {
     selfieFile.value = null
     if (selfiePreview.value) URL.revokeObjectURL(selfiePreview.value)
     selfiePreview.value = null
+    selfieCapturedFromCamera.value = false
+    stopSelfieCamera()
   }
 }
+
+async function startSelfieCamera() {
+  selfieCameraError.value = null
+  selfieCameraActive.value = false
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false,
+    })
+    selfieStream.value = stream
+    if (selfieVideoRef.value) {
+      selfieVideoRef.value.srcObject = stream
+      await selfieVideoRef.value.play().catch(() => {})
+    }
+    selfieCameraActive.value = true
+  } catch (err: unknown) {
+    const msg = (err as { name?: string })?.name === 'NotAllowedError' ? 'Akses kamera ditolak, aktifkan izin kamera di browser' : 'Gagal membuka kamera selfie, pastikan perangkat memiliki kamera depan'
+    selfieCameraError.value = msg
+    toastStore.add(msg)
+  }
+}
+
+function stopSelfieCamera() {
+  if (selfieStream.value) {
+    selfieStream.value.getTracks().forEach(t => t.stop())
+    selfieStream.value = null
+  }
+  selfieCameraActive.value = false
+}
+
+function captureSelfieFromCamera() {
+  const video = selfieVideoRef.value
+  const canvas = selfieCanvasRef.value
+  if (!video || !canvas) return
+  const w = video.videoWidth || 720
+  const h = video.videoHeight || 1280
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  // Mirror selfie for natural preview
+  ctx.translate(w, 0)
+  ctx.scale(-1, 1)
+  ctx.drawImage(video, 0, 0, w, h)
+  canvas.toBlob((blob) => {
+    if (!blob) {
+      toastStore.add('Gagal menangkap selfie dari kamera')
+      return
+    }
+    const file = new File([blob], `selfie_${Date.now()}.jpg`, { type: 'image/jpeg' })
+    const preview = URL.createObjectURL(file)
+    if (selfiePreview.value) URL.revokeObjectURL(selfiePreview.value)
+    selfieFile.value = file
+    selfiePreview.value = preview
+    selfieCapturedFromCamera.value = true
+    delete errors.value.selfie
+    stopSelfieCamera()
+    toastStore.add('Selfie berhasil diambil langsung dari kamera')
+  }, 'image/jpeg', 0.9)
+}
+
+onUnmounted(() => {
+  stopSelfieCamera()
+  if (facebookScreenshotPreview.value) URL.revokeObjectURL(facebookScreenshotPreview.value)
+  if (selfiePreview.value) URL.revokeObjectURL(selfiePreview.value)
+})
 
 const validateForm = () => {
   errors.value = {}
@@ -68,7 +138,9 @@ const validateForm = () => {
     errors.value.facebookScreenshot = 'Screenshot profil Facebook wajib diunggah'
   }
   if (!selfieFile.value) {
-    errors.value.selfie = 'Foto selfie wajib diunggah'
+    errors.value.selfie = 'Foto selfie wajib diambil langsung dari kamera, tidak boleh pilih file'
+  } else if (!selfieCapturedFromCamera.value) {
+    errors.value.selfie = 'Foto selfie wajib dari kamera langsung, bukan dari galeri/file'
   }
   return Object.keys(errors.value).length === 0
 }
@@ -210,13 +282,19 @@ const stepLabel = 'Langkah 1 dari 2'
         <p v-if="errors.facebookScreenshot" class="text-xs text-red-500 font-medium">{{ errors.facebookScreenshot }}</p>
       </div>
 
-      <!-- Selfie Upload -->
+      <!-- Selfie Upload - WAJIB KAMERA LANGSUNG, tidak boleh file -->
       <div class="space-y-2">
-        <label class="text-sm font-semibold text-slate-700">Foto Selfie Terkini</label>
+        <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+          Foto Selfie Terkini
+          <span class="px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-[9px] font-bold border border-red-200">Wajib Kamera Langsung</span>
+        </label>
         
-        <!-- Preview -->
+        <!-- Preview dari kamera -->
         <div v-if="selfiePreview" class="relative w-full rounded-2xl overflow-hidden border border-slate-200 bg-black" style="aspect-ratio: 3/4;">
           <img :src="selfiePreview" class="w-full h-full object-cover" alt="Selfie">
+          <div class="absolute bottom-2 left-2 px-2 py-1 rounded-full bg-emerald-500/90 text-white text-[10px] font-bold flex items-center gap-1">
+            <Video class="w-3 h-3" /> Kamera Langsung
+          </div>
           <button
             class="absolute top-2 right-2 p-2 bg-black/50 hover:bg-primary text-white rounded-xl backdrop-blur-sm transition-colors flex items-center gap-1.5 text-xs font-bold"
             @click="clearFile('selfie')"
@@ -226,35 +304,44 @@ const stepLabel = 'Langkah 1 dari 2'
           </button>
         </div>
 
-        <!-- Upload options -->
+        <!-- Camera live -->
         <div v-else class="space-y-3">
-          <label class="relative block cursor-pointer">
-            <input type="file" accept="image/*" capture="user" class="hidden" @change="e => onFileChange(e, 'selfie')">
-            <div :class="['rounded-2xl p-4 border-2 flex items-center gap-4 hover:border-primary/50 transition-colors', errors.selfie ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white']">
-              <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <Camera class="w-6 h-6 text-primary" />
-              </div>
-              <div class="text-left">
-                <p class="text-sm font-bold text-slate-800">Ambil Selfie Sekarang</p>
-                <p class="text-xs text-slate-500 mt-0.5">Pastikan wajah terlihat jelas, tanpa masker</p>
-              </div>
-              <span class="ml-auto text-slate-300">›</span>
+          <!-- Video element -->
+          <div v-if="selfieCameraActive" class="relative w-full rounded-2xl overflow-hidden border-2 border-primary/30 bg-black" style="aspect-ratio: 3/4;">
+            <video ref="selfieVideoRef" autoplay playsinline muted class="w-full h-full object-cover scale-x-[-1]"></video>
+            <canvas ref="selfieCanvasRef" class="hidden"></canvas>
+            <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+              <button class="px-5 py-2.5 bg-white text-slate-800 rounded-xl text-sm font-bold shadow" @click="stopSelfieCamera()">Batal</button>
+              <button class="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow flex items-center gap-2" @click="captureSelfieFromCamera()">
+                <Camera class="w-4 h-4" /> Ambil Selfie
+              </button>
             </div>
-          </label>
+            <div class="absolute top-2 left-2 px-2 py-1 rounded-full bg-black/60 text-white text-[10px] font-bold">Kamera Aktif - Wajah terlihat jelas, tanpa masker</div>
+          </div>
 
-          <label class="relative block cursor-pointer">
-            <input type="file" accept="image/*" class="hidden" @change="e => onFileChange(e, 'selfie')">
-            <div :class="['rounded-2xl p-4 border-2 flex items-center gap-4 hover:border-primary/50 transition-colors', errors.selfie ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white']">
-              <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <Upload class="w-6 h-6 text-primary" />
-              </div>
-              <div class="text-left">
-                <p class="text-sm font-bold text-slate-800">Pilih dari Galeri</p>
-                <p class="text-xs text-slate-500 mt-0.5">Pilih foto selfie terbaru dari galeri Anda</p>
-              </div>
-              <span class="ml-auto text-slate-300">›</span>
+          <!-- Start camera button - wajib kamera, tidak ada galeri -->
+          <button
+            v-if="!selfieCameraActive"
+            class="w-full rounded-2xl p-4 border-2 flex items-center gap-4 hover:border-primary/50 transition-colors bg-white"
+            :class="errors.selfie ? 'border-red-300 bg-red-50' : 'border-slate-200'"
+            @click="startSelfieCamera()"
+          >
+            <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Camera class="w-6 h-6 text-primary" />
             </div>
-          </label>
+            <div class="text-left">
+              <p class="text-sm font-bold text-slate-800">Ambil Selfie Sekarang - Wajib Kamera</p>
+              <p class="text-xs text-slate-500 mt-0.5">Wajib dari kamera langsung, tidak boleh pilih file. Pastikan wajah jelas, tanpa masker</p>
+            </div>
+            <span class="ml-auto text-slate-300">›</span>
+          </button>
+          <canvas ref="selfieCanvasRef" class="hidden"></canvas>
+
+          <p v-if="selfieCameraError" class="text-xs text-red-500 font-medium bg-red-50 p-2 rounded-xl">{{ selfieCameraError }}</p>
+          <div class="rounded-xl p-3 bg-amber-50 border border-amber-200 text-[11px] text-amber-800">
+            <p class="font-bold">🔒 Keamanan eKYC:</p>
+            <p class="mt-1">Foto selfie <strong>wajib diambil langsung dari kamera</strong> perangkat, tidak boleh memilih file dari galeri. Ini untuk memastikan keaslian verifikasi wajah Anda.</p>
+          </div>
         </div>
         <p v-if="errors.selfie" class="text-xs text-red-500 font-medium">{{ errors.selfie }}</p>
       </div>
