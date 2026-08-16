@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, ShoppingBag, CreditCard, ChevronRight, MapPin, Store } from '@lucide/vue'
+import { ArrowLeft, ShoppingBag, CreditCard, ChevronRight, MapPin, Store, Navigation } from '@lucide/vue'
 import { useUserOrdersStore } from '~/stores/user-orders'
 import { useToastStore } from '~/stores/toast'
 import { useCurrencyInput } from '~/composables/useCurrencyInput'
@@ -52,6 +52,43 @@ const deliveryLng = ref<number | null>(null)
 // Location picker modal state
 const showPickupPicker = ref(false)
 const showDeliveryPicker = ref(false)
+
+// Nearby stores — for Titip Beli pickup suggestion
+interface NearbyStore {
+  id: string
+  name: string
+  address: string
+  lat: number
+  lng: number
+  category: string
+  distance_km: number
+  image_url?: string
+}
+const nearbyStores = ref<NearbyStore[]>([])
+const loadingNearbyStores = ref(false)
+const nearbyStoresFetched = ref(false)
+
+async function fetchNearbyStores(lat: number, lng: number) {
+  if (loadingNearbyStores.value || nearbyStoresFetched.value) return
+  loadingNearbyStores.value = true
+  try {
+    const res = await request<{ data: NearbyStore[] }>(`/stores/nearby?lat=${lat}&lng=${lng}&radius=15&limit=10`)
+    if (res.data) {
+      nearbyStores.value = res.data
+    }
+    nearbyStoresFetched.value = true
+  } catch {
+    // Fail-silently; store list is non-critical
+  } finally {
+    loadingNearbyStores.value = false
+  }
+}
+
+function selectNearbyStore(store: NearbyStore) {
+  pickupLat.value = store.lat
+  pickupLng.value = store.lng
+  pickupAddress.value = store.address || store.name
+}
 
 // Fee estimation
 const deliveryFee = ref(0)
@@ -131,6 +168,10 @@ function onDeliverySelected(payload: { lat: number; lng: number; address: string
   deliveryLng.value = payload.lng
   deliveryAddress.value = payload.address
   showDeliveryPicker.value = false
+  // Fetch nearby stores using new delivery location as reference
+  nearbyStoresFetched.value = false
+  nearbyStores.value = []
+  fetchNearbyStores(payload.lat, payload.lng)
 }
 
 async function estimateFee() {
@@ -174,6 +215,9 @@ function nextStep() {
     }
     // Auto-detect location when entering step 2
     detectCurrentLocation()
+    // Reset so stores can be refetched if user changes delivery location
+    nearbyStoresFetched.value = false
+    nearbyStores.value = []
   } else if (step.value === 2) {
     if (!pickupAddress.value || !deliveryAddress.value) {
       toastStore.add('Harap pilih lokasi penjemputan dan pengantaran.')
@@ -388,7 +432,68 @@ function formatCurrency(amount: number) {
         <p class="text-[10px] text-muted-foreground text-center">Tap kartu untuk memilih lokasi dari peta atau cari alamat</p>
       </div>
 
+      <!-- Tokoh Terdekat (hanya Titip Beli + setelah lokasi tujuan diisi) -->
+      <div
+        v-if="serviceCategory === 'beli' && deliveryLat && deliveryLng"
+        class="space-y-2"
+      >
+        <div class="flex items-center justify-between px-1">
+          <div class="flex items-center gap-1.5">
+            <Store class="w-3.5 h-3.5 text-primary" />
+            <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Tokoh Terdekat</p>
+          </div>
+          <p class="text-[9px] text-muted-foreground">Tap untuk pilih sebagai lokasi belanja</p>
+        </div>
+
+        <!-- Loading skeleton -->
+        <div v-if="loadingNearbyStores" class="space-y-2">
+          <div v-for="i in 3" :key="i" class="bg-white border border-border/40 rounded-2xl p-3.5 flex items-center gap-3 animate-pulse">
+            <div class="w-9 h-9 rounded-xl bg-slate-100 shrink-0" />
+            <div class="flex-1 space-y-1.5">
+              <div class="h-3 bg-slate-100 rounded w-2/3" />
+              <div class="h-2.5 bg-slate-50 rounded w-1/2" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div v-else-if="nearbyStoresFetched && nearbyStores.length === 0" class="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 text-center">
+          <p class="text-xs text-muted-foreground">Tidak ada tokoh terdaftar di sekitar lokasi tujuan Anda.</p>
+        </div>
+
+        <!-- Store list (horizontal scroll) -->
+        <div v-else-if="nearbyStores.length > 0" class="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory">
+          <button
+            v-for="store in nearbyStores"
+            :key="store.id"
+            :id="`store-suggestion-${store.id}`"
+            :class="[
+              'flex-shrink-0 snap-start w-48 text-left border rounded-2xl p-3.5 transition-all active:scale-[0.98]',
+              pickupLat === store.lat && pickupLng === store.lng
+                ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
+                : 'border-border/40 bg-white hover:border-primary/40 shadow-sm'
+            ]"
+            @click="selectNearbyStore(store)"
+          >
+            <div class="flex items-start gap-2.5 mb-2">
+              <div class="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
+                <Store class="w-4 h-4 text-orange-500" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-foreground leading-tight line-clamp-2">{{ store.name }}</p>
+                <p v-if="store.category" class="text-[9px] text-muted-foreground mt-0.5 capitalize">{{ store.category }}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1 mt-1">
+              <Navigation class="w-2.5 h-2.5 text-primary shrink-0" />
+              <p class="text-[9px] text-primary font-semibold">{{ store.distance_km.toFixed(1) }} km</p>
+            </div>
+          </button>
+        </div>
+      </div>
+
       <!-- Selektor Tipe Pengiriman (Instant vs Reguler) -->
+
       <div class="bg-white border border-border/40 rounded-3xl p-5 shadow-sm space-y-3">
         <label class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">Metode Pengiriman</label>
         

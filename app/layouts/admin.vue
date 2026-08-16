@@ -12,6 +12,7 @@ import {
   History,
   Image,
   Store,
+  MapPin,
   Headset,
   Zap,
 } from '@lucide/vue'
@@ -32,6 +33,7 @@ const baseNavigation = [
   { name: 'Users', href: '/admin/users', icon: Users, roles: ['admin'] },
   { name: 'KYC Submissions', href: '/admin/kyc', icon: ShieldCheck, roles: ['admin'] },
   { name: 'Banners', href: '/admin/banners', icon: Image, roles: ['admin'] },
+  { name: 'Tokoh', href: '/admin/stores', icon: MapPin, roles: ['admin'] },
   { name: 'Merchants', href: '/admin/merchants', icon: Store, roles: ['admin'] },
   { name: 'Orders', href: '/admin/orders', icon: ShoppingBag, roles: ['admin'] },
   { name: 'Wallets', href: '/admin/wallets', icon: Wallet, roles: ['admin'] },
