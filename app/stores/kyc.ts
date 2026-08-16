@@ -3,9 +3,11 @@ import { defineStore } from 'pinia'
 export interface KycSubmission {
   id: string
   user_id: string
-  id_card_number: string
-  id_card_image_url: string
+  id_card_number?: string
+  id_card_image_url?: string
   selfie_image_url: string
+  facebook_name?: string
+  facebook_screenshot_url?: string
   status: string // 'pending' | 'approved' | 'rejected'
   admin_note?: string
   created_at: string

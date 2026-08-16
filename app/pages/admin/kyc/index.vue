@@ -110,7 +110,7 @@ const formatDate = (date: string) =>
           <UiTableHeader>
             <UiTableRow :header="true">
               <UiTableHead>Nama Runner</UiTableHead>
-              <UiTableHead>Nomor KTP</UiTableHead>
+              <UiTableHead>Facebook / KTP</UiTableHead>
               <UiTableHead>Tanggal Pengajuan</UiTableHead>
               <UiTableHead class="text-right">Aksi</UiTableHead>
             </UiTableRow>
@@ -133,7 +133,7 @@ const formatDate = (date: string) =>
                 </div>
               </UiTableCell>
               <UiTableCell class="font-mono text-xs font-semibold">
-                {{ sub.id_card_number }}
+                {{ sub.facebook_name || sub.id_card_number || 'N/A' }}
               </UiTableCell>
               <UiTableCell class="text-xs text-muted-foreground">
                 {{ formatDate(sub.created_at) }}
@@ -161,7 +161,11 @@ const formatDate = (date: string) =>
             <p class="font-bold text-muted-foreground uppercase text-[10px]">Nama Lengkap</p>
             <p class="font-semibold text-slate-800 text-[13px] mt-0.5">{{ getUserDetails(selectedSubmission.user_id).name }}</p>
           </div>
-          <div>
+          <div v-if="selectedSubmission.facebook_name">
+            <p class="font-bold text-muted-foreground uppercase text-[10px]">Nama Facebook</p>
+            <p class="font-semibold text-slate-800 text-[13px] mt-0.5">{{ selectedSubmission.facebook_name }}</p>
+          </div>
+          <div v-else-if="selectedSubmission.id_card_number">
             <p class="font-bold text-muted-foreground uppercase text-[10px]">Nomor KTP</p>
             <p class="font-mono font-semibold text-slate-800 text-[13px] mt-0.5">{{ selectedSubmission.id_card_number }}</p>
           </div>
@@ -169,7 +173,17 @@ const formatDate = (date: string) =>
 
         <!-- Image Previews -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="space-y-1.5">
+          <div v-if="selectedSubmission.facebook_screenshot_url" class="space-y-1.5">
+            <label class="text-[10px] font-bold text-muted-foreground uppercase">Screenshot Profil Facebook</label>
+            <div class="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 h-52 flex items-center justify-center">
+              <img 
+                :src="selectedSubmission.facebook_screenshot_url" 
+                alt="Facebook Screenshot" 
+                class="w-full h-full object-contain"
+              >
+            </div>
+          </div>
+          <div v-else-if="selectedSubmission.id_card_image_url" class="space-y-1.5">
             <label class="text-[10px] font-bold text-muted-foreground uppercase">Foto KTP</label>
             <div class="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 h-52 flex items-center justify-center">
               <img 

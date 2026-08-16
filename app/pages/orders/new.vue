@@ -3,10 +3,13 @@ import { ArrowLeft, ShoppingBag, CreditCard, ChevronRight, MapPin, Store, Naviga
 import { useUserOrdersStore } from '~/stores/user-orders'
 import { useToastStore } from '~/stores/toast'
 import { useCurrencyInput } from '~/composables/useCurrencyInput'
+import { useAuthStore } from '~/stores/auth'
 
 definePageMeta({
   layout: 'user',
 })
+
+const authStore = useAuthStore()
 
 const router = useRouter()
 const ordersStore = useUserOrdersStore()
@@ -96,17 +99,25 @@ const estimatingFee = ref(false)
 
 // COD feature flag from public config
 const codEnabled = ref(true)
+const kycVerificationRequired = ref(false)
 const publicConfigLoaded = ref(false)
 
 async function fetchPublicConfig() {
   try {
-    const res = await request<{ data: { cod_enabled?: boolean } }>('/configs/public')
+    const res = await request<{ data: { cod_enabled?: boolean; kyc_verification_required?: boolean } }>('/configs/public')
     if (res.data) {
       if (typeof res.data.cod_enabled === 'boolean') {
         codEnabled.value = res.data.cod_enabled
       }
+      if (typeof res.data.kyc_verification_required === 'boolean') {
+        kycVerificationRequired.value = res.data.kyc_verification_required
+      }
       // If COD disabled but user had selected it, force back to escrow
       if (!codEnabled.value && paymentMethod.value === 'cod') {
+        paymentMethod.value = 'escrow'
+      }
+      // Also force back to escrow if KYC required and user is not verified
+      if (codEnabled.value && kycVerificationRequired.value && !authStore.user?.is_verified && paymentMethod.value === 'cod') {
         paymentMethod.value = 'escrow'
       }
     }
@@ -117,6 +128,8 @@ async function fetchPublicConfig() {
     publicConfigLoaded.value = true
   }
 }
+
+const isCodKycRestricted = computed(() => codEnabled.value && kycVerificationRequired.value && !authStore.user?.is_verified && orderType.value !== 'regular')
 
 onMounted(() => {
   fetchPublicConfig()
@@ -207,19 +220,14 @@ async function estimateFee() {
 function nextStep() {
   if (step.value === 1) {
     if (!itemDetails.value) {
-      toastStore.add('Harap isi detail barang/paket.')
+      toastStore.add('Harap masukkan detail barang.')
       return
     }
-    if (serviceCategory.value === 'beli') {
-      const cost = estimatedCostInput.numericValue.value
-      if (!cost || cost <= 0) {
-        toastStore.add('Harap isi estimasi harga belanja dengan benar.')
-        return
-      }
+    if (serviceCategory.value === 'beli' && (!estimatedCostInput.numericValue.value || estimatedCostInput.numericValue.value <= 0)) {
+      toastStore.add('Harap masukkan estimasi harga barang.')
+      return
     }
-    // Auto-detect location when entering step 2
-    nearbyStoresFetched.value = false
-    nearbyStores.value = []
+    // Set default location name if empty but lat lng are present
     if (deliveryLat.value && deliveryLng.value) {
       fetchNearbyStores(deliveryLat.value, deliveryLng.value)
     } else {
@@ -243,6 +251,12 @@ async function submitOrder() {
   // Guard: COD disabled
   if (paymentMethod.value === 'cod' && !codEnabled.value) {
     toastStore.add('Metode COD sedang dinonaktifkan oleh admin. Silakan gunakan Nitip Pay.')
+    return
+  }
+
+  // Guard: COD requiring KYC check
+  if (paymentMethod.value === 'cod' && isCodKycRestricted.value) {
+    toastStore.add('Metode pembayaran COD hanya tersedia untuk pengguna yang telah terverifikasi e-KYC.')
     return
   }
 
@@ -554,6 +568,12 @@ function formatCurrency(amount: number) {
             Metode <strong>Bayar di Tempat (COD)</strong> sedang dinonaktifkan oleh admin. Silakan gunakan Nitip Pay (Escrow) untuk melanjutkan.
           </p>
         </div>
+        <div v-else-if="isCodKycRestricted" class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+          <span class="text-amber-600 text-[11px]">⚠️</span>
+          <p class="text-[11px] text-amber-800 leading-relaxed">
+            Metode <strong>Bayar di Tempat (COD)</strong> hanya tersedia setelah akun Anda menyelesaikan verifikasi e-KYC.
+          </p>
+        </div>
         
         <div class="grid grid-cols-2 gap-3">
           <button 
@@ -568,7 +588,17 @@ function formatCurrency(amount: number) {
           </button>
 
           <button 
-            v-if="codEnabled"
+            v-if="codEnabled && isCodKycRestricted"
+            type="button"
+            class="p-4 border border-dashed border-slate-200 rounded-2xl text-center flex flex-col items-center gap-1.5 bg-slate-50/50 cursor-not-allowed opacity-60"
+            @click="toastStore.add('COD hanya tersedia untuk pengguna yang telah terverifikasi e-KYC. Silakan lakukan verifikasi lewat profil Anda.')"
+          >
+            <ShoppingBag class="w-5 h-5 text-slate-300" />
+            <span class="text-xs font-bold text-slate-400">COD (Butuh KYC)</span>
+          </button>
+
+          <button 
+            v-else-if="codEnabled"
             :class="[
               'p-4 border rounded-2xl text-center transition-all flex flex-col items-center gap-1.5',
               paymentMethod === 'cod' ? 'border-primary bg-primary/5 text-primary' : 'border-border/60 text-muted-foreground'
