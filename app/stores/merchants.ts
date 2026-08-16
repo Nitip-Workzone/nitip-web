@@ -427,6 +427,27 @@ export const useMerchantsStore = defineStore('merchants', {
       }
     },
 
+    async fetchOwnerPromotions() {
+      const { request } = useApi()
+      try {
+        const res = await request<{ data: ActivePromotion[] }>('/merchant/promotions')
+        return res.data || []
+      } catch {
+        return []
+      }
+    },
+
+    async fetchOwnerSettlement(merchantId?: string) {
+      const { request } = useApi()
+      try {
+        const q = merchantId ? `?merchant_id=${merchantId}` : ''
+        const res = await request<{ data: { total_liability: number; total_orders: number; items: Array<{ merchant_id: string; merchant_name: string; total_liability: number; order_count: number }> } }>(`/merchant/promotions/settlement${q}`)
+        return res.data
+      } catch {
+        return null
+      }
+    },
+
     async fetchActivePromotionsBatch(merchantIds: string[]) {
       // minimal impact: fetch sequentially limited
       for (const id of merchantIds.slice(0, 10)) {

@@ -38,6 +38,18 @@ const promoError = ref('')
 
 const formatRp = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
 
+// Watcher COD: jika paymentSource berubah ke cod (future), voucher tidak bisa dan dikosongkan
+watch(paymentSource, (newVal) => {
+  if ((newVal as string) === 'cod') {
+    if (cartStore.appliedPromotion || promoCodeInput.value) {
+      cartStore.removePromotion()
+      promoCodeInput.value = ''
+      promoError.value = 'Voucher tidak dapat digunakan dengan metode COD. Silakan pilih Wallet atau QRIS dan voucher akan dikosongkan.'
+      error('Voucher tidak dapat digunakan dengan COD. Voucher dikosongkan.')
+    }
+  }
+})
+
 onMounted(async () => {
   if (merchantsStore.merchants.length === 0) {
     await merchantsStore.fetchNearbyMerchants(0.876031736523683, 124.0118274994378, 15.0)
@@ -118,6 +130,15 @@ const handleDecrement = (itemId: string) => {
 }
 
 async function handleApplyPromo(codeOverride?: string) {
+  // Prioritas Food Only + Wallet/QRIS only, COD tidak bisa voucher - per request
+  // Food checkout hanya wallet/qris (escrow), jadi aman. Tapi jika paymentSource === 'cod' (future), block.
+  if (paymentSource.value === 'cod' as any) {
+    promoError.value = 'Voucher tidak dapat digunakan dengan metode COD. Silakan pilih Wallet atau QRIS.'
+    cartStore.removePromotion()
+    promoCodeInput.value = ''
+    error('Voucher tidak dapat digunakan dengan COD. Silakan pilih Wallet atau QRIS dan voucher akan dikosongkan.')
+    return
+  }
   const codeToUse = (codeOverride !== undefined ? codeOverride : promoCodeInput.value || cartStore.appliedPromotion?.code || '') as string
   promoValidating.value = true
   promoError.value = ''
@@ -125,7 +146,7 @@ async function handleApplyPromo(codeOverride?: string) {
     const deliveryTotal = 10000 + cartStore.deliveryFeeSurcharge
     const result = await cartStore.applyPromotion(codeToUse, merchantId, deliveryTotal)
     if (result) {
-      success(`Promo ${result.code || result.title} diterapkan! Hemat ${formatRp(result.discount_amount)}`)
+      success(`Promo ${result.code || result.title} diterapkan! Hemat ${formatRp(result.discount_amount)} - Hanya untuk Nitip Food`)
       promoCodeInput.value = result.code || ''
     }
   } catch (e: any) {

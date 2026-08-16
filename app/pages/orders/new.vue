@@ -112,6 +112,84 @@ function selectNearbyStore(store: NearbyStore) {
 const deliveryFee = ref(0)
 const estimatingFee = ref(false)
 
+// Voucher / Promotion state (Phase 7)
+const promoCodeInput = ref('')
+const appliedPromo = ref<{ id: string; code?: string | null; title: string; discount_type: string; discount_value: number; discount_amount: number; first_purchase_only?: boolean } | null>(null)
+const promoValidating = ref(false)
+const promoError = ref('')
+const activeGlobalPromo = ref<{ id: string; code?: string | null; title: string; discount_type: string; discount_value: number; max_uses: number; used_count: number; first_purchase_only?: boolean } | null>(null)
+
+const formatRpShort = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
+
+async function fetchActiveGlobalPromo() {
+  try {
+    const res = await request<{ data: Array<{ id: string; code?: string | null; title: string; discount_type: string; discount_value: number; max_uses: number; used_count: number; first_purchase_only?: boolean }> }>('/promotions/active')
+    if (res.data && res.data.length > 0) {
+      // prefer global auto
+      const auto = res.data.find(p => !p.code) || res.data[0]
+      activeGlobalPromo.value = auto
+    }
+  } catch { /* ignore */ }
+}
+
+async function handleApplyPromo() {
+  const code = promoCodeInput.value.trim() || appliedPromo.value?.code || ''
+  promoValidating.value = true
+  promoError.value = ''
+  try {
+    const itemTotal = serviceCategory.value === 'beli' ? (estimatedCostInput.numericValue.value || 0) : 0
+    const deliveryTotal = deliveryFee.value
+    const total = (estimatedCostInput.numericValue.value || 0) + deliveryFee.value + (tipInput.numericValue.value || 0)
+    const res = await request<{ data: { discount_amount: number; promotion: { id: string; code?: string | null; title: string; discount_type: string; discount_value: number; first_purchase_only?: boolean }; valid: boolean; message?: string } }>('/promotions/validate', {
+      method: 'POST',
+      body: {
+        code: code || undefined,
+        item_total: itemTotal,
+        delivery_total: deliveryTotal,
+        total,
+      }
+    })
+    if (res.data && res.data.discount_amount > 0 && res.data.promotion) {
+      appliedPromo.value = {
+        id: res.data.promotion.id,
+        code: res.data.promotion.code,
+        title: res.data.promotion.title,
+        discount_type: res.data.promotion.discount_type,
+        discount_value: res.data.promotion.discount_value,
+        discount_amount: res.data.discount_amount,
+        first_purchase_only: res.data.promotion.first_purchase_only,
+      }
+      promoCodeInput.value = res.data.promotion.code || ''
+      toastStore.add(`Promo ${res.data.promotion.code || res.data.promotion.title} diterapkan! Hemat ${formatRpShort(res.data.discount_amount)}`)
+    } else {
+      throw new Error(res.data?.message || 'Voucher tidak valid')
+    }
+  } catch (e: unknown) {
+    const msg = (e as { data?: { message?: string }; message?: string })?.data?.message || (e as { message?: string })?.message || 'Voucher tidak valid (contoh Merdeka81)'
+    promoError.value = msg
+  } finally {
+    promoValidating.value = false
+  }
+}
+
+function handleRemovePromo() {
+  appliedPromo.value = null
+  promoCodeInput.value = ''
+  promoError.value = ''
+}
+
+// Watcher: jika COD maka voucher tidak dapat digunakan dan dikosongkan (sesuai request)
+watch(paymentMethod, (newVal) => {
+  if (newVal === 'cod') {
+    if (appliedPromo.value || promoCodeInput.value) {
+      appliedPromo.value = null
+      promoCodeInput.value = ''
+      promoError.value = 'Voucher tidak dapat digunakan dengan metode COD. Silakan pilih Wallet atau QRIS dan voucher akan dikosongkan.'
+      toastStore.add('Voucher tidak dapat digunakan dengan COD. Voucher dikosongkan.')
+    }
+  }
+})
+
 // COD feature flag from public config
 const codEnabled = ref(true)
 const kycVerificationRequired = ref(false)
@@ -146,8 +224,14 @@ async function fetchPublicConfig() {
 
 const isCodKycRestricted = computed(() => codEnabled.value && kycVerificationRequired.value && !authStore.user?.is_verified && orderType.value !== 'regular')
 
+const totalWithDiscount = computed(() => {
+  const base = (estimatedCostInput.numericValue.value || 0) + deliveryFee.value + (tipInput.numericValue.value || 0)
+  return Math.max(0, base - (appliedPromo.value?.discount_amount || 0))
+})
+
 onMounted(() => {
   fetchPublicConfig()
+  fetchActiveGlobalPromo()
 })
 
 // Auto-detect current location for delivery on first load
@@ -295,6 +379,7 @@ async function submitOrder() {
     volume_liters: selectedVolume.value,
     service_category: serviceCategory.value,
     order_type: orderType.value,
+    promotion_code: appliedPromo.value?.code || promoCodeInput.value.trim() || undefined,
   }
 
   const order = await ordersStore.createOrder(payload)
@@ -681,6 +766,32 @@ function formatCurrency(amount: number) {
         </div>
       </div>
 
+      <!-- Voucher / Promo Code - Prioritas Food Only, Regular Tidak Bisa (tidak terafiliasi merchant) -->
+      <div class="bg-slate-50 border border-dashed border-slate-200 rounded-3xl p-5 shadow-sm space-y-3">
+        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">🎟️ Kode Voucher - Prioritas Nitip Food Only</label>
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+          <span class="text-amber-600 text-[11px]">ℹ️</span>
+          <p class="text-[11px] text-amber-800 leading-relaxed">
+            Voucher diskon seperti <strong>{{ activeGlobalPromo?.code || 'Merdeka81' }}</strong> saat ini <strong>hanya berlaku untuk Nitip Food</strong> (terafiliasi merchant). Untuk Nitip Beli / Kirim Regular tidak bisa digunakan karena tidak terafiliasi merchant.
+            <br/>
+            Silakan pesan via <strong>Nitip Food</strong> untuk menggunakan voucher. Jika ingin tetap ada promo global, hubungi admin.
+          </p>
+        </div>
+        <!-- Hidden voucher input for food-only priority - kept disabled for regular -->
+        <div class="opacity-40 pointer-events-none">
+          <div class="flex gap-2">
+            <input
+              type="text"
+              placeholder="Merdeka81 - hanya Food"
+              disabled
+              class="flex-1 h-11 px-4 rounded-2xl border border-slate-200 text-xs font-mono font-bold uppercase bg-white"
+            />
+            <button disabled class="h-11 px-5 bg-slate-300 text-white text-[11px] font-black rounded-2xl">Apply</button>
+          </div>
+        </div>
+        <p class="text-[10px] text-slate-400 text-center">Voucher hanya bisa digunakan di Nitip Food dengan metode Wallet / QRIS. COD tidak bisa pakai voucher.</p>
+      </div>
+
       <!-- Rincian Biaya -->
       <div class="bg-white border border-border/40 rounded-3xl p-5 shadow-sm space-y-3">
         <label class="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Rincian Biaya</label>
@@ -701,10 +812,16 @@ function formatCurrency(amount: number) {
           <span class="font-medium text-foreground">{{ formatCurrency(tipInput.numericValue.value || 0) }}</span>
         </div>
 
+        <div v-if="appliedPromo" class="flex justify-between text-xs font-bold text-emerald-600">
+          <span>Diskon Promo ({{ appliedPromo.code || 'AUTO' }}{{ appliedPromo.first_purchase_only ? ' - First Buy' : '' }})</span>
+          <span>-{{ formatCurrency(appliedPromo.discount_amount) }}</span>
+        </div>
+
         <div class="flex justify-between text-xs font-extrabold text-foreground pt-3 border-t border-slate-100">
           <span>Total Pembayaran</span>
-          <span class="text-primary text-sm">{{ formatCurrency((estimatedCostInput.numericValue.value || 0) + deliveryFee + (tipInput.numericValue.value || 0)) }}</span>
+          <span class="text-primary text-sm">{{ formatCurrency(totalWithDiscount) }}</span>
         </div>
+        <p v-if="appliedPromo" class="text-[10px] text-emerald-600 font-bold text-right">Anda hemat {{ formatCurrency(appliedPromo.discount_amount) }}!</p>
       </div>
 
       <button 

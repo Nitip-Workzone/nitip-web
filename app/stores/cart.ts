@@ -113,11 +113,15 @@ export const useCartStore = defineStore('cart', {
     },
 
     async applyPromotion(code: string, merchantId: string | null, deliveryTotal = 0) {
+      // Prioritas Food only: voucher hanya jika merchant_id ada (terafiliasi merchant)
+      if (!merchantId) {
+        throw new Error('Voucher hanya berlaku untuk Nitip Food (terafiliasi merchant), tidak bisa untuk Nitip Beli/Kirim')
+      }
       const { request } = useApi()
       try {
         const payload = {
           code: code?.trim() || undefined,
-          merchant_id: merchantId || undefined,
+          merchant_id: merchantId,
           item_total: this.subtotal,
           delivery_total: deliveryTotal,
           total: this.subtotal + this.deliveryFeeSurcharge + deliveryTotal,

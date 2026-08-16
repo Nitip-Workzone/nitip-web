@@ -97,12 +97,32 @@ const fetchProfile = async () => {
   }
 }
 
+const ownerPromos = ref<Array<{ id: string; code?: string | null; title: string; discount_type: string; discount_value: number; budget_total: number; budget_used: number; max_uses: number; used_count: number; per_user_limit: number; first_purchase_only: boolean; discount_scope: string; min_order_amount: number; auto_apply: boolean; is_active: boolean; valid_from?: string | null; valid_until?: string | null }>>([])
+const ownerSettlement = ref<{ total_liability: number; total_orders: number; items: Array<{ merchant_id: string; merchant_name: string; total_liability: number; order_count: number }> } | null>(null)
+const promoLoading = ref(false)
+
+const fetchOwnerPromos = async () => {
+  promoLoading.value = true
+  try {
+    const promos = await merchantsStore.fetchOwnerPromotions()
+    ownerPromos.value = promos as typeof ownerPromos.value
+    const settlement = await merchantsStore.fetchOwnerSettlement()
+    ownerSettlement.value = settlement as typeof ownerSettlement.value
+  } catch (e) {
+    console.warn('[MerchantPromo] fetch failed:', e)
+  } finally {
+    promoLoading.value = false
+  }
+}
+
 const fetchOrders = async () => {
   try {
     await merchantsStore.fetchMerchantOrders()
   } catch (e) {
     console.warn('[MerchantMenu] fetchMerchantOrders failed:', e)
   }
+  // also fetch promo sisa quota
+  fetchOwnerPromos()
 }
 
 const handleRegisterProfile = async () => {
@@ -572,6 +592,90 @@ onUnmounted(() => {
               "
               :style="{ width: `${activeQueuePercentage}%` }"
             />
+          </div>
+        </div>
+      </div>
+
+      <!-- Promo Active - Sisa Quota Discount (Phase 8) -->
+      <div class="bg-white border border-slate-100 rounded-3xl p-5 shadow-soft space-y-4">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs font-black text-slate-800 tracking-wide uppercase flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            Promo Aktif - Sisa Quota Diskon
+          </h3>
+          <button class="text-[10px] font-bold text-primary hover:underline flex items-center gap-1" @click="fetchOwnerPromos">
+            <RefreshCw class="w-3 h-3" :class="promoLoading ? 'animate-spin' : ''" />
+            Refresh
+          </button>
+        </div>
+
+        <div v-if="promoLoading" class="py-6 text-center">
+          <RefreshCw class="w-5 h-5 animate-spin mx-auto text-primary" />
+          <p class="text-[11px] text-muted-foreground mt-2">Memuat promo...</p>
+        </div>
+
+        <div v-else-if="ownerPromos.length === 0" class="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6 text-center">
+          <p class="text-xs font-bold text-slate-500">Tidak ada promo aktif untuk toko Anda</p>
+          <p class="text-[10px] text-slate-400 mt-1">Hubungi admin untuk mengaktifkan diskon custom ex Merdeka81, flat/persen, auto first-N, first purchase only.</p>
+        </div>
+
+        <div v-else class="space-y-3">
+          <div v-for="promo in ownerPromos" :key="promo.id" class="border rounded-2xl p-4 space-y-3" :class="promo.is_active ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200 bg-slate-50'">
+            <div class="flex justify-between items-start gap-2">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="inline-flex px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-[11px] font-black font-mono border border-amber-200">{{ promo.code || 'AUTO' }}</span>
+                  <span class="text-[11px] font-black text-slate-800">{{ promo.title }}</span>
+                  <span v-if="promo.first_purchase_only" class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[9px] font-bold">First Buy Only</span>
+                  <span v-if="promo.auto_apply" class="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[9px] font-bold">Auto</span>
+                  <span v-if="!promo.is_active" class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[9px] font-bold">Nonaktif</span>
+                </div>
+                <p class="text-[10px] text-slate-500 mt-1">Scope: {{ promo.discount_scope }} | Type: {{ promo.discount_type === 'flat' ? 'Flat Rp'+Number(promo.discount_value).toLocaleString('id-ID') : promo.discount_value+'% OFF' }} | Min Order: {{ promo.min_order_amount ? 'Rp'+Number(promo.min_order_amount).toLocaleString('id-ID') : '-' }}</p>
+              </div>
+              <span class="text-[11px] font-black" :class="promo.discount_type==='flat' ? 'text-primary' : 'text-amber-600'">{{ promo.discount_type==='flat' ? 'Rp'+Number(promo.discount_value).toLocaleString('id-ID') : promo.discount_value+'% OFF' }}</span>
+            </div>
+
+            <!-- Quota progress -->
+            <div class="space-y-2">
+              <div class="flex justify-between text-[10px] font-bold">
+                <span class="text-slate-600">Sisa Quota Order</span>
+                <span :class="(promo.max_uses - promo.used_count) <= 2 ? 'text-rose-600' : (promo.max_uses - promo.used_count) <= (promo.max_uses*0.5) ? 'text-amber-600' : 'text-emerald-600'">
+                  Sisa {{ promo.max_uses - promo.used_count }} / {{ promo.max_uses }} order lagi
+                </span>
+              </div>
+              <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all" :class="(promo.max_uses - promo.used_count) <=2 ? 'bg-rose-500' : (promo.max_uses - promo.used_count) <= (promo.max_uses*0.5) ? 'bg-amber-500' : 'bg-emerald-500'" :style="{ width: Math.min(100, (promo.used_count / promo.max_uses)*100)+'%' }" />
+              </div>
+              <div class="flex justify-between text-[9px] text-slate-400">
+                <span>Terpakai {{ promo.used_count }}</span>
+                <span>{{ ((promo.used_count / promo.max_uses)*100).toFixed(0) }}% terpakai</span>
+              </div>
+            </div>
+
+            <!-- Budget progress -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-[10px] font-bold">
+                <span class="text-slate-600">Budget Terpakai (Audit)</span>
+                <span class="text-slate-700">Rp {{ Number(promo.budget_used).toLocaleString('id-ID') }} / Rp {{ Number(promo.budget_total).toLocaleString('id-ID') }}</span>
+              </div>
+              <div class="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div class="h-full bg-indigo-500 rounded-full" :style="{ width: Math.min(100, (promo.budget_used / promo.budget_total)*100)+'%' }" />
+              </div>
+              <p class="text-[9px] text-slate-400">Sisa budget Rp {{ Number(promo.budget_total - promo.budget_used).toLocaleString('id-ID') }} | Liability platform ke Anda Rp {{ Number(promo.budget_used).toLocaleString('id-ID') }} ({{ ownerSettlement?.total_orders || promo.used_count }} order berdiskon)</p>
+            </div>
+
+            <div class="flex gap-2 text-[9px] text-slate-500">
+              <span>Valid: {{ promo.valid_from ? new Date(promo.valid_from).toLocaleDateString('id-ID') : '-' }} - {{ promo.valid_until ? new Date(promo.valid_until).toLocaleDateString('id-ID') : '∞' }}</span>
+              <span class="ml-auto">Per user limit {{ promo.per_user_limit }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="ownerSettlement && ownerSettlement.items && ownerSettlement.items.length>0" class="pt-3 border-t border-slate-100">
+          <p class="text-[10px] font-black text-slate-700 uppercase">Settlement Ringkas</p>
+          <div class="mt-2 bg-slate-50 rounded-xl p-3 text-[11px]">
+            <div class="flex justify-between font-bold"><span>Total Liability Platform ke Anda</span><span class="text-primary">Rp {{ Number(ownerSettlement.total_liability).toLocaleString('id-ID') }}</span></div>
+            <div class="text-[10px] text-slate-500 mt-1">{{ ownerSettlement.total_orders }} order berdiskon (completed)</div>
           </div>
         </div>
       </div>
