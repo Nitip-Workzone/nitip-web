@@ -23,9 +23,11 @@ const authStore = useAuthStore()
 const ordersStore = useUserOrdersStore()
 const walletStore = useUserWalletStore()
 const bannersStore = useBannersStore()
+const { request } = useApi()
 
 const isBalanceVisible = ref(true)
 const loading = ref(true)
+const kycVerificationRequired = ref(false)
 
 const toggleBalance = () => {
   isBalanceVisible.value = !isBalanceVisible.value
@@ -115,12 +117,24 @@ const extraOrdersCount = computed(() => Math.max(0, todayOrders.value.length - 5
 // For empty state fallback — show up to 3 recent orders when no today's orders
 const recentOrders = computed(() => (ordersStore.orders as UserOrder[]).slice(0, 3))
 
+async function fetchPublicConfig() {
+  try {
+    const res = await request<{ data: { kyc_verification_required?: boolean } }>('/configs/public')
+    if (res?.data && typeof res.data.kyc_verification_required === 'boolean') {
+      kycVerificationRequired.value = res.data.kyc_verification_required
+    }
+  } catch (err) {
+    console.error('Failed to fetch public config:', err)
+  }
+}
+
 async function fetchAll() {
   await Promise.all([
     authStore.fetchProfile(),
     walletStore.fetchBalance(),
     ordersStore.fetchMyOrders(),
     bannersStore.fetchActiveBanners(),
+    fetchPublicConfig(),
   ])
 }
 
@@ -353,6 +367,26 @@ const triggerTopUp = async () => {
           />
         </div>
       </div>
+
+      <!-- ── KYC Warning Banner (Web Requester) ── -->
+      <NuxtLink 
+        v-if="kycVerificationRequired && !authStore.user?.is_verified" 
+        to="/profile"
+        class="block bg-amber-50 border border-amber-200 rounded-2xl p-4 hover:bg-amber-100/50 transition-all active:scale-[0.98] duration-150 shadow-soft"
+      >
+        <div class="flex items-start gap-3">
+          <div class="p-2 rounded-xl bg-amber-100 text-amber-600">
+            <UserCheck class="w-5 h-5" />
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-black text-amber-800 leading-tight">Verifikasi e-KYC Diperlukan</p>
+            <p class="text-[10px] text-amber-600 mt-1.5 leading-relaxed">
+              Akun Anda belum terverifikasi e-KYC. Lengkapi verifikasi (Facebook & Selfie) untuk membuka akses penuh tanpa batas.
+            </p>
+          </div>
+          <ChevronRight class="w-4 h-4 text-amber-400 self-center shrink-0" />
+        </div>
+      </NuxtLink>
 
       <!-- ── 3. LAYANAN & FITUR UTAMA ── -->
       <div class="space-y-2.5">
