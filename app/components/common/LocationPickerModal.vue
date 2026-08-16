@@ -30,6 +30,70 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null
 const currentLat = ref(props.initialLat ?? 0.8811)
 const currentLng = ref(props.initialLng ?? 124.014)
 
+interface StoreItem {
+  id: string
+  name: string
+  address?: string
+  lat: number
+  lng: number
+  image_url?: string
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const storeMarkers: any[] = []
+
+async function loadStoreMarkers() {
+  if (!map || !L) return
+  try {
+    const { request } = useApi()
+    const res = await request<{ data: StoreItem[] }>('/stores')
+    const stores = res.data || []
+
+    // Clear existing store markers
+    storeMarkers.forEach(m => map.removeLayer(m))
+    storeMarkers.length = 0
+
+    stores.forEach(s => {
+      const shopIcon = L.divIcon({
+        html: `
+          <div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
+            <div style="background:#22c55e;width:30px;height:30px;border-radius:50%;border:2.5px solid white;box-shadow:0 2px 10px rgba(34,197,94,0.5);display:flex;align-items:center;justify-content:center;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+            </div>
+          </div>
+        `,
+        className: 'store-picker-icon',
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+      })
+
+      const storeAddress = s.address || s.name
+      const popupContent = `
+        <div style="min-width:130px;font-family:sans-serif;">
+          ${s.image_url ? `<img src="${s.image_url}" alt="${s.name}" style="width:100%;height:70px;object-fit:cover;border-radius:8px;margin-bottom:6px;">` : ''}
+          <strong style="font-size:13px;display:block;">${s.name}</strong>
+          ${s.address ? `<span style="font-size:11px;color:#64748b;display:block;margin-top:2px;">${s.address}</span>` : ''}
+          <button onclick="window.__selectStoreFromPicker && window.__selectStoreFromPicker(${s.lat}, ${s.lng}, '${storeAddress.replace(/'/g, "\\'")}'); return false;"
+            style="margin-top:8px;width:100%;padding:6px;background:#22c55e;color:white;border:none;border-radius:8px;font-size:12px;font-weight:bold;cursor:pointer;">
+            Pilih Toko Ini
+          </button>
+        </div>
+      `
+
+      const m = L.marker([s.lat, s.lng], { icon: shopIcon })
+        .addTo(map)
+        .bindPopup(popupContent, { maxWidth: 220 })
+
+      storeMarkers.push(m)
+    })
+  } catch (err) {
+    console.error('Gagal mengambil store markers:', err)
+  }
+}
+
 async function reverseGeocode(lat: number, lng: number) {
   try {
     const response = await fetch(
@@ -169,6 +233,18 @@ onMounted(async () => {
     await reverseGeocode(pos.lat, pos.lng)
   })
 
+  // Expose global selectStoreFromPicker so the popup button can call it
+  if (import.meta.client) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__selectStoreFromPicker = (lat: number, lng: number, _address: string) => {
+      moveMapTo(lat, lng)
+      if (map) map.closePopup()
+    }
+  }
+
+  // Load store markers
+  await loadStoreMarkers()
+
   // Initial reverse geocode
   await reverseGeocode(currentLat.value, currentLng.value)
 })
@@ -177,6 +253,10 @@ onUnmounted(() => {
   if (debounceTimer) {
     clearTimeout(debounceTimer)
     debounceTimer = null
+  }
+  if (import.meta.client) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (window as any).__selectStoreFromPicker
   }
 })
 </script>
