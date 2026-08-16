@@ -55,7 +55,7 @@ const handleLogin = async () => {
   }
   if (result?.success) {
     await authStore.fetchProfile()
-    if (isBiometricsSupported.value) {
+    if (isBiometricsSupported.value && !authStore.user?.has_passkey) {
       showBiometricPrompt.value = true
     } else {
       navigateToRoleDashboard()
@@ -109,6 +109,7 @@ const registerBiometrics = async () => {
     const credential = await webauthnCreate(options)
     const success = await authStore.webauthnRegisterFinish(credential)
     if (success) {
+      await authStore.fetchProfile(true)
       try {
         const errStore = useErrorStore()
         errStore.showError('Masuk Instan (Face ID / Fingerprint) berhasil diaktifkan untuk perangkat ini!', 'Sukses')

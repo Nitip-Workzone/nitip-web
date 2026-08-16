@@ -10,6 +10,7 @@ interface User {
     whatsapp_number?: string
     avatar_url?: string
     has_pin?: boolean
+    has_passkey?: boolean
     totp_enabled?: boolean
     home_address?: string
     home_lat?: number
