@@ -63,12 +63,14 @@ const proceedToForm = () => {
     <!-- Content -->
     <div v-else class="flex-1 flex flex-col overflow-y-auto">
       <div class="px-6 pb-8 space-y-0">
-        <!-- Hero Illustration -->
+        <!-- Hero Illustration — same as Flutter kyc_intro.png -->
         <div class="flex justify-center pt-4 pb-2">
-          <div class="w-[180px] h-[180px] bg-white flex items-center justify-center">
-            <div class="w-32 h-32 rounded-3xl bg-primary/10 flex items-center justify-center">
-              <ShieldCheck class="w-16 h-16 text-primary" />
-            </div>
+          <div class="w-[200px] h-[200px] flex items-center justify-center bg-white">
+            <img 
+              src="/images/kyc_intro.png" 
+              alt="KYC Verification" 
+              class="w-full h-full object-contain"
+            >
           </div>
         </div>
 

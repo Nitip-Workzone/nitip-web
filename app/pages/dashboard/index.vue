@@ -380,7 +380,7 @@ const triggerTopUp = async () => {
           </div>
           <div class="flex-1 min-w-0">
             <p class="text-xs font-black text-amber-800 leading-tight">Verifikasi e-KYC Diperlukan</p>
-            <p class="text-[11px] text-amber-600 mt-0.5">Ketuk untuk melengkapi verifikasi identitas Anda</p>
+            <p class="text-[11px] text-amber-700 mt-0.5 leading-snug">Akun Anda belum terverifikasi e-KYC. Lengkapi verifikasi (Facebook &amp; Selfie) untuk membuat pesanan tanpa batas.</p>
           </div>
           <ChevronRight class="w-4 h-4 text-amber-400 self-center shrink-0" />
         </div>

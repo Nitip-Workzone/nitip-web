@@ -137,10 +137,8 @@ const stepLabel = 'Langkah 1 dari 2'
     <div class="flex-1 px-6 pb-6 space-y-6 overflow-y-auto">
       <!-- Header -->
       <div class="pt-4 space-y-2 text-center">
-        <div class="w-[140px] h-[140px] mx-auto bg-white flex items-center justify-center">
-          <div class="w-28 h-28 rounded-3xl bg-primary/10 flex items-center justify-center">
-            <Users2 class="w-14 h-14 text-primary" />
-          </div>
+        <div class="w-[160px] h-[160px] mx-auto bg-white flex items-center justify-center">
+          <img src="/images/kyc_ktp.png" alt="Facebook Profile" class="w-full h-full object-contain">
         </div>
         <h2 class="text-[22px] font-extrabold text-slate-900">Profil Facebook</h2>
         <p class="text-sm text-slate-500 leading-relaxed">
