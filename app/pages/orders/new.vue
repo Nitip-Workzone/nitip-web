@@ -129,13 +129,17 @@ function detectCurrentLocation() {
   if (!navigator.geolocation || locationDetected.value) return
   navigator.geolocation.getCurrentPosition(
     (pos) => {
+      const lat = pos.coords.latitude
+      const lng = pos.coords.longitude
       if (!deliveryAddress.value) {
-        deliveryLat.value = pos.coords.latitude
-        deliveryLng.value = pos.coords.longitude
+        deliveryLat.value = lat
+        deliveryLng.value = lng
         // Do reverse geocode to get address
-        reverseGeocodeDelivery(pos.coords.latitude, pos.coords.longitude)
+        reverseGeocodeDelivery(lat, lng)
       }
       locationDetected.value = true
+      // Pemicu pemuatan toko terdekat berdasarkan lokasi yang terdeteksi
+      fetchNearbyStores(lat, lng)
     },
     () => {
       locationDetected.value = true
@@ -214,10 +218,13 @@ function nextStep() {
       }
     }
     // Auto-detect location when entering step 2
-    detectCurrentLocation()
-    // Reset so stores can be refetched if user changes delivery location
     nearbyStoresFetched.value = false
     nearbyStores.value = []
+    if (deliveryLat.value && deliveryLng.value) {
+      fetchNearbyStores(deliveryLat.value, deliveryLng.value)
+    } else {
+      detectCurrentLocation()
+    }
   } else if (step.value === 2) {
     if (!pickupAddress.value || !deliveryAddress.value) {
       toastStore.add('Harap pilih lokasi penjemputan dan pengantaran.')
