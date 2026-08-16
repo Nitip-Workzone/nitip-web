@@ -83,6 +83,30 @@ const totalOrders = computed(() => {
   return (ordersStore.activeOrders?.length || 0) + (ordersStore.pastOrders?.length || 0)
 })
 
+const kycStatusLabel = computed(() => {
+  if (authStore.user?.is_verified) return 'Verified'
+  const status = (kycStatus.value as { status?: string })?.status
+  if (status === 'pending') return 'Pending'
+  if (status === 'rejected') return 'Ditolak'
+  return 'Belum Verifikasi'
+})
+
+const kycStatusClass = computed(() => {
+  if (authStore.user?.is_verified) return 'bg-emerald-50 text-emerald-600'
+  const status = (kycStatus.value as { status?: string })?.status
+  if (status === 'pending') return 'bg-amber-50 text-amber-600'
+  if (status === 'rejected') return 'bg-red-50 text-red-600'
+  return 'bg-slate-100 text-slate-650'
+})
+
+const kycStatusSubtext = computed(() => {
+  if (authStore.user?.is_verified) return 'Selesai diverifikasi oleh sistem'
+  const status = (kycStatus.value as { status?: string })?.status
+  if (status === 'pending') return 'Dokumen Anda sedang ditinjau admin'
+  if (status === 'rejected') return 'Verifikasi ditolak. Silakan ajukan ulang'
+  return 'Silakan ajukan verifikasi e-KYC'
+})
+
 function sanitizeWhatsapp(phone: string) {
   let p = phone.replace(/[^0-9]/g, '')
   if (p.startsWith('0')) p = '62' + p.slice(1)
@@ -529,12 +553,12 @@ const openLink = (url: string) => {
                 <div>
                   <span class="text-xs font-bold text-slate-800">Verifikasi Identitas</span>
                   <p class="text-[10px] text-slate-400 mt-0.5">
-                    {{ authStore.user?.is_verified ? 'Selesai diverifikasi oleh sistem' : 'Hubungi admin untuk verifikasi KYC' }}
+                    {{ kycStatusSubtext }}
                   </p>
                 </div>
               </div>
-              <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md" :class="authStore.user?.is_verified ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'">
-                {{ authStore.user?.is_verified ? 'Verified' : 'Pending' }}
+              <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md" :class="kycStatusClass">
+                {{ kycStatusLabel }}
               </span>
             </div>
 
