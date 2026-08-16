@@ -374,12 +374,13 @@ const triggerTopUp = async () => {
         to="/kyc/intro"
         class="block bg-amber-50 border border-amber-200 rounded-2xl p-4 hover:bg-amber-100/50 transition-all active:scale-[0.98] duration-150 shadow-soft"
       >
-        <div class="flex items-start gap-3">
-          <div class="p-2 rounded-xl bg-amber-100 text-amber-600">
+        <div class="flex items-center gap-3">
+          <div class="p-2.5 rounded-xl bg-amber-100 text-amber-600 shrink-0">
             <UserCheck class="w-5 h-5" />
           </div>
           <div class="flex-1 min-w-0">
             <p class="text-xs font-black text-amber-800 leading-tight">Verifikasi e-KYC Diperlukan</p>
+            <p class="text-[11px] text-amber-600 mt-0.5">Ketuk untuk melengkapi verifikasi identitas Anda</p>
           </div>
           <ChevronRight class="w-4 h-4 text-amber-400 self-center shrink-0" />
         </div>
