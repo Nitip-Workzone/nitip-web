@@ -6,6 +6,8 @@ export interface Banner {
   image_url: string
   redirect_url?: string
   is_active: boolean
+  promotion_id?: string | null
+  badge_text?: string | null
   created_at: string
   updated_at: string
 }

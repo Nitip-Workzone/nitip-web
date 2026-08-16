@@ -31,12 +31,33 @@ const merchant = computed(() =>
   merchantsStore.merchants.find(m => m.id === merchantId) || merchantsStore.currentMerchant
 )
 
+const activePromo = ref<any>(null)
+const promoCodeInput = ref('')
+const promoValidating = ref(false)
+const promoError = ref('')
+
+const formatRp = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
+
 onMounted(async () => {
   if (merchantsStore.merchants.length === 0) {
     await merchantsStore.fetchNearbyMerchants(0.876031736523683, 124.0118274994378, 15.0)
   }
   await merchantsStore.fetchMerchantMenuPublic(merchantId)
   await walletStore.fetchBalance()
+  // fetch active promo for this merchant
+  try {
+    const { request: reqApi } = useApi()
+    const res = await reqApi<{ data: any[] }>(`/promotions/active?merchant_id=${merchantId}`)
+    if (res.data && res.data.length > 0) {
+      activePromo.value = res.data[0]
+      // auto apply if auto_apply
+      if (activePromo.value.auto_apply && !cartStore.appliedPromotion) {
+        try {
+          await handleApplyPromo(activePromo.value.code || '')
+        } catch {}
+      }
+    }
+  } catch {}
 
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
@@ -96,6 +117,30 @@ const handleDecrement = (itemId: string) => {
   cartStore.updateQuantity(itemId, getItemQty(itemId) - 1)
 }
 
+async function handleApplyPromo(codeOverride?: string) {
+  const codeToUse = (codeOverride !== undefined ? codeOverride : promoCodeInput.value || cartStore.appliedPromotion?.code || '') as string
+  promoValidating.value = true
+  promoError.value = ''
+  try {
+    const deliveryTotal = 10000 + cartStore.deliveryFeeSurcharge
+    const result = await cartStore.applyPromotion(codeToUse, merchantId, deliveryTotal)
+    if (result) {
+      success(`Promo ${result.code || result.title} diterapkan! Hemat ${formatRp(result.discount_amount)}`)
+      promoCodeInput.value = result.code || ''
+    }
+  } catch (e: any) {
+    promoError.value = e?.data?.message || e?.message || 'Voucher tidak valid (contoh Merdeka81 atau pembelian pertama)'
+  } finally {
+    promoValidating.value = false
+  }
+}
+
+function handleRemovePromo() {
+  cartStore.removePromotion()
+  promoCodeInput.value = ''
+  promoError.value = ''
+}
+
 const handleCheckout = async () => {
   if (cartStore.items.length === 0) return
   checkoutLoading.value = true
@@ -118,6 +163,7 @@ const handleCheckout = async () => {
         delivery_lng: deliveryLng.value,
         payment_method: 'escrow',
         payment_source: paymentSource.value,
+        promotion_code: cartStore.appliedPromotion?.code || promoCodeInput.value?.trim() || (activePromo.value?.auto_apply ? undefined : undefined),
         weight_kg: 0.5,
         volume_liters: 1.0,
         merchant_id: merchant.value?.id,
@@ -232,6 +278,20 @@ const cartSubtotal = computed(() =>
             </span>
           </div>
         </div>
+      </div>
+
+      <!-- ── PROMO BANNER ── -->
+      <div v-if="activePromo" class="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-3 flex items-center justify-between text-white shadow-sm">
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-black truncate">Promo {{ activePromo.code || 'AUTO' }}: {{ activePromo.code ? 'Diskon '+ (activePromo.discount_type==='flat' ? formatRp(activePromo.discount_value) : activePromo.discount_value+'%') : 'Diskon Otomatis' }} untuk {{ activePromo.max_uses }} order pertama! Budget {{ formatRp(activePromo.budget_total || activePromo.budget_remaining) }}, sisa {{ activePromo.max_uses - activePromo.used_count }} order | Subsidi Platform</p>
+          <p v-if="activePromo.first_purchase_only" class="text-[10px] mt-0.5 font-bold bg-white/20 inline-flex px-2 py-0.5 rounded-full">Hanya Pembelian Pertama</p>
+          <p v-if="activePromo.title" class="text-[10px] mt-1 opacity-90 truncate">{{ activePromo.title }}</p>
+        </div>
+        <span class="ml-3 px-2.5 py-1 bg-white text-amber-600 rounded-full text-[10px] font-black shrink-0">{{ activePromo.discount_type==='flat' ? formatRp(activePromo.discount_value) : activePromo.discount_value+'% OFF' }}</span>
+      </div>
+      <div v-if="activePromo && cartStore.appliedPromotion" class="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-[11px] text-emerald-700 font-medium">
+        ✅ Promo {{ cartStore.appliedPromotion.code || cartStore.appliedPromotion.title }} aktif! Hemat {{ formatRp(cartStore.appliedPromotion.discount_amount) }}
+        <span v-if="cartStore.appliedPromotion.first_purchase_only" class="ml-1 inline-flex px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[9px]">First Buy</span>
       </div>
 
       <!-- ── MENU LIST ── -->
@@ -561,6 +621,37 @@ const cartSubtotal = computed(() =>
               </div>
             </div>
 
+            <!-- Voucher Input -->
+            <div class="space-y-2 bg-amber-50/60 border border-amber-100 rounded-2xl p-3">
+              <label class="text-[9px] font-extrabold text-amber-700 uppercase tracking-widest flex items-center gap-1">🎟️ Kode Voucher (contoh Merdeka81)</label>
+              <div class="flex gap-2">
+                <input
+                  v-model="promoCodeInput"
+                  type="text"
+                  placeholder="Merdeka81"
+                  class="flex-1 h-9 px-3 rounded-xl border border-amber-200 text-xs font-mono font-bold uppercase focus:outline-none focus:border-amber-400 bg-white"
+                  @keyup.enter="handleApplyPromo()"
+                />
+                <button
+                  class="h-9 px-4 bg-amber-500 text-white text-[11px] font-black rounded-xl active:scale-95 transition-all disabled:opacity-50"
+                  :disabled="promoValidating"
+                  @click="handleApplyPromo()"
+                >
+                  {{ promoValidating ? '...' : 'Apply' }}
+                </button>
+              </div>
+              <div v-if="cartStore.appliedPromotion" class="flex items-center justify-between bg-white border border-emerald-200 rounded-xl px-3 py-2">
+                <div class="text-[11px]">
+                  <span class="font-black text-emerald-700">{{ cartStore.appliedPromotion.code || cartStore.appliedPromotion.title }}</span>
+                  <span class="ml-1 text-emerald-600">-{{ formatRp(cartStore.appliedPromotion.discount_amount) }}</span>
+                  <span v-if="cartStore.appliedPromotion.first_purchase_only" class="ml-1 px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[9px]">First Buy</span>
+                </div>
+                <button class="text-[10px] font-bold text-rose-500" @click="handleRemovePromo()">Hapus</button>
+              </div>
+              <p v-if="promoError" class="text-[10px] text-rose-600 font-medium">{{ promoError }}</p>
+              <p v-else-if="activePromo && !cartStore.appliedPromotion" class="text-[10px] text-amber-700">Ada promo {{ activePromo.code || 'AUTO' }} {{ activePromo.discount_type==='flat' ? formatRp(activePromo.discount_value) : activePromo.discount_value+'%' }} - sisa {{ activePromo.max_uses - activePromo.used_count }} order. Ketik kode atau klik Apply untuk pakai.</p>
+            </div>
+
             <div class="space-y-2 text-xs">
               <div class="flex justify-between text-slate-500">
                 <span>Subtotal ({{ cartItemCount }} item)</span>
@@ -577,10 +668,15 @@ const cartSubtotal = computed(() =>
                 </span>
                 <span class="font-bold">Rp {{ cartStore.deliveryFeeSurcharge.toLocaleString('id-ID') }}</span>
               </div>
+              <div v-if="cartStore.appliedPromotion" class="flex justify-between text-emerald-600 font-bold">
+                <span>Diskon Promo ({{ cartStore.appliedPromotion.code || 'AUTO' }}{{ cartStore.appliedPromotion.first_purchase_only ? ' - First Buy' : '' }})</span>
+                <span>-{{ formatRp(cartStore.discountTotal) }}</span>
+              </div>
               <div class="flex justify-between items-center font-black text-slate-900 pt-2 border-t border-slate-100">
                 <span class="text-xs">Total Estimasi</span>
-                <span class="text-base text-primary">Rp {{ (cartSubtotal + 10000 + cartStore.deliveryFeeSurcharge).toLocaleString('id-ID') }}</span>
+                <span class="text-base text-primary">Rp {{ (cartSubtotal + 10000 + cartStore.deliveryFeeSurcharge - cartStore.discountTotal).toLocaleString('id-ID') }}</span>
               </div>
+              <p v-if="cartStore.discountTotal>0" class="text-[10px] text-emerald-600 font-bold text-right">Anda hemat {{ formatRp(cartStore.discountTotal) }}!</p>
             </div>
 
             <button

@@ -59,6 +59,11 @@ const fetchMerchants = async () => {
   try {
     await merchantsStore.fetchNearbyMerchants(lat.value, lng.value, searchRadius.value)
     geoLoading.value = false
+    // fetch active promotions for first 10 merchants for badge display
+    if (merchantsStore.merchants.length > 0) {
+      const ids = merchantsStore.merchants.slice(0, 10).map(m => m.id)
+      merchantsStore.fetchActivePromotionsBatch(ids)
+    }
   } catch {
     error('Gagal mengambil daftar toko terdekat.')
     geoLoading.value = false
@@ -297,6 +302,14 @@ const scrollToTop = () => {
 
           <!-- Right: Content -->
           <div class="flex-1 min-w-0 px-3.5 py-3.5">
+            <!-- Promo badge if active -->
+            <div v-if="merchantsStore.activePromotions[m.id]" class="flex items-center gap-1 mb-1.5">
+              <span class="inline-flex px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px] font-black border border-amber-200">
+                {{ merchantsStore.activePromotions[m.id]?.code || 'AUTO' }} {{ merchantsStore.activePromotions[m.id]?.discount_type==='flat' ? 'Rp'+(merchantsStore.activePromotions[m.id]?.discount_value||0) : (merchantsStore.activePromotions[m.id]?.discount_value||0)+'%' }} OFF
+              </span>
+              <span class="text-[8px] text-slate-400">Sisa {{ (merchantsStore.activePromotions[m.id]?.max_uses||0) - (merchantsStore.activePromotions[m.id]?.used_count||0) }}</span>
+              <span v-if="merchantsStore.activePromotions[m.id]?.first_purchase_only" class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[8px] font-bold">First Buy</span>
+            </div>
             <!-- Name & Rating row -->
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0 flex-1">

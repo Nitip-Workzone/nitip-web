@@ -31,6 +31,19 @@ export interface Menu {
   updated_at: string
 }
 
+export interface ActivePromotion {
+  id: string
+  code?: string | null
+  title: string
+  discount_type: 'flat' | 'percent'
+  discount_value: number
+  budget_remaining: number
+  max_uses: number
+  used_count: number
+  first_purchase_only: boolean
+  merchant_id?: string | null
+}
+
 export const useMerchantsStore = defineStore('merchants', {
   state: () => ({
     merchants: [] as Merchant[],
@@ -38,6 +51,7 @@ export const useMerchantsStore = defineStore('merchants', {
     currentMerchant: null as Merchant | null,
     merchantMenus: [] as Menu[],
     merchantOrders: [] as Array<Record<string, unknown> & { id?: string; status?: string }>,
+    activePromotions: {} as Record<string, ActivePromotion | null>,
     loading: false,
   }),
 
@@ -392,6 +406,31 @@ export const useMerchantsStore = defineStore('merchants', {
       } catch (error) {
         console.error('Failed to toggle menu availability:', error)
         throw error
+      }
+    },
+
+    async fetchActivePromotion(merchantId: string) {
+      const { request } = useApi()
+      try {
+        const res = await request<{ data: ActivePromotion[] }>(`/promotions/active?merchant_id=${merchantId}`)
+        if (res.data && res.data.length > 0) {
+          // prefer auto or first
+          this.activePromotions[merchantId] = res.data[0]
+          return res.data[0]
+        } else {
+          this.activePromotions[merchantId] = null
+          return null
+        }
+      } catch {
+        this.activePromotions[merchantId] = null
+        return null
+      }
+    },
+
+    async fetchActivePromotionsBatch(merchantIds: string[]) {
+      // minimal impact: fetch sequentially limited
+      for (const id of merchantIds.slice(0, 10)) {
+        await this.fetchActivePromotion(id)
       }
     },
   },
