@@ -252,37 +252,45 @@ onMounted(()=>{ fetchProfile() })
       <p class="text-sm font-semibold">Memuat katalog V2...</p>
     </div>
 
-    <div v-else class="space-y-5">
-      <div class="flex items-center justify-between pt-2">
-        <div class="flex items-center gap-3">
-          <NuxtLink to="/merchant/menu" class="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 text-slate-700"><ArrowLeft class="w-4 h-4" /></NuxtLink>
-          <div><h2 class="text-lg font-black tracking-tight">Katalog Menu V2</h2><p class="text-[10px] text-slate-400 font-semibold">Kategori Makanan/Minuman, Varian ±harga + foto, Topping + foto, COS auto-delete</p></div>
+    <div v-else class="space-y-4">
+      <!-- Compact Header - tidak gepeng, mobile friendly -->
+      <div class="flex items-center gap-2.5 pt-1">
+        <NuxtLink to="/merchant/menu" class="w-9 h-9 shrink-0 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-700 active:scale-95"><ArrowLeft class="w-4 h-4" /></NuxtLink>
+        <div class="flex-1 min-w-0">
+          <h2 class="text-[15px] font-black text-slate-900 leading-tight">Katalog Menu</h2>
+          <p class="text-[10px] text-slate-400 font-medium leading-tight truncate">Kategori · Varian ± harga + foto · Topping + foto · COS auto-delete</p>
         </div>
-        <div class="flex gap-2">
-          <button class="h-9 px-3 rounded-xl text-xs font-bold bg-slate-900 text-white flex items-center gap-1" @click="openCategoryModal()"><Tag class="w-3.5 h-3.5" /> Kategori</button>
-          <button class="h-9 px-3.5 rounded-xl text-xs font-black bg-primary text-white flex items-center gap-1" @click="openAddModal"><Plus class="w-4 h-4" /> Tambah</button>
+        <button class="shrink-0 w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center active:scale-95" @click="openCategoryModal()"><Tag class="w-4 h-4" /></button>
+        <button class="shrink-0 h-9 px-3.5 rounded-xl text-xs font-black bg-primary text-white flex items-center gap-1 active:scale-95 shadow-md shadow-primary/20" @click="openAddModal"><Plus class="w-4 h-4" /> Tambah</button>
+      </div>
+
+      <!-- Kategori Chips - Single row, no duplicate -->
+      <div class="space-y-2">
+        <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <button class="shrink-0 h-8 px-4 rounded-full text-[11px] font-black border transition-all" :class="!activeCategoryId ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-slate-600 border-slate-200'" @click="activeCategoryId=null">Semua</button>
+          <button v-for="cat in categories" :key="cat.id" class="shrink-0 h-8 pl-2 pr-3 rounded-full text-[11px] font-bold border flex items-center gap-1.5 transition-all" :class="activeCategoryId===cat.id ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'" @click="activeCategoryId=cat.id">
+            <div class="w-5 h-5 rounded-full bg-slate-100 overflow-hidden flex items-center justify-center shrink-0"><img v-if="cat.image_url" :src="cat.image_url" class="w-full h-full object-cover" /><Tag v-else class="w-3 h-3 text-slate-400" /></div>
+            {{ cat.name }}
+          </button>
+        </div>
+
+        <!-- Manage kategori - compact, hanya jika ada kategori, tidak duplikat chip -->
+        <div v-if="categories.length>0" class="bg-white border border-slate-100 rounded-2xl p-2.5 flex gap-2 overflow-x-auto">
+          <div v-for="cat in categories" :key="cat.id" class="shrink-0 flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-xl px-2.5 py-1.5">
+            <img v-if="cat.image_url" :src="cat.image_url" class="w-5 h-5 rounded-full object-cover" />
+            <span class="text-[10px] font-bold max-w-[80px] truncate">{{ cat.name }}</span>
+            <button class="w-5 h-5 rounded-full bg-white border flex items-center justify-center active:scale-90" @click="openCategoryModal(cat)"><Edit class="w-3 h-3 text-slate-500" /></button>
+            <button class="w-5 h-5 rounded-full bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center active:scale-90" @click="handleDeleteCategory(cat.id)"><Trash2 class="w-3 h-3" /></button>
+          </div>
+          <button class="shrink-0 h-8 px-3 rounded-xl bg-slate-900 text-white text-[10px] font-bold flex items-center gap-1" @click="openCategoryModal()"><Plus class="w-3 h-3" /> Kategori</button>
         </div>
       </div>
 
-      <div class="flex gap-2 overflow-x-auto pb-1">
-        <button class="shrink-0 h-8 px-3.5 rounded-full text-[11px] font-black border" :class="!activeCategoryId ? 'bg-primary text-white border-primary' : 'bg-white text-slate-600 border-slate-200'" @click="activeCategoryId=null">Semua</button>
-        <button v-for="cat in categories" :key="cat.id" class="shrink-0 h-8 px-3.5 rounded-full text-[11px] font-black border flex items-center gap-1.5" :class="activeCategoryId===cat.id ? 'bg-primary text-white border-primary' : 'bg-white text-slate-600 border-slate-200'" @click="activeCategoryId=cat.id"><img v-if="cat.image_url" :src="cat.image_url" class="w-4 h-4 rounded-full object-cover" />{{ cat.name }}</button>
-      </div>
-
-      <div v-if="categories.length>0" class="flex gap-2 overflow-x-auto">
-        <div v-for="cat in categories" :key="cat.id" class="shrink-0 bg-white border border-slate-100 rounded-2xl px-3 py-2 flex items-center gap-2">
-          <img v-if="cat.image_url" :src="cat.image_url" class="w-6 h-6 rounded-full object-cover" />
-          <span class="text-[11px] font-bold">{{ cat.name }}</span>
-          <button class="w-6 h-6 rounded-full bg-slate-50 border flex items-center justify-center" @click="openCategoryModal(cat)"><Edit class="w-3 h-3" /></button>
-          <button class="w-6 h-6 rounded-full bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center" @click="handleDeleteCategory(cat.id)"><Trash2 class="w-3 h-3" /></button>
-        </div>
-      </div>
-
-      <div v-if="filteredMenus.length===0" class="p-12 text-center bg-white border border-slate-100 rounded-3xl text-slate-400">
-        <Utensils class="w-8 h-8 mx-auto mb-3" />
-        <p class="text-sm font-bold text-slate-800 mb-1">Belum Ada Menu</p>
-        <p class="text-xs text-slate-400 mb-4">Tambah menu dengan foto wajib crop 1:1, varian ±harga dengan foto 600, topping dengan foto 400.</p>
-        <button class="h-10 px-5 rounded-2xl text-xs font-black bg-primary text-white" @click="openAddModal">Tambah</button>
+      <div v-if="filteredMenus.length===0" class="py-10 px-6 text-center bg-white border border-slate-100 rounded-[24px] shadow-sm">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-3"><Utensils class="w-7 h-7 text-slate-400" /></div>
+        <p class="text-[13px] font-black text-slate-900">Belum Ada Menu</p>
+        <p class="text-[11px] text-slate-500 mt-1 leading-relaxed max-w-[240px] mx-auto">Tambah menu dengan kategori Makanan/Minuman, foto wajib crop 1:1, varian ±harga dengan foto, topping dengan foto. Gambar di COS auto-delete saat hapus.</p>
+        <button class="mt-4 h-10 px-5 rounded-full text-xs font-black bg-primary text-white shadow-md shadow-primary/20 active:scale-95" @click="openAddModal">+ Tambah Menu</button>
       </div>
 
       <div v-else class="space-y-3.5">
