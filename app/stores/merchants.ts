@@ -449,10 +449,100 @@ export const useMerchantsStore = defineStore('merchants', {
     },
 
     async fetchActivePromotionsBatch(merchantIds: string[]) {
-      // minimal impact: fetch sequentially limited
       for (const id of merchantIds.slice(0, 10)) {
         await this.fetchActivePromotion(id)
       }
+    },
+
+    // === Menu V2 - Kategori, Varian ± dengan image, Topping dengan image ===
+    async fetchCategories() {
+      const { request } = useApi()
+      try {
+        const res = await request<{ data: Array<{ id: string; name: string; image_url?: string; sort_order: number; is_active: boolean }> }>('/merchant/categories')
+        return res.data || []
+      } catch { return [] }
+    },
+    async createCategory(payload: { name: string; image_url?: string; sort_order?: number }) {
+      const { request } = useApi()
+      const res = await request<{ data: { id: string; name: string } }>('/merchant/categories', { method: 'POST', body: payload })
+      return res.data
+    },
+    async updateCategory(id: string, payload: { name: string; image_url?: string; sort_order?: number; is_active?: boolean }) {
+      const { request } = useApi()
+      const res = await request<{ data: { id: string } }>(`/merchant/categories/${id}`, { method: 'PUT', body: payload })
+      return res.data
+    },
+    async deleteCategory(id: string) {
+      const { request } = useApi()
+      await request(`/merchant/categories/${id}`, { method: 'DELETE' })
+    },
+
+    async fetchMenuWithVariants(onlyAvailable = false) {
+      const { request } = useApi()
+      this.loading = true
+      try {
+        const q = onlyAvailable ? '?only_available=true&with_variants=true' : '?with_variants=true'
+        const res = await request<{ data: Menu[] }>(`/merchant/menu${q}`)
+        if (res.data) this.merchantMenus = res.data as unknown as Menu[]
+        return res.data
+      } catch (e) { console.error(e); return [] } finally { this.loading = false }
+    },
+
+    async fetchVariantGroups(menuId: string) {
+      const { request } = useApi()
+      try {
+        const res = await request<{ data: Array<Record<string, unknown>> }>(`/merchant/menu/${menuId}/variants`)
+        return res.data || []
+      } catch { return [] }
+    },
+    async createVariantGroup(menuId: string, payload: { name: string; type: string; is_required?: boolean; min_select?: number; max_select?: number | null; sort_order?: number }) {
+      const { request } = useApi()
+      const res = await request<{ data: { id: string } }>(`/merchant/menu/${menuId}/variants`, { method: 'POST', body: payload })
+      return res.data
+    },
+    async createVariantOption(groupId: string, payload: { label: string; price_delta?: number; image_url?: string; is_default?: boolean; is_available?: boolean; sort_order?: number }) {
+      const { request } = useApi()
+      const res = await request<{ data: { id: string } }>(`/merchant/menu/variants/${groupId}/options`, { method: 'POST', body: payload })
+      return res.data
+    },
+    async deleteVariantGroup(id: string) {
+      const { request } = useApi()
+      await request(`/merchant/menu/variants/${id}`, { method: 'DELETE' })
+    },
+    async deleteVariantOption(id: string) {
+      const { request } = useApi()
+      await request(`/merchant/menu/variants/options/${id}`, { method: 'DELETE' })
+    },
+
+    async fetchToppingGroups(menuId: string) {
+      const { request } = useApi()
+      try {
+        const res = await request<{ data: Array<Record<string, unknown>> }>(`/merchant/menu/${menuId}/toppings`)
+        return res.data || []
+      } catch { return [] }
+    },
+    async createToppingGroup(menuId: string, payload: { name: string; type: string; variant_option_id?: string | null; is_required?: boolean; min_select?: number; max_select?: number | null; sort_order?: number }) {
+      const { request } = useApi()
+      const res = await request<{ data: { id: string } }>(`/merchant/menu/${menuId}/toppings`, { method: 'POST', body: payload })
+      return res.data
+    },
+    async createToppingOption(groupId: string, payload: { label: string; price_delta?: number; image_url?: string; is_available?: boolean; sort_order?: number }) {
+      const { request } = useApi()
+      const res = await request<{ data: { id: string } }>(`/merchant/menu/${groupId}/options`, { method: 'POST', body: payload })
+      // endpoint reuse? actual: /merchant/menu/toppings/:id/options
+      // try both
+      try { return res.data } catch { 
+        const res2 = await request<{ data: { id: string } }>(`/merchant/menu/toppings/${groupId}/options`, { method: 'POST', body: payload })
+        return res2.data
+      }
+    },
+    async deleteToppingGroup(id: string) {
+      const { request } = useApi()
+      await request(`/merchant/menu/toppings/${id}`, { method: 'DELETE' })
+    },
+    async deleteToppingOption(id: string) {
+      const { request } = useApi()
+      await request(`/merchant/menu/toppings/options/${id}`, { method: 'DELETE' })
     },
   },
 })

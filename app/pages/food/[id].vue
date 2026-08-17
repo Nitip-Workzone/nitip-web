@@ -84,21 +84,72 @@ onMounted(async () => {
   }
 })
 
-const handleAdd = (menuItem: { id: string; name: string; price: number; image_url?: string }) => {
+// Variant picker dengan foto varian/topping + price ±
+const showVariantPicker = ref(false)
+const variantPickerMenu = ref<any>(null)
+const selectedVariantOption = ref<{ id: string; label: string; price_delta: number; image_url?: string } | null>(null)
+const selectedToppings = ref<Array<{ id: string; label: string; price_delta: number; image_url?: string }>>([])
+
+const variantFinalPrice = computed(() => {
+  const base = variantPickerMenu.value?.price || 0
+  const vDelta = selectedVariantOption.value?.price_delta || 0
+  const tSum = selectedToppings.value.reduce((s,t)=>s+t.price_delta,0)
+  return Math.max(0, base + vDelta + tSum)
+})
+
+const openVariantPicker = (menuItem: any) => {
+  // Jika menu punya variant_groups atau topping_groups, buka picker
+  const hasVariant = (menuItem.variant_groups && menuItem.variant_groups.length>0) || (menuItem.topping_groups && menuItem.topping_groups.length>0)
+  if (!hasVariant) {
+    // old flow langsung tambah
+    doAddToCart(menuItem, null, [])
+    return
+  }
+  variantPickerMenu.value = menuItem
+  selectedVariantOption.value = null
+  selectedToppings.value = []
+  // auto select default variant if any
+  const groups = menuItem.variant_groups || []
+  for (const g of groups) {
+    const def = (g.options||[]).find((o:any)=>o.is_default) || (g.is_required ? (g.options||[])[0] : null)
+    if (def) { selectedVariantOption.value = { id: def.id, label: def.label, price_delta: def.price_delta, image_url: def.image_url }; break }
+  }
+  showVariantPicker.value = true
+}
+
+const doAddToCart = (menuItem: { id: string; name: string; price: number; image_url?: string }, variant: { id: string; label: string; price_delta: number; image_url?: string } | null, toppings: Array<{ id: string; label: string; price_delta: number; image_url?: string }>) => {
+  const priceDelta = (variant?.price_delta||0) + toppings.reduce((s,t)=>s+t.price_delta,0)
+  const finalPrice = Math.max(0, menuItem.price + priceDelta)
   try {
     cartStore.addToCart(
-      { id: menuItem.id, name: menuItem.name, price: menuItem.price, image_url: menuItem.image_url || '' },
+      {
+        id: menuItem.id,
+        name: menuItem.name,
+        price: menuItem.price,
+        finalPrice,
+        image_url: menuItem.image_url || '',
+        variant: variant ? { optionId: variant.id, label: variant.label, priceDelta: variant.price_delta, imageUrl: variant.image_url } : null,
+        toppings: toppings.map(t=>({ optionId: t.id, label: t.label, priceDelta: t.price_delta, imageUrl: t.image_url })),
+        priceDelta,
+      } as any,
       { id: merchant.value?.id || merchantId, name: merchant.value?.name || 'Toko' }
     )
-    success(`'${menuItem.name}' ditambahkan!`)
+    const vLabel = variant ? ` (${variant.label})` : ''
+    const tLabel = toppings.length ? ` + ${toppings.map(t=>t.label).join(', ')}` : ''
+    success(`'${menuItem.name}${vLabel}${tLabel}' ditambahkan! Rp ${finalPrice.toLocaleString('id-ID')}`)
+    showVariantPicker.value = false
   } catch (err: unknown) {
     if ((err as Error).message === 'DIFFERENT_MERCHANT') {
-      pendingItem.value = menuItem
+      pendingItem.value = menuItem as any
       showClearCartConfirm.value = true
     } else if ((err as Error).message === 'MAX_ITEMS_LIMIT') {
       error('Maaf, Anda hanya dapat memesan maksimal 10 porsi dalam sekali jalan.')
     }
   }
+}
+
+const handleAdd = (menuItem: any) => {
+  openVariantPicker(menuItem)
 }
 
 const confirmClearCart = () => {
@@ -165,8 +216,18 @@ function handleRemovePromo() {
 const handleCheckout = async () => {
   if (cartStore.items.length === 0) return
   checkoutLoading.value = true
-  const itemsPayload = cartStore.items.map(i => ({ menu_id: i.id, quantity: i.quantity, notes: i.notes }))
-  const itemDetailsString = cartStore.items.map(i => `${i.name} (${i.quantity}x)`).join(', ')
+  const itemsPayload = cartStore.items.map(i => ({
+    menu_id: i.id,
+    quantity: i.quantity,
+    notes: i.notes,
+    variant_option_id: (i as any).variant?.optionId || null,
+    topping_option_ids: ((i as any).toppings||[]).map((t:any)=>t.optionId),
+    variant_label: (i as any).variant?.label || null,
+    topping_labels: ((i as any).toppings||[]).map((t:any)=>t.label),
+    price_delta: (i as any).priceDelta || ((i as any).finalPrice - i.price),
+    image_url: (i as any).variant?.imageUrl || i.image_url,
+  }))
+  const itemDetailsString = cartStore.items.map(i => `${i.name}${(i as any).variant ? ` (${(i as any).variant.label})` : ''}${((i as any).toppings||[]).length ? ` + ${(i as any).toppings.map((t:any)=>t.label).join(', ')}` : ''} (${i.quantity}x)`).join(', ')
 
   try {
     const res = await request<{ data: { id: string } }>('/orders', {
@@ -748,6 +809,56 @@ const cartSubtotal = computed(() =>
             <p class="text-[9px] text-slate-400 text-center font-medium">
               {{ paymentSource === 'qris' ? '⚡️ Bayar langsung instan menggunakan QRIS' : '🔒 Saldo dikunci via Escrow hingga pesanan selesai' }}
             </p>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Variant + Topping Picker dengan Foto -->
+    <Transition enter-active-class="transition ease-out duration-300" enter-from-class="translate-y-full" enter-to-class="translate-y-0" leave-active-class="transition ease-in duration-200" leave-from-class="translate-y-0" leave-to-class="translate-y-full">
+      <div v-if="showVariantPicker" class="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm" @click.self="showVariantPicker=false">
+        <div class="bg-white rounded-t-[2rem] w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
+          <div class="px-6 pt-4 pb-3 border-b border-slate-100 shrink-0">
+            <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-slate-100 overflow-hidden border flex items-center justify-center"><img v-if="variantPickerMenu?.image_url" :src="variantPickerMenu.image_url" class="w-full h-full object-cover" /></div>
+                <div>
+                  <h3 class="text-sm font-black text-slate-900">{{ variantPickerMenu?.name }}</h3>
+                  <p class="text-[11px] text-slate-500">Pilih varian ± harga & topping + foto</p>
+                  <p class="text-xs font-black text-primary mt-0.5">Rp {{ variantFinalPrice.toLocaleString('id-ID') }}</p>
+                </div>
+              </div>
+              <button class="w-8 h-8 border rounded-xl flex items-center justify-center" @click="showVariantPicker=false"><X class="w-3.5 h-3.5" /></button>
+            </div>
+          </div>
+          <div class="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+            <!-- Variant Groups -->
+            <div v-for="vg in (variantPickerMenu?.variant_groups||variantPickerMenu?.variantGroups||[])" :key="vg.id" class="space-y-2">
+              <p class="text-[11px] font-black uppercase flex items-center gap-1">{{ vg.name }} <span v-if="vg.is_required" class="px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 text-[8px] border border-rose-100">Wajib</span><span class="text-[9px] font-normal text-slate-400">{{ vg.type==='single'?'Pilih 1':'Boleh banyak' }}</span></p>
+              <div class="space-y-2">
+                <button v-for="opt in (vg.options||[])" :key="opt.id" class="w-full flex items-center gap-3 p-2.5 rounded-2xl border text-left transition-all" :class="selectedVariantOption?.id===opt.id ? 'border-primary bg-primary/5' : 'border-slate-100 bg-white hover:bg-slate-50'" @click="selectedVariantOption={ id: opt.id, label: opt.label, price_delta: opt.price_delta, image_url: opt.image_url }">
+                  <div class="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border flex items-center justify-center shrink-0"><img v-if="opt.image_url" :src="opt.image_url" class="w-full h-full object-cover" /><span v-else class="text-[10px]">🍽️</span></div>
+                  <div class="flex-1 min-w-0"><p class="text-xs font-bold truncate">{{ opt.label }}</p><p class="text-[10px] font-bold" :class="opt.price_delta>=0 ? 'text-emerald-600' : 'text-rose-600'">{{ opt.price_delta===0 ? 'Harga dasar' : (opt.price_delta>0 ? `+Rp ${opt.price_delta.toLocaleString('id-ID')}` : `-Rp ${Math.abs(opt.price_delta).toLocaleString('id-ID')}`) }}</p></div>
+                  <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0" :class="selectedVariantOption?.id===opt.id ? 'border-primary bg-primary' : 'border-slate-300'"><div v-if="selectedVariantOption?.id===opt.id" class="w-2 h-2 rounded-full bg-white" /></div>
+                </button>
+              </div>
+            </div>
+            <!-- Topping Groups -->
+            <div v-for="tg in (variantPickerMenu?.topping_groups||variantPickerMenu?.toppingGroups||[])" :key="tg.id" class="space-y-2">
+              <p class="text-[11px] font-black uppercase">{{ tg.name }} <span class="text-[9px] font-normal text-slate-400">{{ tg.type==='single'?'Pilih 1':'Boleh banyak' }}</span></p>
+              <div class="space-y-2">
+                <button v-for="opt in (tg.options||[])" :key="opt.id" class="w-full flex items-center gap-3 p-2.5 rounded-2xl border text-left transition-all" :class="selectedToppings.find(t=>t.id===opt.id) ? 'border-amber-400 bg-amber-50' : 'border-slate-100 bg-white'" @click="(()=>{ const exists=selectedToppings.find(t=>t.id===opt.id); if (exists) selectedToppings=selectedToppings.filter(t=>t.id!==opt.id); else selectedToppings=[...selectedToppings,{ id:opt.id, label:opt.label, price_delta:opt.price_delta, image_url:opt.image_url }] })()">
+                  <div class="w-10 h-10 rounded-xl bg-slate-100 overflow-hidden border flex items-center justify-center shrink-0"><img v-if="opt.image_url" :src="opt.image_url" class="w-full h-full object-cover" /><span v-else class="text-[9px]">🧀</span></div>
+                  <div class="flex-1 min-w-0"><p class="text-xs font-bold truncate">{{ opt.label }}</p><p class="text-[10px] font-bold text-emerald-600">+Rp {{ opt.price_delta.toLocaleString('id-ID') }}</p></div>
+                  <div class="w-5 h-5 rounded-lg border-2 flex items-center justify-center shrink-0" :class="selectedToppings.find(t=>t.id===opt.id) ? 'border-amber-500 bg-amber-500 text-white' : 'border-slate-300'"><span v-if="selectedToppings.find(t=>t.id===opt.id)">✓</span></div>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="p-4 border-t border-slate-100 bg-white shrink-0 space-y-3">
+            <div class="flex justify-between text-xs"><span class="text-slate-500">Total</span><span class="font-black text-primary">Rp {{ variantFinalPrice.toLocaleString('id-ID') }}</span></div>
+            <button class="w-full h-12 bg-primary text-white rounded-2xl font-black text-xs flex items-center justify-center gap-2" @click="doAddToCart(variantPickerMenu, selectedVariantOption as any, selectedToppings as any)"><ShoppingBag class="w-4 h-4" /> Tambah ke Keranjang • Rp {{ variantFinalPrice.toLocaleString('id-ID') }}</button>
           </div>
         </div>
       </div>

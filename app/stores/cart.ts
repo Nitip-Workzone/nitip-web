@@ -1,12 +1,29 @@
 import { defineStore } from 'pinia'
 
+export interface CartItemVariant {
+  optionId: string
+  label: string
+  priceDelta: number
+  imageUrl?: string
+}
+export interface CartItemTopping {
+  optionId: string
+  label: string
+  priceDelta: number
+  imageUrl?: string
+}
+
 export interface CartItem {
   id: string
   name: string
-  price: number
+  price: number // base price
+  finalPrice: number // base + variant delta + toppings
   quantity: number
   notes: string
   image_url: string
+  variant?: CartItemVariant | null
+  toppings?: CartItemTopping[]
+  priceDelta?: number // total delta from variant + toppings for snapshot
 }
 
 export interface AppliedPromotion {
@@ -33,6 +50,9 @@ export const useCartStore = defineStore('cart', {
       return this.items.reduce((sum, item) => sum + item.quantity, 0)
     },
     subtotal(): number {
+      return this.items.reduce((sum, item) => sum + item.finalPrice * item.quantity, 0)
+    },
+    baseSubtotal(): number {
       return this.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
     },
     deliveryFeeSurcharge(): number {
@@ -48,30 +68,29 @@ export const useCartStore = defineStore('cart', {
   },
 
   actions: {
-    addToCart(item: Omit<CartItem, 'quantity' | 'notes'>, merchant: { id: string; name: string }) {
-      // Single merchant constraint validation
+    addToCart(item: Omit<CartItem, 'quantity' | 'notes' | 'finalPrice'> & { finalPrice?: number; variant?: CartItemVariant | null; toppings?: CartItemTopping[]; priceDelta?: number }, merchant: { id: string; name: string }) {
       if (this.merchantId && this.merchantId !== merchant.id) {
         throw new Error('DIFFERENT_MERCHANT')
       }
-
       this.merchantId = merchant.id
       this.merchantName = merchant.name
 
-      const existing = this.items.find(i => i.id === item.id)
+      const finalPrice = item.finalPrice ?? item.price + (item.priceDelta ?? 0)
+      // Unique key includes variant + toppings to avoid merging different variants
+      const key = `${item.id}__${item.variant?.optionId||'novariant'}__${(item.toppings||[]).map(t=>t.optionId).sort().join(',')}`
+      const existing = this.items.find(i => `${i.id}__${i.variant?.optionId||'novariant'}__${(i.toppings||[]).map(t=>t.optionId).sort().join(',')}`===key)
       if (existing) {
-        if (this.totalItems >= 10) {
-          throw new Error('MAX_ITEMS_LIMIT')
-        }
+        if (this.totalItems >= 10) throw new Error('MAX_ITEMS_LIMIT')
         existing.quantity++
       } else {
-        if (this.totalItems >= 10) {
-          throw new Error('MAX_ITEMS_LIMIT')
-        }
+        if (this.totalItems >= 10) throw new Error('MAX_ITEMS_LIMIT')
         this.items.push({
           ...item,
+          finalPrice,
           quantity: 1,
           notes: '',
-        })
+          priceDelta: item.priceDelta ?? (finalPrice - item.price),
+        } as CartItem)
       }
     },
 
