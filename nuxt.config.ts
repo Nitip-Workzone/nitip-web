@@ -91,6 +91,10 @@ export default defineNuxtConfig({
       '/api/v1': {
         target: 'https://api.nihtip.com/api/v1',
         changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'https://api.nihtip.com/uploads',
+        changeOrigin: true,
       }
     },
     routeRules: {

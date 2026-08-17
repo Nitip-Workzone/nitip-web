@@ -273,8 +273,19 @@ const scrollToTop = () => {
           class="group bg-white rounded-3xl border border-slate-100 overflow-hidden flex gap-0 shadow-sm hover:shadow-md hover:border-primary/15 active:scale-[0.99] transition-all duration-200"
           :class="!m.is_open ? 'opacity-65 bg-slate-50/60 grayscale border-slate-200/50' : ''"
         >
-          <!-- Left: Visual Avatar -->
-          <div class="w-[72px] shrink-0 relative self-stretch">
+          <!-- Left: Visual Avatar - IKUTI EXISTING food/[id].vue: langsung pakai image_url (absolute URL dari backend) -->
+          <div class="w-[88px] shrink-0 relative self-stretch overflow-hidden rounded-l-3xl bg-slate-50">
+            <!-- Merchant profile image: sama seperti detail food/[id].vue -> :src="merchant.image_url" -->
+            <img
+              v-if="m.image_url"
+              :src="m.image_url"
+              :alt="m.name"
+              class="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
+              decoding="async"
+              @error="(e) => { (e.target as HTMLImageElement).style.display = 'none' }"
+            />
+            <!-- Fallback emoji selalu di belakang, muncul ketika img hidden / tidak ada -->
             <div
               class="absolute inset-0 flex items-center justify-center text-3xl"
               :class="[
@@ -285,7 +296,7 @@ const scrollToTop = () => {
             >
               {{ getCategoryEmoji(m.category) }}
             </div>
-            
+
             <!-- Closed overlay badge on avatar -->
             <div v-if="!m.is_open" class="absolute inset-0 bg-black/35 backdrop-blur-[0.5px] flex items-center justify-center">
               <span class="text-[9px] font-black text-white tracking-widest uppercase bg-rose-500/90 px-1.5 py-0.5 rounded shadow-sm">TUTUP</span>
@@ -293,7 +304,7 @@ const scrollToTop = () => {
             <!-- Rank badge for top 3 open merchants -->
             <div
               v-if="idx < 3 && m.is_open"
-              class="absolute top-1.5 left-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black shadow-sm"
+              class="absolute top-1.5 left-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black shadow-sm z-10"
               :class="idx === 0 ? 'bg-amber-400 text-white' : idx === 1 ? 'bg-slate-300 text-slate-700' : 'bg-orange-300 text-white'"
             >
               {{ idx + 1 }}

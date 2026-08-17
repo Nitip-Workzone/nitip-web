@@ -5,38 +5,22 @@ on:
     branches:
       - main
 
-concurrency:
-  group: deploy-nitip-web
-  cancel-in-progress: false
-
 jobs:
   deploy:
     runs-on: nitip-prod
-    env:
-      NODE_NO_WARNINGS: 1
 
     steps:
-      - name: Checkout Code (retry for 429)
-        uses: Wandalen/wretry.action@v3
-        with:
-          attempt_limit: 5
-          attempt_delay: 10000
-          action: actions/checkout@v4
-          with: |
-            fetch-depth: 1
-
-      - name: Setup Node.js (retry for 429)
-        uses: Wandalen/wretry.action@v3
-        with:
-          attempt_limit: 3
-          attempt_delay: 5000
-          action: actions/setup-node@v4
-          with: |
-            node-version: '22'
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Copy Secrets File
         run: |
           cp ~/.secret/nitip-web-production.env .env
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
       - name: Enable Corepack (Yarn)
         run: |
@@ -46,93 +30,23 @@ jobs:
         run: |
           yarn install --frozen-lockfile
 
-      - name: Build Static Site (with old WebView compatibility checks)
+      - name: Build Static Site
         run: |
-          echo "🧹 Cleaning previous build artifacts..."
           rm -rf .output .nuxt
-          echo "🔍 Checking env secrets..."
-          if grep -q NUXT_PUBLIC_NITIP_API_URL .env; then echo "API URL configured."; else echo "API URL missing!"; fi
-          if grep -q NUXT_PUBLIC_NITIP_API_KEY .env; then echo "API KEY configured."; else echo "API KEY missing!"; fi
-          
-          echo "🔨 Building SPA static site..."
-          echo "Node: $(node -v) Yarn: $(yarn -v)"
-          echo "Vite target should be es2019 + fix-array-at plugin to avoid w.matched.at is not a function on old WebView (< Chrome 92)"
           yarn generate
-          
-          echo "✅ Build complete. Verifying bundle..."
-          echo "Checking .output/public exists..."
-          ls -lh .output/public/ | head -n 10
-          echo "Total chunks:"
-          ls .output/public/_nuxt/*.js 2>/dev/null | wc -l
-          
-          echo "🔍 Critical check: vue-router matched.at should be 0 (real HP WebView < Chrome 92 crash fix)"
-          echo "Checking for pattern '.matched.at(' which is vue-router specific, not Array.prototype.at"
-          MATCHED_COUNT=$(grep -R "\.matched\.at(" .output/public/_nuxt/*.js 2>/dev/null | wc -l)
-          echo "vue-router matched.at count: $MATCHED_COUNT (should be 0)"
-          if [ "$MATCHED_COUNT" -gt 0 ]; then
-            echo "❌ FAILED: vue-router matched.at( still exists - this will cause 500 on old Android WebView (real HP)"
-            echo "Files containing .matched.at(:"
-            grep -R "\.matched\.at(" .output/public/_nuxt/*.js 2>/dev/null | head -n 5
-            echo "Build config nuxt.config.ts vite.build.target should be es2019 and plugin fix-array-at must handle vue-router"
-            exit 1
-          else
-            echo "✅ PASS: 0 vue-router matched.at( - WebView old compatible"
-          fi
-          echo "Note: Array.prototype.at is allowed (polyfill), only .matched.at( is forbidden"
-          
-          echo "🔍 Check polyfill exists (Array.prototype.at inline)"
-          POLYFILL=$(grep -R "Array.prototype.at" .output/public/_nuxt/*.js .output/public/index.html 2>/dev/null | wc -l)
-          echo "polyfill count: $POLYFILL (should be >=1 from inline head script + plugin)"
-
-          echo "🔍 Check for #entry import maps (HUAWEI WebView Chrome 88 engine but UA Chrome 120 - no importmap support)"
-          echo "HUAWEI AGS6-W09 log: Loaded native library version 88.0.4324.93 but UA Chrome/120.0.0.0 - import maps needs Chrome 89+"
-          ENTRY_COUNT=$(grep -R '"#entry"' .output/public/index.html .output/public/200.html 2>/dev/null | wc -l)
-          echo "#entry importmap in HTML count: $ENTRY_COUNT (should be 0 after nuxt.config experimental.entryImportMap false, but Nuxt 4 may still generate)"
-          if [ "$ENTRY_COUNT" -gt 0 ]; then
-            echo "⚠️  Found #entry importmap in HTML - will fix via post-build replacement"
-            echo "HTML with #entry:"
-            grep -o '<script type="importmap">.*</script>' .output/public/index.html | head -c 200
-            echo ""
-            echo "🔧 Fixing #entry import maps for HUAWEI WebView compatibility..."
-            # Find actual entry file name from importmap
-            ENTRY_FILE=$(grep -o '"#entry":"[^"]*"' .output/public/index.html | head -n 1 | cut -d'"' -f4)
-            echo "Entry file from importmap: $ENTRY_FILE"
-            if [ -n "$ENTRY_FILE" ]; then
-              # Replace all from "#entry" imports with relative path to actual entry file
-              # And remove importmap script tag
-              echo "Replacing #entry with $ENTRY_FILE in all chunks + removing importmap tag from HTML"
-              sed -i "s|from \"#entry\"|from \"$ENTRY_FILE\"|g" .output/public/_nuxt/*.js
-              sed -i "s|from '#entry'|from '$ENTRY_FILE'|g" .output/public/_nuxt/*.js
-              sed -i "s|\"#entry\"|\"$ENTRY_FILE\"|g" .output/public/_nuxt/*.js
-              # Remove importmap script tag from HTML files
-              sed -i '/<script type="importmap">.*<\/script>/d' .output/public/index.html
-              sed -i '/<script type="importmap">.*<\/script>/d' .output/public/200.html
-              sed -i '/<script type="importmap">.*<\/script>/d' .output/public/404.html
-              # Also remove from other HTML files
-              find .output/public -name "*.html" -exec sed -i '/<script type="importmap">.*<\/script>/d' {} \;
-              echo "✅ Fixed #entry import maps"
-              echo "Verifying fix:"
-              echo -n "#entry in HTML after fix: "; grep -R '"#entry"' .output/public/*.html 2>/dev/null | wc -l
-              echo -n "#entry in _nuxt JS after fix: "; grep -R "from \"#entry\"\|from '#entry'" .output/public/_nuxt/*.js 2>/dev/null | wc -l
-            else
-              echo "⚠️  Could not parse entry file from importmap, skipping fix"
-            fi
-          else
-            echo "✅ No #entry importmap in HTML - HUAWEI compatible"
-          fi
 
       - name: Stop and Cleanup Docker Web Container
         run: |
           docker compose down || true
           docker image rm nitip-web-app || true
 
-      - name: Deploy Static Files to Nginx Path (with cache busting)
+      - name: Deploy Static Files to Nginx Path
         run: |
-          echo "🚀 Deploying to /var/www/nitip-web/ ..."
           rm -rf /var/www/nitip-web/*
           cp -r .output/public/* /var/www/nitip-web/
-          echo "✅ Deployed files:"
           ls -lh /var/www/nitip-web/ | head -n 20
-          echo "📦 Nginx will serve with no-store headers for /merchant/** and /map/** (set in nginx.conf)"
-          # Optional: reload nginx if config changed
-          # sudo nginx -t && sudo nginx -s reload || true
+
+      - name: Cleanup
+        run: |
+          rm -f .env || true
+          docker image prune -f

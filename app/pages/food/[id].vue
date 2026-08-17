@@ -38,6 +38,29 @@ const promoError = ref('')
 
 const formatRp = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
 
+// ── SCROLL LOCK for modals: prevent background scroll bleeding ──
+const lockBodyScroll = () => {
+  if (typeof document !== 'undefined') {
+    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+    document.body.style.overscrollBehavior = 'none'
+    document.documentElement.style.overscrollBehavior = 'none'
+  }
+}
+const unlockBodyScroll = () => {
+  if (typeof document !== 'undefined') {
+    document.documentElement.style.overflow = ''
+    document.body.style.overflow = ''
+    document.body.style.overscrollBehavior = ''
+    document.documentElement.style.overscrollBehavior = ''
+  }
+}
+watch([showCartDrawer, showVariantPicker, showClearCartConfirm], ([cart, variant, clear]) => {
+  if (cart || variant || clear) lockBodyScroll()
+  else unlockBodyScroll()
+})
+onBeforeUnmount(() => unlockBodyScroll())
+
 // Watcher COD: jika paymentSource berubah ke cod (future), voucher tidak bisa dan dikosongkan
 watch(paymentSource, (newVal) => {
   if ((newVal as string) === 'cod') {
@@ -586,7 +609,7 @@ const cartSubtotal = computed(() =>
       </div>
     </Transition>
 
-    <!-- ── CART BOTTOM SHEET ── -->
+    <!-- ── CART BOTTOM SHEET - FIXED: anti kejepit, scroll lock, overscroll-contain ── -->
     <Transition
       enter-active-class="transition ease-out duration-300"
       enter-from-class="translate-y-full"
@@ -597,12 +620,19 @@ const cartSubtotal = computed(() =>
     >
       <div
         v-if="showCartDrawer"
-        class="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+        class="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm overscroll-contain"
         @click.self="showCartDrawer = false"
+        @touchmove.prevent
+        @wheel.prevent
       >
-        <div class="bg-white rounded-t-[2rem] w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
-          <!-- Handle + Header -->
-          <div class="px-6 pt-4 pb-3 border-b border-slate-100 shrink-0">
+        <div
+          class="bg-white rounded-t-[2rem] w-full max-w-md flex flex-col overflow-hidden overscroll-contain"
+          style="max-height: 92dvh; max-height: 92vh; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;"
+          @touchmove.stop
+          @wheel.stop
+        >
+          <!-- Handle + Header (fixed) -->
+          <div class="px-6 pt-4 pb-3 border-b border-slate-100 shrink-0 bg-white">
             <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
             <div class="flex items-center justify-between">
               <div>
@@ -618,8 +648,6 @@ const cartSubtotal = computed(() =>
                 <X class="w-3.5 h-3.5 text-slate-500" />
               </button>
             </div>
-
-            <!-- Progress bar item limit -->
             <div class="mt-3">
               <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <div
@@ -634,53 +662,58 @@ const cartSubtotal = computed(() =>
             </div>
           </div>
 
-          <!-- Cart items -->
-          <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-            <div
-              v-for="item in cartStore.items"
-              :key="item.id"
-              class="flex gap-3 items-start"
-            >
-              <div class="w-10 h-10 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center shrink-0 text-xl">
-                🍴
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-start justify-between gap-2">
-                  <div class="min-w-0 flex-1">
-                    <h5 class="text-xs font-bold text-slate-800 truncate">{{ item.name }}</h5>
-                    <p class="text-[10px] text-slate-400 mt-0.5">
-                      Rp {{ item.price.toLocaleString('id-ID') }} × {{ item.quantity }} =
-                      <span class="font-bold text-slate-600">Rp {{ (item.price * item.quantity).toLocaleString('id-ID') }}</span>
-                    </p>
-                  </div>
-                  <!-- Qty -->
-                  <div class="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shrink-0">
-                    <button class="w-7 h-7 flex items-center justify-center text-slate-500 hover:bg-slate-100 active:scale-90 transition-all" @click="handleDecrement(item.id)">
-                      <Minus class="w-3 h-3" />
-                    </button>
-                    <span class="text-xs font-black text-slate-800 px-1 min-w-[20px] text-center">{{ item.quantity }}</span>
-                    <button class="w-7 h-7 flex items-center justify-center text-slate-500 hover:bg-slate-100 active:scale-90 transition-all" @click="handleIncrement(item.id)">
-                      <Plus class="w-3 h-3" />
-                    </button>
-                  </div>
+          <!-- SCROLLABLE CONTENT: items + alamat + pembayaran + voucher (semua bisa scroll, tidak kejepit) -->
+          <div
+            class="flex-1 overflow-y-auto overscroll-contain px-6 py-4 space-y-5"
+            style="overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;"
+            @touchmove.stop
+          >
+            <!-- Cart items list -->
+            <div class="space-y-3">
+              <p class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Item Pesanan ({{ cartItemCount }})</p>
+              <div
+                v-for="item in cartStore.items"
+                :key="item.id"
+                class="bg-slate-50/80 border border-slate-100 rounded-2xl p-3 flex gap-3 items-start"
+              >
+                <div class="w-12 h-12 bg-white border border-slate-100 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
+                  <img v-if="(item as any).image_url" :src="(item as any).image_url" class="w-full h-full object-cover" />
+                  <span v-else class="text-xl">🍴</span>
                 </div>
-                <!-- Notes input -->
-                <div class="relative mt-1.5">
-                  <FileText class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-300" />
-                  <input
-                    :value="item.notes"
-                    type="text"
-                    placeholder="Catatan... (contoh: tidak pedas)"
-                    class="w-full h-8 pl-7 pr-3 rounded-lg border border-slate-100 text-[10px] font-medium focus:outline-none focus:border-primary/40 bg-slate-50 transition-all"
-                    @input="e => cartStore.updateNotes(item.id, (e.target as HTMLInputElement).value)"
-                  >
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0 flex-1">
+                      <h5 class="text-xs font-bold text-slate-800 leading-tight truncate">{{ item.name }}</h5>
+                      <p v-if="(item as any).variant" class="text-[10px] text-primary font-semibold mt-0.5">Varian: {{ (item as any).variant.label }} {{ (item as any).variant.priceDelta ? `+Rp ${(item as any).variant.priceDelta.toLocaleString('id-ID')}` : '' }}</p>
+                      <p v-if="((item as any).toppings||[]).length" class="text-[10px] text-amber-700 mt-0.5 truncate">+ {{ ((item as any).toppings||[]).map((t:any)=>t.label).join(', ') }}</p>
+                      <p class="text-[11px] text-slate-600 mt-1 font-bold">
+                        Rp {{ ((item as any).finalPrice || item.price).toLocaleString('id-ID') }} × {{ item.quantity }} = <span class="text-primary">Rp {{ (((item as any).finalPrice || item.price) * item.quantity).toLocaleString('id-ID') }}</span>
+                      </p>
+                    </div>
+                    <div class="flex items-center bg-white border border-slate-200 rounded-xl overflow-hidden shrink-0 shadow-sm">
+                      <button class="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 active:scale-90 transition-all" @click="handleDecrement(item.id)">
+                        <Minus class="w-3.5 h-3.5" />
+                      </button>
+                      <span class="text-xs font-black text-slate-800 px-2 min-w-[24px] text-center">{{ item.quantity }}</span>
+                      <button class="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 active:scale-90 transition-all" @click="handleIncrement(item.id)">
+                        <Plus class="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <div class="relative mt-2">
+                    <FileText class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-300" />
+                    <input
+                      :value="item.notes"
+                      type="text"
+                      placeholder="Catatan... (contoh: tidak pedas)"
+                      class="w-full h-8 pl-7 pr-3 rounded-xl border border-white text-[10px] font-medium focus:outline-none focus:border-primary/40 bg-white transition-all shadow-sm"
+                      @input="e => cartStore.updateNotes(item.id, (e.target as HTMLInputElement).value)"
+                    >
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Checkout summary -->
-          <div class="px-6 pb-6 pt-4 border-t border-slate-100 space-y-4 shrink-0 bg-white">
             <!-- Delivery Address Input -->
             <div class="space-y-2">
               <label class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">Alamat Pengantaran</label>
@@ -694,7 +727,7 @@ const cartSubtotal = computed(() =>
                 >
               </div>
               <p class="text-[9px] text-slate-400 font-medium px-1">
-                📍 Koordinat saat ini: {{ deliveryLat.toFixed(5) }}, {{ deliveryLng.toFixed(5) }}
+                📍 Koordinat: {{ deliveryLat.toFixed(5) }}, {{ deliveryLng.toFixed(5) }}
               </p>
             </div>
 
@@ -705,7 +738,7 @@ const cartSubtotal = computed(() =>
                 <button
                   type="button"
                   :class="[
-                    'p-2.5 border rounded-2xl text-left transition-all flex flex-col justify-between h-[52px] select-none',
+                    'p-2.5 border rounded-2xl text-left transition-all flex flex-col justify-between h-[56px] select-none',
                     paymentSource === 'wallet' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 bg-slate-50/50 text-slate-500'
                   ]"
                   @click="paymentSource = 'wallet'"
@@ -718,11 +751,10 @@ const cartSubtotal = computed(() =>
                     Rp {{ walletStore.balance.toLocaleString('id-ID') }}
                   </div>
                 </button>
-
                 <button
                   type="button"
                   :class="[
-                    'p-2.5 border rounded-2xl text-left transition-all flex flex-col justify-between h-[52px] select-none',
+                    'p-2.5 border rounded-2xl text-left transition-all flex flex-col justify-between h-[56px] select-none',
                     paymentSource === 'qris' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 bg-slate-50/50 text-slate-500'
                   ]"
                   @click="paymentSource = 'qris'"
@@ -746,104 +778,121 @@ const cartSubtotal = computed(() =>
                   v-model="promoCodeInput"
                   type="text"
                   placeholder="Merdeka81"
-                  class="flex-1 h-9 px-3 rounded-xl border border-amber-200 text-xs font-mono font-bold uppercase focus:outline-none focus:border-amber-400 bg-white"
+                  class="flex-1 h-10 px-3 rounded-xl border border-amber-200 text-xs font-mono font-bold uppercase focus:outline-none focus:border-amber-400 bg-white"
                   @keyup.enter="handleApplyPromo()"
                 />
                 <button
-                  class="h-9 px-4 bg-amber-500 text-white text-[11px] font-black rounded-xl active:scale-95 transition-all disabled:opacity-50"
+                  class="h-10 px-5 bg-amber-500 text-white text-[11px] font-black rounded-xl active:scale-95 transition-all disabled:opacity-50 shrink-0"
                   :disabled="promoValidating"
                   @click="handleApplyPromo()"
                 >
                   {{ promoValidating ? '...' : 'Apply' }}
                 </button>
               </div>
-              <div v-if="cartStore.appliedPromotion" class="flex items-center justify-between bg-white border border-emerald-200 rounded-xl px-3 py-2">
-                <div class="text-[11px]">
+              <div v-if="cartStore.appliedPromotion" class="flex items-center justify-between bg-white border border-emerald-200 rounded-xl px-3 py-2.5">
+                <div class="text-[11px] min-w-0 flex-1">
                   <span class="font-black text-emerald-700">{{ cartStore.appliedPromotion.code || cartStore.appliedPromotion.title }}</span>
                   <span class="ml-1 text-emerald-600">-{{ formatRp(cartStore.appliedPromotion.discount_amount) }}</span>
                   <span v-if="cartStore.appliedPromotion.first_purchase_only" class="ml-1 px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[9px]">First Buy</span>
                 </div>
-                <button class="text-[10px] font-bold text-rose-500" @click="handleRemovePromo()">Hapus</button>
+                <button class="text-[10px] font-bold text-rose-500 ml-2 shrink-0" @click="handleRemovePromo()">Hapus</button>
               </div>
               <p v-if="promoError" class="text-[10px] text-rose-600 font-medium">{{ promoError }}</p>
-              <p v-else-if="activePromo && !cartStore.appliedPromotion" class="text-[10px] text-amber-700">Ada promo {{ activePromo.code || 'AUTO' }} {{ activePromo.discount_type==='flat' ? formatRp(activePromo.discount_value) : activePromo.discount_value+'%' }} - sisa {{ activePromo.max_uses - activePromo.used_count }} order. Ketik kode atau klik Apply untuk pakai.</p>
+              <p v-else-if="activePromo && !cartStore.appliedPromotion" class="text-[10px] text-amber-700 leading-relaxed">Ada promo {{ activePromo.code || 'AUTO' }} {{ activePromo.discount_type==='flat' ? formatRp(activePromo.discount_value) : activePromo.discount_value+'%' }} - sisa {{ activePromo.max_uses - activePromo.used_count }} order. Ketik kode atau klik Apply.</p>
             </div>
 
-            <div class="space-y-2 text-xs">
-              <div class="flex justify-between text-slate-500">
+            <!-- Price summary -->
+            <div class="space-y-2.5 text-xs bg-slate-50/70 border border-slate-100 rounded-2xl p-3.5">
+              <div class="flex justify-between text-slate-600">
                 <span>Subtotal ({{ cartItemCount }} item)</span>
-                <span class="font-bold text-slate-700">Rp {{ cartSubtotal.toLocaleString('id-ID') }}</span>
+                <span class="font-bold text-slate-800">Rp {{ cartSubtotal.toLocaleString('id-ID') }}</span>
               </div>
-              <div class="flex justify-between text-slate-500">
-                <span>Ongkos Kirim Bawaan</span>
-                <span class="font-bold text-slate-700">Rp 10.000</span>
+              <div class="flex justify-between text-slate-600">
+                <span>Ongkos Kirim</span>
+                <span class="font-bold text-slate-800">Rp 10.000</span>
               </div>
-              <div v-if="cartStore.deliveryFeeSurcharge > 0" class="flex justify-between text-primary">
+              <div v-if="cartStore.deliveryFeeSurcharge > 0" class="flex justify-between text-primary font-bold">
                 <span class="flex items-center gap-1">
-                  Surcharge Item
-                  <span class="text-[8px] font-extrabold px-1.5 py-0.5 rounded-full bg-primary/10 uppercase">+Rp 2rb/item</span>
+                  Surcharge
+                  <span class="text-[8px] px-1.5 py-0.5 rounded-full bg-primary/10 uppercase">+2RB/item</span>
                 </span>
-                <span class="font-bold">Rp {{ cartStore.deliveryFeeSurcharge.toLocaleString('id-ID') }}</span>
+                <span>Rp {{ cartStore.deliveryFeeSurcharge.toLocaleString('id-ID') }}</span>
               </div>
-              <div v-if="cartStore.appliedPromotion" class="flex justify-between text-emerald-600 font-bold">
-                <span>Diskon Promo ({{ cartStore.appliedPromotion.code || 'AUTO' }}{{ cartStore.appliedPromotion.first_purchase_only ? ' - First Buy' : '' }})</span>
-                <span>-{{ formatRp(cartStore.discountTotal) }}</span>
+              <div v-if="cartStore.appliedPromotion" class="flex justify-between text-emerald-600 font-black">
+                <span class="truncate mr-2">Diskon {{ cartStore.appliedPromotion.code || 'AUTO' }}</span>
+                <span class="shrink-0">-{{ formatRp(cartStore.discountTotal) }}</span>
               </div>
-              <!-- Merchant Fee Audit Info (Opsi A: merchant bayar, bukan buyer) -->
-              <div class="bg-indigo-50/60 border border-indigo-100 rounded-xl px-3 py-2 flex items-start gap-2">
-                <span class="text-[14px]">ℹ️</span>
+              <div class="bg-indigo-50/60 border border-indigo-100 rounded-xl px-3 py-2.5 flex items-start gap-2">
+                <span class="text-[14px] shrink-0">ℹ️</span>
                 <div class="text-[10px] leading-relaxed">
-                  <p class="font-bold text-indigo-800">Biaya layanan merchant ditanggung merchant</p>
-                  <p class="text-indigo-700/80">Harga yang kamu bayar tetap murni (10k tetap 10k). Fee tier 1k/3k/5k dipotong dari saldo merchant saat settlement, bukan tambah ke totalmu. Audit: fee terlihat di rincian merchant.</p>
+                  <p class="font-bold text-indigo-800">Biaya layanan ditanggung merchant</p>
+                  <p class="text-indigo-700/80">Harga yang kamu bayar tetap murni. Fee tier 1k/3k/5k dipotong dari saldo merchant saat settlement.</p>
                 </div>
               </div>
-              <div class="flex justify-between items-center font-black text-slate-900 pt-2 border-t border-slate-100">
-                <span class="text-xs">Total Estimasi</span>
-                <span class="text-base text-primary">Rp {{ (cartSubtotal + 10000 + cartStore.deliveryFeeSurcharge - cartStore.discountTotal).toLocaleString('id-ID') }}</span>
+              <div class="flex justify-between items-center font-black text-slate-900 pt-2.5 border-t border-slate-200">
+                <span class="text-[13px]">Total Estimasi</span>
+                <span class="text-[16px] text-primary">Rp {{ (cartSubtotal + 10000 + cartStore.deliveryFeeSurcharge - cartStore.discountTotal).toLocaleString('id-ID') }}</span>
               </div>
-              <p v-if="cartStore.discountTotal>0" class="text-[10px] text-emerald-600 font-bold text-right">Anda hemat {{ formatRp(cartStore.discountTotal) }}!</p>
+              <p v-if="cartStore.discountTotal>0" class="text-[10px] text-emerald-600 font-black text-right">Hemat {{ formatRp(cartStore.discountTotal) }}!</p>
             </div>
+          </div>
 
+          <!-- Footer fixed: checkout button only (tidak kejepit karena content sudah scrollable) -->
+          <div class="px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 border-t border-slate-100 space-y-2.5 shrink-0 bg-white">
             <button
               :disabled="checkoutLoading || cartStore.items.length === 0"
-              class="w-full h-12 bg-primary text-white font-black text-xs rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-primary/25 active:scale-[0.98] transition-all disabled:opacity-50"
+              class="w-full h-[52px] bg-primary text-white font-black text-[13px] rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-primary/25 active:scale-[0.98] transition-all disabled:opacity-50"
               @click="handleCheckout"
             >
               <span v-if="checkoutLoading" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               <ShoppingBag v-else class="w-4 h-4" />
               {{ checkoutLoading ? 'Memproses...' : paymentSource === 'qris' ? 'Pesan & Bayar QRIS' : 'Pesan & Kunci Escrow' }}
             </button>
-
-            <p class="text-[9px] text-slate-400 text-center font-medium">
-              {{ paymentSource === 'qris' ? '⚡️ Bayar langsung instan menggunakan QRIS' : '🔒 Saldo dikunci via Escrow hingga pesanan selesai' }}
+            <p class="text-[9px] text-slate-400 text-center font-medium pb-1">
+              {{ paymentSource === 'qris' ? '⚡️ Bayar langsung instan QRIS' : '🔒 Saldo dikunci via Escrow' }}
             </p>
           </div>
         </div>
       </div>
     </Transition>
 
-    <!-- Variant + Topping Picker dengan Foto -->
+    <!-- Variant + Topping Picker dengan Foto - FIXED scroll lock, overscroll-contain -->
     <Transition enter-active-class="transition ease-out duration-300" enter-from-class="translate-y-full" enter-to-class="translate-y-0" leave-active-class="transition ease-in duration-200" leave-from-class="translate-y-0" leave-to-class="translate-y-full">
-      <div v-if="showVariantPicker" class="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm" @click.self="showVariantPicker=false">
-        <div class="bg-white rounded-t-[2rem] w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
-          <div class="px-6 pt-4 pb-3 border-b border-slate-100 shrink-0">
+      <div
+        v-if="showVariantPicker"
+        class="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm overscroll-contain"
+        @click.self="showVariantPicker=false"
+        @touchmove.prevent
+        @wheel.prevent
+      >
+        <div
+          class="bg-white rounded-t-[2rem] w-full max-w-md flex flex-col overflow-hidden overscroll-contain"
+          style="max-height: 88dvh; max-height: 88vh; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;"
+          @touchmove.stop
+          @wheel.stop
+        >
+          <div class="px-6 pt-4 pb-3 border-b border-slate-100 shrink-0 bg-white">
             <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
             <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-2xl bg-slate-100 overflow-hidden border flex items-center justify-center"><img v-if="variantPickerMenu?.image_url" :src="variantPickerMenu.image_url" class="w-full h-full object-cover" /></div>
-                <div>
-                  <h3 class="text-sm font-black text-slate-900">{{ variantPickerMenu?.name }}</h3>
-                  <p class="text-[11px] text-slate-500">Pilih varian ± harga & topping + foto</p>
+              <div class="flex items-center gap-3 min-w-0 flex-1">
+                <div class="w-12 h-12 rounded-2xl bg-slate-100 overflow-hidden border flex items-center justify-center shrink-0"><img v-if="variantPickerMenu?.image_url" :src="variantPickerMenu.image_url" class="w-full h-full object-cover" /><span v-else class="text-lg">🍽️</span></div>
+                <div class="min-w-0">
+                  <h3 class="text-sm font-black text-slate-900 truncate">{{ variantPickerMenu?.name }}</h3>
+                  <p class="text-[11px] text-slate-500 truncate">Pilih varian ± harga & topping + foto</p>
                   <p class="text-xs font-black text-primary mt-0.5">Rp {{ variantFinalPrice.toLocaleString('id-ID') }}</p>
                 </div>
               </div>
-              <button class="w-8 h-8 border rounded-xl flex items-center justify-center" @click="showVariantPicker=false"><X class="w-3.5 h-3.5" /></button>
+              <button class="w-8 h-8 border border-slate-200 rounded-xl flex items-center justify-center hover:bg-slate-50 shrink-0 ml-2" @click="showVariantPicker=false"><X class="w-3.5 h-3.5" /></button>
             </div>
           </div>
-          <div class="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+          <div
+            class="flex-1 overflow-y-auto overscroll-contain px-6 py-4 space-y-5"
+            style="overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;"
+            @touchmove.stop
+          >
             <!-- Variant Groups -->
             <div v-for="vg in (variantPickerMenu?.variant_groups||variantPickerMenu?.variantGroups||[])" :key="vg.id" class="space-y-2">
-              <p class="text-[11px] font-black uppercase flex items-center gap-1">{{ vg.name }} <span v-if="vg.is_required" class="px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 text-[8px] border border-rose-100">Wajib</span><span class="text-[9px] font-normal text-slate-400">{{ vg.type==='single'?'Pilih 1':'Boleh banyak' }}</span></p>
+              <p class="text-[11px] font-black uppercase flex items-center gap-1.5">{{ vg.name }} <span v-if="vg.is_required" class="px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 text-[8px] border border-rose-100">Wajib</span><span class="text-[9px] font-normal text-slate-400">{{ vg.type==='single'?'Pilih 1':'Boleh banyak' }}</span></p>
               <div class="space-y-2">
                 <button v-for="opt in (vg.options||[])" :key="opt.id" class="w-full flex items-center gap-3 p-2.5 rounded-2xl border text-left transition-all" :class="selectedVariantOption?.id===opt.id ? 'border-primary bg-primary/5' : 'border-slate-100 bg-white hover:bg-slate-50'" @click="selectedVariantOption={ id: opt.id, label: opt.label, price_delta: opt.price_delta, image_url: opt.image_url }">
                   <div class="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border flex items-center justify-center shrink-0"><img v-if="opt.image_url" :src="opt.image_url" class="w-full h-full object-cover" /><span v-else class="text-[10px]">🍽️</span></div>
@@ -854,7 +903,7 @@ const cartSubtotal = computed(() =>
             </div>
             <!-- Topping Groups -->
             <div v-for="tg in (variantPickerMenu?.topping_groups||variantPickerMenu?.toppingGroups||[])" :key="tg.id" class="space-y-2">
-              <p class="text-[11px] font-black uppercase">{{ tg.name }} <span class="text-[9px] font-normal text-slate-400">{{ tg.type==='single'?'Pilih 1':'Boleh banyak' }}</span></p>
+              <p class="text-[11px] font-black uppercase flex items-center gap-1.5">{{ tg.name }} <span class="text-[9px] font-normal text-slate-400">{{ tg.type==='single'?'Pilih 1':'Boleh banyak' }}</span></p>
               <div class="space-y-2">
                 <button v-for="opt in (tg.options||[])" :key="opt.id" class="w-full flex items-center gap-3 p-2.5 rounded-2xl border text-left transition-all" :class="selectedToppings.find(t=>t.id===opt.id) ? 'border-amber-400 bg-amber-50' : 'border-slate-100 bg-white'" @click="(()=>{ const exists=selectedToppings.find(t=>t.id===opt.id); if (exists) selectedToppings=selectedToppings.filter(t=>t.id!==opt.id); else selectedToppings=[...selectedToppings,{ id:opt.id, label:opt.label, price_delta:opt.price_delta, image_url:opt.image_url }] })()">
                   <div class="w-10 h-10 rounded-xl bg-slate-100 overflow-hidden border flex items-center justify-center shrink-0"><img v-if="opt.image_url" :src="opt.image_url" class="w-full h-full object-cover" /><span v-else class="text-[9px]">🧀</span></div>
@@ -864,9 +913,9 @@ const cartSubtotal = computed(() =>
               </div>
             </div>
           </div>
-          <div class="p-4 border-t border-slate-100 bg-white shrink-0 space-y-3">
-            <div class="flex justify-between text-xs"><span class="text-slate-500">Total</span><span class="font-black text-primary">Rp {{ variantFinalPrice.toLocaleString('id-ID') }}</span></div>
-            <button class="w-full h-12 bg-primary text-white rounded-2xl font-black text-xs flex items-center justify-center gap-2" @click="doAddToCart(variantPickerMenu, selectedVariantOption as any, selectedToppings as any)"><ShoppingBag class="w-4 h-4" /> Tambah ke Keranjang • Rp {{ variantFinalPrice.toLocaleString('id-ID') }}</button>
+          <div class="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-slate-100 bg-white shrink-0 space-y-3">
+            <div class="flex justify-between text-xs"><span class="text-slate-500 font-medium">Total</span><span class="font-black text-primary text-[13px]">Rp {{ variantFinalPrice.toLocaleString('id-ID') }}</span></div>
+            <button class="w-full h-[52px] bg-primary text-white rounded-2xl font-black text-[13px] flex items-center justify-center gap-2 shadow-lg shadow-primary/25 active:scale-[0.98] transition-all" @click="doAddToCart(variantPickerMenu, selectedVariantOption as any, selectedToppings as any)"><ShoppingBag class="w-4 h-4" /> Tambah ke Keranjang • Rp {{ variantFinalPrice.toLocaleString('id-ID') }}</button>
           </div>
         </div>
       </div>
