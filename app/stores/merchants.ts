@@ -77,9 +77,9 @@ export const useMerchantsStore = defineStore('merchants', {
       this.loading = true
       const { request } = useApi()
       try {
-        const res = await request<{ data: Menu[] }>(`/merchants/${merchantId}/menu`)
+        const res = await request<{ data: Menu[] }>(`/merchants/${merchantId}/menu?with_variants=true`)
         if (res.data) {
-          this.merchantMenus = res.data
+          this.merchantMenus = res.data as any
         }
       } catch (error) {
         console.error('Failed to fetch merchant menu:', error)
