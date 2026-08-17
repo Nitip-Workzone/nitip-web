@@ -289,39 +289,29 @@ const cartSubtotal = computed(() =>
           </div>
         </div>
 
-        <!-- Logo row - di luar overflow-hidden agar tidak terpotong -->
+        <!-- Logo row - hanya logo, tidak ada nama untuk hindari redundant (nama hanya 1x di bawah) -->
         <div class="relative px-4">
-          <div class="flex items-end gap-3 -mt-10 relative z-20">
+          <div class="flex items-end -mt-10 relative z-20">
             <div class="w-[84px] h-[84px] rounded-[20px] overflow-hidden border-[3px] border-white shadow-xl bg-white shrink-0">
               <img v-if="merchant?.image_url" :src="merchant.image_url" :alt="`${merchant.name} logo`" class="w-full h-full object-cover" loading="lazy" decoding="async" @error="(e) => { (e.target as HTMLImageElement).style.display='none' }" />
               <div v-else class="w-full h-full flex items-center justify-center text-3xl bg-slate-50">🍽️</div>
-            </div>
-            <div class="flex-1 min-w-0 pb-1">
-              <h2 class="text-[17px] font-black text-slate-900 leading-tight truncate">{{ merchant?.name || 'Memuat...' }}</h2>
-              <p class="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{{ merchant?.address?.split(',')[0] || 'Alamat Toko' }}</p>
             </div>
           </div>
         </div>
 
         <div class="px-4 pb-4 pt-3">
-          <!-- Name & rating -->
-          <div class="flex items-start justify-between gap-3">
-            <div class="flex-1 min-w-0">
-              <h2 class="text-lg font-black text-slate-900 leading-tight truncate">{{ merchant?.name || 'Memuat...' }}</h2>
-              <p class="text-[11px] text-slate-500 mt-1 leading-relaxed line-clamp-2">
-                {{ merchant?.description || 'Toko mitra terpercaya di Nitip.' }}
-              </p>
-            </div>
-            <div class="hidden sm:flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-xl shrink-0 border border-amber-100">
-              <Star class="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-              <span class="text-xs font-black text-amber-700">{{ merchant?.rating?.toFixed(1) || '5.0' }}</span>
-            </div>
+          <!-- Name hanya 1x - tidak redundant -->
+          <div class="space-y-1.5">
+            <h2 class="text-[18px] font-black text-slate-900 leading-tight truncate">{{ merchant?.name || 'Memuat...' }}</h2>
+            <p class="text-[12px] text-slate-500 leading-relaxed line-clamp-2">
+              {{ merchant?.description || 'Toko mitra terpercaya di Nitip.' }}
+            </p>
           </div>
 
-          <!-- Info row -->
+          <!-- Info row - alamat hanya 1x, tidak duplikat -->
           <div class="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 flex-wrap">
             <span
-              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border sm:hidden"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border"
               :class="merchant?.is_open
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 : 'bg-slate-100 text-slate-400 border-slate-200'"
@@ -330,21 +320,16 @@ const cartSubtotal = computed(() =>
               {{ merchant?.is_open ? 'Sedang Buka' : 'Sedang Tutup' }}
             </span>
 
-            <span class="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+            <span class="text-[11px] text-slate-500 font-medium flex items-center gap-1 flex-1 min-w-0">
               <MapPin class="w-3.5 h-3.5 shrink-0 text-slate-400" />
-              <span class="truncate max-w-[200px]">{{ merchant?.address || 'Trans Sulawesi, Lolak' }}</span>
-            </span>
-
-            <span class="text-[10px] text-slate-400 ml-auto hidden sm:inline-flex items-center gap-1">
-              <span class="w-1 h-1 rounded-full bg-slate-300"></span>
-              {{ merchant ? `${merchant.latitude.toFixed(4)}, ${merchant.longitude.toFixed(4)}` : '' }}
+              <span class="truncate">{{ merchant?.address || 'Trans Sulawesi, Lolak' }}</span>
             </span>
           </div>
 
-          <!-- Opening hours if available -->
-          <div v-if="merchant?.opening_hours" class="mt-3 flex flex-wrap gap-1.5">
-            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Jam Buka:</span>
-            <span class="text-[10px] text-slate-600">Sen-Ming 08:00-22:00</span>
+          <!-- Opening hours -->
+          <div v-if="merchant?.opening_hours" class="mt-2.5 flex items-center gap-1.5">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Jam Buka:</span>
+            <span class="text-[11px] text-slate-600 font-medium">Sen-Ming 08:00-22:00</span>
           </div>
         </div>
       </div>
