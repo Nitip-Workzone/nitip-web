@@ -19,6 +19,7 @@ const selectedFile = ref<File|null>(null)
 const previewUrl = ref('')
 const uploadProgress = ref(false)
 
+const activeTab = ref<'menu'|'category'|'topping'>('menu')
 const categories = ref<Array<{ id: string; name: string; image_url?: string; sort_order: number; is_active: boolean }>>([])
 const activeCategoryId = ref<string|null>(null)
 const showCategoryModal = ref(false)
@@ -26,6 +27,15 @@ const categoryForm = ref({ name: '', image_url: '', sort_order: 0, is_active: tr
 const categoryEditingId = ref<string|null>(null)
 const categoryPreviewUrl = ref('')
 const categoryFile = ref<File|null>(null)
+const categoryCroppedBlob = ref<Blob|null>(null)
+
+// Topping Master independent shared per merchant (bukan melekat variant)
+const toppingMasters = ref<Array<{ id: string; name: string; image_url?: string; options: Array<{ id: string; label: string; price_delta: number; image_url?: string }> }>>([])
+const showToppingMasterModal = ref(false)
+const toppingMasterForm = ref({ name: '', image_url: '' })
+const toppingMasterEditingId = ref<string|null>(null)
+const toppingMasterPreviewUrl = ref('')
+const toppingMasterOptions = ref<Array<{ id?: string; label: string; price_delta: number; image_url?: string; previewUrl?: string; file?: File|null }>>([])
 
 interface VariantOptionForm { id?: string; label: string; price_delta: number; image_url?: string; previewUrl?: string; file?: File|null; is_default: boolean; is_available: boolean; sort_order: number }
 interface VariantGroupForm { id?: string; name: string; type: 'single'|'multiple'; is_required: boolean; min_select: number; max_select: number|null; sort_order: number; options: VariantOptionForm[] }
