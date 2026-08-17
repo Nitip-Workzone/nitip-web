@@ -115,6 +115,9 @@ const openAddModal = () => {
   }
   selectedFile.value = null
   previewUrl.value = ''
+  croppedBlob.value = null
+  if (cropperSrc.value) { URL.revokeObjectURL(cropperSrc.value); cropperSrc.value='' }
+  cropperOpen.value = false
   showAddModal.value = true
 }
 
@@ -418,33 +421,22 @@ onMounted(() => {
           >
         </div>
 
-        <!-- Image Picker & Upload - WAJIB CROP 1:1 -->
+        <!-- Image Picker Wajib Crop 1:1 - Otomatis masuk crop setelah pilih -->
         <div class="space-y-2">
           <label class="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-2">Gambar Produk <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px]">Wajib Crop 1:1 • 1200×1200</span></label>
           <div class="flex items-center gap-3.5">
             <div class="w-16 h-16 rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center flex-shrink-0">
-              <img
-                v-if="previewUrl"
-                :src="previewUrl"
-                alt="Cropped Preview"
-                class="w-full h-full object-cover"
-              >
+              <img v-if="previewUrl" :src="previewUrl" alt="Cropped Preview" class="w-full h-full object-cover" />
               <Camera v-else class="w-6 h-6 text-amber-400" />
             </div>
             <div class="flex-1 space-y-1.5">
               <label class="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 text-xs font-bold hover:bg-slate-100 transition-all cursor-pointer">
-                {{ uploadProgress ? 'Mengunggah...' : (previewUrl ? 'Ganti & Crop Ulang 1:1' : 'Pilih Gambar & Crop Wajib 1:1') }}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  class="hidden"
-                  :disabled="uploadProgress"
-                  @change="handleFileChange"
-                >
+                {{ uploadProgress ? 'Mengunggah...' : (previewUrl ? 'Ganti & Crop Otomatis 1:1' : 'Pilih Gambar → Otomatis Crop 1:1') }}
+                <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" :disabled="uploadProgress" @change="handleFileChange" />
               </label>
-              <p class="text-[10px] text-slate-500">Rasio tetap 1:1 square agar konsisten di katalog pembeli. Drag/zoom di cropper.</p>
-              <p v-if="selectedFile && !croppedBlob" class="text-[10px] text-rose-600 font-bold">⚠️ Foto belum di-crop! Klik pilih gambar lagi untuk buka cropper.</p>
-              <p v-if="croppedBlob" class="text-[10px] text-emerald-600 font-bold">✓ Sudah di-crop 1200×1200 siap upload</p>
+              <p class="text-[10px] text-slate-500">Setelah pilih foto, editor crop otomatis terbuka. Geser/zoom agar produk di tengah.</p>
+              <p v-if="selectedFile && !croppedBlob" class="text-[10px] text-rose-600 font-bold animate-pulse">⚠️ Foto belum di-crop! Editor otomatis akan terbuka, atau klik pilih lagi.</p>
+              <p v-if="croppedBlob" class="text-[10px] text-emerald-600 font-bold">✓ Sudah di-crop wajib 1200×1200 siap disimpan</p>
             </div>
           </div>
         </div>
