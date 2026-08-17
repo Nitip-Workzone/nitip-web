@@ -166,23 +166,72 @@ const proceedToForm = () => {
       </div>
     </div>
 
-    <!-- Bottom CTA — always visible, tidak pakai fixed agar tidak tumpang tindih -->
-    <div v-if="!loading" class="px-6 pt-4 pb-10 bg-white shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.06)] border-t border-slate-100">
+    <!-- Status Banner Dynamic -->
+    <div v-if="!loading && kycStatus !== 'none' && kycStatus !== ''" class="px-6 pb-4">
+      <div v-if="kycStatus === 'pending'" class="rounded-2xl p-4 border-2 border-amber-300 bg-amber-50 flex items-start gap-3">
+        <div class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse mt-1 shrink-0"></div>
+        <div class="flex-1">
+          <p class="text-sm font-bold text-amber-800">Sudah Submit - Menunggu Verifikasi Admin</p>
+          <p class="text-xs text-amber-700 mt-1 leading-relaxed">Dokumen selfie kamera langsung + Facebook sudah terkirim. Admin sedang meninjau, estimasi 1x24 jam. Badge akan jadi hijau Terverifikasi setelah disetujui.</p>
+        </div>
+      </div>
+      <div v-else-if="kycStatus === 'rejected'" class="rounded-2xl p-4 border-2 border-red-300 bg-red-50 flex items-start gap-3">
+        <div class="w-2.5 h-2.5 rounded-full bg-red-500 mt-1 shrink-0"></div>
+        <div class="flex-1">
+          <p class="text-sm font-bold text-red-800">Ditolak - Ajukan Ulang</p>
+          <p class="text-xs text-red-700 mt-1">Verifikasi sebelumnya ditolak. Perbaiki foto selfie wajib kamera langsung yang jelas dan Facebook tidak private, lalu ajukan ulang.</p>
+        </div>
+      </div>
+      <div v-else-if="kycStatus === 'approved'" class="rounded-2xl p-4 border-2 border-emerald-300 bg-emerald-50 flex items-start gap-3">
+        <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-1 shrink-0"></div>
+        <div class="flex-1">
+          <p class="text-sm font-bold text-emerald-800">Terverifikasi - Akun Sudah Verified ✓</p>
+          <p class="text-xs text-emerald-700 mt-1">Selamat! Semua fitur unlocked. Tidak perlu verifikasi lagi.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom CTA — always visible, wording finish mudah dimengerti -->
+    <div v-if="!loading" class="px-6 pt-4 pb-10 bg-white shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.06)] border-t border-slate-100 space-y-2">
       <button
         v-if="kycStatus === 'approved'"
         disabled
-        class="w-full h-14 rounded-2xl font-bold text-base bg-emerald-100 text-emerald-700"
+        class="w-full h-14 rounded-2xl font-bold text-base bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center gap-2"
       >
-        Sudah Terverifikasi ✓
+        <ShieldCheck class="w-5 h-5" /> Sudah Terverifikasi ✓ - Selesai
+      </button>
+      <template v-else-if="kycStatus === 'pending'">
+        <div class="w-full h-14 rounded-2xl font-bold text-base bg-amber-100 text-amber-800 border-2 border-amber-300 flex items-center justify-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+          Sudah Submit - Menunggu Admin (1x24 jam)
+        </div>
+        <button
+          class="w-full h-12 rounded-2xl font-bold text-sm bg-primary text-white shadow-sm flex items-center justify-center gap-2"
+          @click="proceedToForm"
+        >
+          Lihat Status Verifikasi →
+        </button>
+      </template>
+      <button
+        v-else-if="kycStatus === 'rejected'"
+        class="w-full h-14 rounded-2xl font-bold text-base bg-red-600 text-white shadow-sm flex items-center justify-center gap-2"
+        @click="proceedToForm"
+      >
+        Ditolak - Ajukan Ulang Verifikasi →
       </button>
       <button
         v-else
-        :disabled="kycStatus === 'pending'"
-        class="w-full h-14 rounded-2xl font-bold text-base bg-primary text-white shadow-sm shadow-primary/30 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+        class="w-full h-14 rounded-2xl font-bold text-base bg-primary text-white shadow-sm shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         @click="proceedToForm"
       >
-        {{ kycStatus === 'pending' ? 'Verifikasi Sedang Diproses' : 'Mulai Verifikasi' }}
+        <Shield class="w-5 h-5" /> Mulai Verifikasi Sekarang - Proses Cepat
       </button>
+      <p class="text-[11px] text-center text-slate-500">
+        <span v-if="kycStatus==='pending'">Badge kuning berarti sudah submit, tunggu admin verifikasi</span>
+        <span v-else-if="kycStatus==='approved'">Badge hijau terverifikasi, tidak perlu aksi lagi</span>
+        <span v-else-if="kycStatus==='rejected'">Badge merah ditolak, silakan ajukan ulang dengan foto kamera langsung</span>
+        <span v-else>Badge abu belum verifikasi, klik mulai untuk proses eKYC wajib kamera</span>
+      </p>
     </div>
   </div>
 </template>

@@ -415,17 +415,36 @@ const openLink = (url: string) => {
                     {{ authStore.user?.name }}
                   </h2>
                   <ShieldCheck v-if="authStore.user?.is_verified" class="w-4.5 h-4.5 text-emerald-500 shrink-0" />
-                  <span v-if="authStore.user?.is_verified" class="text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">Verified</span>
-                  <span v-else-if="(kycStatus as { status?: string; admin_note?: string })?.status==='pending'" class="text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">KYC Pending</span>
-                  <span v-else-if="(kycStatus as { status?: string; admin_note?: string })?.status==='rejected'" class="text-[9px] font-bold bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-full">KYC Ditolak</span>
-                  <span v-else class="text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-full">Belum Verifikasi</span>
+                  <span v-if="authStore.user?.is_verified" class="inline-flex items-center gap-1 text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Terverifikasi
+                  </span>
+                  <span v-else-if="(kycStatus as { status?: string; admin_note?: string })?.status==='pending'" class="inline-flex items-center gap-1.5 text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-300 px-2.5 py-1 rounded-full animate-pulse">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Menunggu Verifikasi Admin - Sudah Submit
+                  </span>
+                  <span v-else-if="(kycStatus as { status?: string; admin_note?: string })?.status==='rejected'" class="inline-flex items-center gap-1 text-[9px] font-bold bg-red-50 text-red-700 border border-red-300 px-2.5 py-1 rounded-full">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Ditolak - Ajukan Ulang
+                  </span>
+                  <span v-else class="inline-flex items-center gap-1 text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-full">
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Belum Verifikasi
+                  </span>
                 </div>
-                <div v-if="kycStatus && (kycStatus as { status?: string; admin_note?: string }).status!=='approved'" class="mt-1.5">
-                  <p v-if="(kycStatus as { status?: string; admin_note?: string }).status==='pending'" class="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">Dokumen KYC Anda sedang ditinjau admin.</p>
-                  <div v-else-if="(kycStatus as { status?: string; admin_note?: string }).status==='rejected'" class="text-[10px] text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded-lg space-y-1">
-                    <p class="font-bold">KYC Ditolak{{ (kycStatus as { status?: string; admin_note?: string }).admin_note ? ':' : '' }}</p>
-                    <p v-if="(kycStatus as { status?: string; admin_note?: string }).admin_note">{{ (kycStatus as { status?: string; admin_note?: string }).admin_note }}</p>
-                    <p class="font-semibold mt-1">Silakan ajukan ulang verifikasi KYC.</p>
+                <div v-if="kycStatus" class="mt-2 space-y-1.5">
+                  <div v-if="(kycStatus as { status?: string; admin_note?: string }).status==='pending'" class="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl flex items-start gap-2">
+                    <span class="mt-0.5">⏳</span>
+                    <div>
+                      <p class="font-bold">Sudah Submit - Menunggu Verifikasi Admin</p>
+                      <p class="mt-0.5 leading-relaxed">Dokumen selfie + Facebook Anda sudah terkirim pada {{ (kycStatus as any)?.created_at ? new Date((kycStatus as any).created_at).toLocaleDateString('id-ID') : 'baru saja' }}. Admin sedang meninjau, estimasi 1x24 jam. Badge ini akan berubah jadi hijau Terverifikasi setelah disetujui.</p>
+                      <NuxtLink to="/kyc/status" class="inline-flex mt-2 text-[10px] font-bold text-amber-800 underline">Lihat Status Detail →</NuxtLink>
+                    </div>
+                  </div>
+                  <div v-else-if="(kycStatus as { status?: string; admin_note?: string }).status==='rejected'" class="text-[10px] text-red-700 bg-red-50 border border-red-300 px-3 py-2 rounded-xl space-y-1">
+                    <p class="font-bold flex items-center gap-1">❌ Verifikasi Ditolak{{ (kycStatus as { status?: string; admin_note?: string }).admin_note ? ':' : '' }}</p>
+                    <p v-if="(kycStatus as { status?: string; admin_note?: string }).admin_note" class="leading-relaxed">{{ (kycStatus as { status?: string; admin_note?: string }).admin_note }}</p>
+                    <p class="font-semibold mt-1">Silakan ajukan ulang dengan foto selfie kamera langsung yang jelas dan Facebook tidak private.</p>
+                    <NuxtLink to="/kyc" class="inline-flex mt-2 px-3 py-1 rounded-full bg-red-600 text-white text-[10px] font-bold">Ajukan Ulang Verifikasi →</NuxtLink>
+                  </div>
+                  <div v-else-if="authStore.user?.is_verified" class="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl flex items-center gap-2">
+                    <span>✅</span><p class="font-bold">Akun Anda sudah Terverifikasi - semua fitur unlocked!</p>
                   </div>
                 </div>
                 

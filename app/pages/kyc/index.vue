@@ -447,16 +447,22 @@ const stepLabel = 'Langkah 1 dari 2'
       </div>
     </div>
 
-    <!-- Bottom CTA -->
-    <div class="px-6 pt-4 pb-10 bg-white shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.06)] border-t border-slate-100">
+    <!-- Bottom CTA - Wording Finish -->
+    <div class="px-6 pt-4 pb-10 bg-white shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.06)] border-t border-slate-100 space-y-3">
       <button
-        :disabled="loading || (!facebookScreenshotFile && !selfieFile)"
+        :disabled="loading || !facebookScreenshotFile || !selfieFile || !selfieCapturedFromCamera"
         class="w-full h-14 rounded-2xl font-bold text-base bg-primary text-white shadow-sm shadow-primary/30 active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
         @click="submitKyc"
       >
         <span v-if="loading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-        Lanjut ke Selfie
+        <span v-if="!loading" class="flex items-center gap-2">
+          <ShieldCheck v-if="selfieFile && facebookScreenshotFile" class="w-5 h-5" />
+          {{ selfieFile && facebookScreenshotFile ? 'Kirim Pengajuan Verifikasi' : 'Lengkapi Data Dulu' }}
+        </span>
+        <span v-else>Memproses Verifikasi...</span>
       </button>
+      <p v-if="selfieFile && facebookScreenshotFile" class="text-[11px] text-center text-slate-500">Pastikan data Facebook & selfie kamera langsung sudah benar sebelum dikirim</p>
+      <p v-else class="text-[11px] text-center text-amber-600">⚠️ Wajib isi nama Facebook + screenshot + selfie kamera langsung untuk bisa proses</p>
     </div>
   </div>
 </template>
