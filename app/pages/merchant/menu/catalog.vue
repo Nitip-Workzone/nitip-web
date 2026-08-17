@@ -30,6 +30,12 @@ const previewUrl = ref('')
 const uploadProgress = ref(false)
 const togglingMenuId = ref('')
 
+// Crop wajib state – product ratio 1:1 tetap
+const cropperOpen = ref(false)
+const cropperSrc = ref('')
+const cropperPendingFile = ref<File | null>(null)
+const croppedBlob = ref<Blob | null>(null)
+
 const fetchProfile = async () => {
   try {
     const profile = await merchantsStore.fetchMerchantProfile()
@@ -56,13 +62,47 @@ const handleFileChange = async (event: Event) => {
   if (target.files && target.files.length > 0) {
     const file = target.files[0]
     if (!file) return
-    selectedFile.value = file
-    
-    if (previewUrl.value) {
-      URL.revokeObjectURL(previewUrl.value)
+    // Validasi wajib
+    if (!file.type.startsWith('image/')) {
+      error('File harus berupa gambar JPEG/PNG/WEBP')
+      target.value = ''
+      return
     }
-    previewUrl.value = URL.createObjectURL(file)
+    if (file.size > 10 * 1024 * 1024) {
+      error('Ukuran gambar maksimal 10MB')
+      target.value = ''
+      return
+    }
+    cropperPendingFile.value = file
+    if (cropperSrc.value) URL.revokeObjectURL(cropperSrc.value)
+    cropperSrc.value = URL.createObjectURL(file)
+    cropperOpen.value = true
+    target.value = ''
   }
+}
+
+const onCropped = (payload: { blob: Blob; url: string; file: File }) => {
+  croppedBlob.value = payload.blob
+  selectedFile.value = payload.file
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+  previewUrl.value = payload.url
+  // Close cropper
+  if (cropperSrc.value) {
+    URL.revokeObjectURL(cropperSrc.value)
+    cropperSrc.value = ''
+  }
+  cropperOpen.value = false
+  cropperPendingFile.value = null
+}
+
+const onCropCancel = () => {
+  if (cropperSrc.value) {
+    URL.revokeObjectURL(cropperSrc.value)
+    cropperSrc.value = ''
+  }
+  cropperOpen.value = false
+  cropperPendingFile.value = null
+  // Jangan set preview, tetap wajib crop
 }
 
 const openAddModal = () => {
@@ -85,6 +125,12 @@ const handleAddMenu = async () => {
   }
   if (menuForm.value.price <= 0) {
     error('Harga menu harus lebih besar dari Rp 0.')
+    return
+  }
+  // Crop wajib jika ada file dipilih
+  if (selectedFile.value && !croppedBlob.value) {
+    error('Foto wajib di-crop dulu dengan rasio 1:1 agar konsisten.')
+    if (cropperSrc.value) cropperOpen.value = true
     return
   }
 
@@ -147,6 +193,11 @@ const handleEditMenu = async () => {
   }
   if (menuForm.value.price <= 0) {
     error('Harga menu harus lebih besar dari Rp 0.')
+    return
+  }
+  if (selectedFile.value && !croppedBlob.value) {
+    error('Foto wajib di-crop dulu dengan rasio 1:1 agar konsisten.')
+    if (cropperSrc.value) cropperOpen.value = true
     return
   }
 
@@ -367,32 +418,35 @@ onMounted(() => {
           >
         </div>
 
-        <!-- Image Picker & Upload -->
-        <div class="space-y-1.5">
-          <label class="text-[10px] font-bold text-muted-foreground uppercase">Gambar Produk</label>
-          <label class="flex items-center gap-3.5 cursor-pointer">
-            <div class="w-16 h-16 rounded-2xl border border-slate-200 bg-background overflow-hidden flex items-center justify-center flex-shrink-0">
+        <!-- Image Picker & Upload - WAJIB CROP 1:1 -->
+        <div class="space-y-2">
+          <label class="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-2">Gambar Produk <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px]">Wajib Crop 1:1 • 1200×1200</span></label>
+          <div class="flex items-center gap-3.5">
+            <div class="w-16 h-16 rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center flex-shrink-0">
               <img
-                v-if="previewUrl || menuForm.image_url"
-                :src="previewUrl || menuForm.image_url"
-                alt="Upload Preview"
+                v-if="previewUrl"
+                :src="previewUrl"
+                alt="Cropped Preview"
                 class="w-full h-full object-cover"
               >
-              <Camera v-else class="w-6 h-6 text-muted-foreground opacity-60" />
+              <Camera v-else class="w-6 h-6 text-amber-400" />
             </div>
-            <div class="flex-1">
-              <span class="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 text-xs font-bold hover:bg-slate-100 transition-all">
-                {{ uploadProgress ? 'Mengunggah...' : 'Pilih Gambar Menu' }}
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                class="hidden"
-                :disabled="uploadProgress"
-                @change="handleFileChange"
-              >
+            <div class="flex-1 space-y-1.5">
+              <label class="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 text-xs font-bold hover:bg-slate-100 transition-all cursor-pointer">
+                {{ uploadProgress ? 'Mengunggah...' : (previewUrl ? 'Ganti & Crop Ulang 1:1' : 'Pilih Gambar & Crop Wajib 1:1') }}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  class="hidden"
+                  :disabled="uploadProgress"
+                  @change="handleFileChange"
+                >
+              </label>
+              <p class="text-[10px] text-slate-500">Rasio tetap 1:1 square agar konsisten di katalog pembeli. Drag/zoom di cropper.</p>
+              <p v-if="selectedFile && !croppedBlob" class="text-[10px] text-rose-600 font-bold">⚠️ Foto belum di-crop! Klik pilih gambar lagi untuk buka cropper.</p>
+              <p v-if="croppedBlob" class="text-[10px] text-emerald-600 font-bold">✓ Sudah di-crop 1200×1200 siap upload</p>
             </div>
-          </label>
+          </div>
         </div>
 
         <!-- Available status -->
@@ -473,30 +527,34 @@ onMounted(() => {
               </span>
               <input
                 type="file"
-                accept="image/*"
-                class="hidden"
-                :disabled="uploadProgress"
-                @change="handleFileChange"
-              >
+        <div class="space-y-2">
+          <label class="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-2">Gambar Produk <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px]">Wajib Crop 1:1 • 1200×1200</span></label>
+          <div class="flex items-center gap-3.5">
+            <div class="w-16 h-16 rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center flex-shrink-0">
+              <img v-if="previewUrl" :src="previewUrl" alt="Cropped Preview" class="w-full h-full object-cover" />
+              <img v-else-if="menuForm.image_url" :src="menuForm.image_url" :alt="menuForm.name" class="w-full h-full object-cover opacity-60" />
+              <Camera v-else class="w-6 h-6 text-amber-400" />
             </div>
-          </label>
+            <div class="flex-1 space-y-1.5">
+              <label class="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 text-xs font-bold hover:bg-slate-100 transition-all cursor-pointer">
+                {{ uploadProgress ? 'Mengunggah...' : (previewUrl ? 'Ganti & Crop Ulang 1:1' : 'Pilih & Crop Wajib 1:1') }}
+                <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" :disabled="uploadProgress" @change="handleFileChange" />
+              </label>
+              <p class="text-[10px] text-slate-500">Wajib crop 1:1 square agar konsisten di katalog pembeli.</p>
+              <p v-if="selectedFile && !croppedBlob" class="text-[10px] text-rose-600 font-bold">⚠️ Belum di-crop! Pilih ulang untuk crop.</p>
+              <p v-if="croppedBlob" class="text-[10px] text-emerald-600 font-bold">✓ Sudah di-crop siap upload</p>
+            </div>
+          </div>
         </div>
 
-        <!-- Available status -->
         <div class="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-100 rounded-2xl">
           <div class="space-y-0.5">
             <p class="text-xs font-bold text-slate-800">Tersedia Langsung</p>
-            <p class="text-[10px] text-muted-foreground font-semibold">Aktifkan agar menu langsung dapat dibeli oleh pengguna.</p>
+            <p class="text-[10px] text-muted-foreground font-semibold">Aktifkan agar menu langsung dapat dibeli.</p>
           </div>
-          <!-- custom checkbox -->
-          <input
-            v-model="menuForm.is_available"
-            type="checkbox"
-            class="w-4.5 h-4.5 text-primary bg-slate-100 border-slate-300 rounded focus:ring-primary focus:ring-1"
-          >
+          <input v-model="menuForm.is_available" type="checkbox" class="w-4.5 h-4.5 text-primary bg-slate-100 border-slate-300 rounded focus:ring-primary focus:ring-1" />
         </div>
 
-        <!-- Buttons -->
         <div class="flex gap-3 pt-3">
           <UiButton variant="secondary" class="flex-1 h-11 rounded-2xl text-xs font-bold" @click="showEditModal = false">Batal</UiButton>
           <UiButton class="flex-1 h-11 rounded-2xl text-xs font-bold bg-primary text-white" :disabled="actionLoading || uploadProgress" @click="handleEditMenu">
@@ -505,5 +563,8 @@ onMounted(() => {
         </div>
       </div>
     </UiModal>
+
+    <!-- Wajib Crop Modals -->
+    <CommonImageCropper v-if="cropperOpen" :src="cropperSrc" type="product" @cropped="onCropped" @cancel="onCropCancel" />
   </div>
 </template>

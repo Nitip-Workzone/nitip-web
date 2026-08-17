@@ -19,9 +19,65 @@ const latitude = ref<number | null>(null)
 const longitude = ref<number | null>(null)
 const category = ref('food')
 const imageUrl = ref('')
+const coverUrl = ref('')
 const loading = ref(true)
 const saving = ref(false)
 const showLocationPicker = ref(false)
+
+// Crop wajib logo 1:1 circular 400 & cover 16:9 1200x675
+const cropperOpen = ref(false)
+const cropperSrc = ref('')
+const cropperType = ref<'logo' | 'cover'>('logo')
+const croppedLogoBlob = ref<Blob | null>(null)
+const croppedCoverBlob = ref<Blob | null>(null)
+const logoPreview = ref('')
+const coverPreview = ref('')
+const logoFile = ref<File | null>(null)
+const coverFile = ref<File | null>(null)
+
+const openLogoPicker = (e: Event) => {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  if (!file.type.startsWith('image/')) { toastStore.add('File harus gambar'); return }
+  if (file.size > 10*1024*1024) { toastStore.add('Maks 10MB'); return }
+  if (cropperSrc.value) URL.revokeObjectURL(cropperSrc.value)
+  cropperSrc.value = URL.createObjectURL(file)
+  cropperType.value = 'logo'
+  cropperOpen.value = true
+  input.value = ''
+}
+const openCoverPicker = (e: Event) => {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  if (!file.type.startsWith('image/')) { toastStore.add('File harus gambar'); return }
+  if (file.size > 10*1024*1024) { toastStore.add('Maks 10MB'); return }
+  if (cropperSrc.value) URL.revokeObjectURL(cropperSrc.value)
+  cropperSrc.value = URL.createObjectURL(file)
+  cropperType.value = 'cover'
+  cropperOpen.value = true
+  input.value = ''
+}
+const onCropped = (payload: { blob: Blob; url: string; file: File }) => {
+  if (cropperType.value === 'logo') {
+    croppedLogoBlob.value = payload.blob
+    logoFile.value = payload.file
+    if (logoPreview.value) URL.revokeObjectURL(logoPreview.value)
+    logoPreview.value = payload.url
+  } else {
+    croppedCoverBlob.value = payload.blob
+    coverFile.value = payload.file
+    if (coverPreview.value) URL.revokeObjectURL(coverPreview.value)
+    coverPreview.value = payload.url
+  }
+  if (cropperSrc.value) { URL.revokeObjectURL(cropperSrc.value); cropperSrc.value = '' }
+  cropperOpen.value = false
+}
+const onCropCancel = () => {
+  if (cropperSrc.value) { URL.revokeObjectURL(cropperSrc.value); cropperSrc.value = '' }
+  cropperOpen.value = false
+}
 
 interface DayHours { open: string; close: string; closed?: boolean }
 const openingHours = ref<Record<string, DayHours>>({
@@ -61,6 +117,7 @@ onMounted(async () => {
       longitude.value = m.longitude
       category.value = m.category
       imageUrl.value = (m as { image_url?: string }).image_url || ''
+      coverUrl.value = (m as { cover_url?: string; coverUrl?: string }).cover_url || (m as { coverUrl?: string }).coverUrl || ''
       const oh = (m as { opening_hours?: Record<string, unknown> }).opening_hours
       if (oh && typeof oh === 'object' && Object.keys(oh).length > 0) {
         for (const k of Object.keys(oh)) {
@@ -101,6 +158,29 @@ async function handleSave() {
 
   saving.value = true
   try {
+    // Jika ada file logo/cover yang sudah di-crop wajib, upload dulu baru dapat URL
+    let finalImageUrl = imageUrl.value.trim()
+    let finalCoverUrl = coverUrl.value.trim()
+    
+    if (logoFile.value) {
+      try {
+        finalImageUrl = await merchantsStore.uploadMenuImage(logoFile.value)
+      } catch {
+        toastStore.add('Gagal upload logo')
+        saving.value = false
+        return
+      }
+    }
+    if (coverFile.value) {
+      try {
+        finalCoverUrl = await merchantsStore.uploadMenuImage(coverFile.value)
+      } catch {
+        toastStore.add('Gagal upload sampul')
+        saving.value = false
+        return
+      }
+    }
+
     await merchantsStore.updateMerchantProfile({
       name: name.value.trim(),
       description: description.value.trim(),
@@ -108,9 +188,10 @@ async function handleSave() {
       latitude: latitude.value,
       longitude: longitude.value,
       category: category.value,
-      image_url: imageUrl.value.trim() || undefined,
+      image_url: finalImageUrl || undefined,
+      cover_url: finalCoverUrl || undefined,
       opening_hours: openingHours.value,
-    } as unknown as { name: string; description: string; address: string; latitude: number; longitude: number; category: string; image_url?: string; opening_hours: Record<string, unknown> })
+    } as unknown as { name: string; description: string; address: string; latitude: number; longitude: number; category: string; image_url?: string; cover_url?: string; opening_hours: Record<string, unknown> })
     toastStore.add('Profil toko berhasil diperbarui!')
     router.push('/merchant/menu')
   } catch (error: unknown) {
@@ -147,13 +228,48 @@ async function handleSave() {
       </div>
 
       <template v-else>
-        <!-- Store Shop Cover Photo / Avatar Mockup -->
-        <div class="relative h-28 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl shadow-soft overflow-hidden">
-          <div class="absolute -right-6 -bottom-6 w-20 h-20 bg-white/10 rounded-full blur-lg" />
-          <div class="absolute inset-0 flex items-center justify-center">
-            <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/20">
-              <Store class="w-6 h-6" />
+        <!-- Store Shop Cover/Sampul Wajib 16:9 -->
+        <div class="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-soft">
+          <div class="relative h-36 bg-gradient-to-br from-indigo-500 to-purple-600 overflow-hidden">
+            <img v-if="coverPreview" :src="coverPreview" class="absolute inset-0 w-full h-full object-cover" />
+            <img v-else-if="coverUrl" :src="coverUrl" class="absolute inset-0 w-full h-full object-cover opacity-80" />
+            <div class="absolute -right-6 -bottom-6 w-20 h-20 bg-white/10 rounded-full blur-lg pointer-events-none" />
+            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div v-if="!coverPreview && !coverUrl" class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/20">
+                <Store class="w-6 h-6" />
+              </div>
             </div>
+            <div class="absolute top-2 left-2 px-2 py-1 rounded-full bg-black/40 text-white text-[9px] font-bold backdrop-blur-md">16:9 • 1200×675</div>
+            <div class="absolute top-2 right-2 px-2 py-1 rounded-full bg-amber-500 text-white text-[9px] font-black">Wajib Crop Sampul</div>
+          </div>
+          <div class="p-3 flex items-center justify-between">
+            <div>
+              <p class="text-[10px] font-black text-slate-800">Sampul Toko</p>
+              <p class="text-[9px] text-slate-500">Rasio tetap 16:9 agar tidak gepeng di detail merchant</p>
+              <p v-if="croppedCoverBlob" class="text-[9px] text-emerald-600 font-bold mt-1">✓ Sudah crop 1200×675</p>
+            </div>
+            <label class="h-9 px-3 rounded-xl bg-slate-900 text-white text-[10px] font-bold flex items-center gap-1.5 cursor-pointer active:scale-95">
+              <Camera class="w-3.5 h-3.5" /> {{ coverPreview ? 'Ganti & Crop 16:9' : 'Upload & Crop 16:9' }}
+              <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="openCoverPicker" />
+            </label>
+          </div>
+        </div>
+
+        <!-- Logo Merchant Wajib 1:1 Circular -->
+        <div class="bg-white border border-slate-100 rounded-3xl p-4 shadow-soft flex items-center gap-4">
+          <div class="w-20 h-20 rounded-full border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center shrink-0">
+            <img v-if="logoPreview" :src="logoPreview" class="w-full h-full object-cover" />
+            <img v-else-if="imageUrl" :src="imageUrl" class="w-full h-full object-cover opacity-80" />
+            <Store v-else class="w-7 h-7 text-amber-400" />
+          </div>
+          <div class="flex-1 min-w-0 space-y-1">
+            <p class="text-[10px] font-black text-slate-800 flex items-center gap-2">Logo Toko <span class="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[8px]">Wajib 1:1 Circular • 400×400</span></p>
+            <p class="text-[9px] text-slate-500">Rasio tetap bulat, dipakai 84×84 di hero food/[id]</p>
+            <label class="inline-flex h-8 px-3 rounded-xl bg-slate-900 text-white text-[10px] font-bold items-center gap-1 cursor-pointer active:scale-95 mt-1">
+              <Camera class="w-3 h-3" /> {{ logoPreview ? 'Ganti & Crop 1:1' : 'Upload & Crop 1:1' }}
+              <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="openLogoPicker" />
+            </label>
+            <p v-if="croppedLogoBlob" class="text-[9px] text-emerald-600 font-bold">✓ Sudah crop circular siap</p>
           </div>
         </div>
 
@@ -201,14 +317,13 @@ async function handleSave() {
             </select>
           </div>
 
-          <div class="space-y-1.5">
-            <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">URL Gambar Toko (Opsional)</label>
-            <input 
-              v-model="imageUrl" 
-              type="url" 
-              class="w-full h-11 rounded-2xl border border-slate-200 px-4 text-xs font-semibold focus:outline-none focus:border-primary bg-slate-50/50 focus:bg-white transition-all" 
-              placeholder="https://.../toko.jpg"
-            >
+          <div v-if="imageUrl && !logoPreview" class="space-y-1.5">
+            <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">URL Logo Lama (fallback)</label>
+            <input v-model="imageUrl" type="url" class="w-full h-11 rounded-2xl border border-slate-200 px-4 text-xs font-semibold bg-slate-50/50" />
+          </div>
+          <div v-if="coverUrl && !coverPreview" class="space-y-1.5">
+            <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">URL Sampul Lama (fallback)</label>
+            <input v-model="coverUrl" type="url" class="w-full h-11 rounded-2xl border border-slate-200 px-4 text-xs font-semibold bg-slate-50/50" />
           </div>
         </div>
 
@@ -337,5 +452,8 @@ async function handleSave() {
       @close="showLocationPicker = false" 
       @select="onLocationSelected" 
     />
+
+    <!-- Crop Modals Wajib -->
+    <CommonImageCropper v-if="cropperOpen" :src="cropperSrc" :type="cropperType" @cropped="onCropped" @cancel="onCropCancel" />
   </div>
 </template>
