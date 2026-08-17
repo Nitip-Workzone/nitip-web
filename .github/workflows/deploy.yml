@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: deploy-nitip-web
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: nitip-prod
@@ -12,17 +16,27 @@ jobs:
       NODE_NO_WARNINGS: 1
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Checkout Code (retry for 429)
+        uses: Wandalen/wretry.action@v3
+        with:
+          attempt_limit: 5
+          attempt_delay: 10000
+          action: actions/checkout@v4
+          with: |
+            fetch-depth: 1
+
+      - name: Setup Node.js (retry for 429)
+        uses: Wandalen/wretry.action@v3
+        with:
+          attempt_limit: 3
+          attempt_delay: 5000
+          action: actions/setup-node@v4
+          with: |
+            node-version: '22'
 
       - name: Copy Secrets File
         run: |
           cp ~/.secret/nitip-web-production.env .env
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
 
       - name: Enable Corepack (Yarn)
         run: |

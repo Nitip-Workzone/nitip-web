@@ -789,6 +789,14 @@ const cartSubtotal = computed(() =>
                 <span>Diskon Promo ({{ cartStore.appliedPromotion.code || 'AUTO' }}{{ cartStore.appliedPromotion.first_purchase_only ? ' - First Buy' : '' }})</span>
                 <span>-{{ formatRp(cartStore.discountTotal) }}</span>
               </div>
+              <!-- Merchant Fee Audit Info (Opsi A: merchant bayar, bukan buyer) -->
+              <div class="bg-indigo-50/60 border border-indigo-100 rounded-xl px-3 py-2 flex items-start gap-2">
+                <span class="text-[14px]">ℹ️</span>
+                <div class="text-[10px] leading-relaxed">
+                  <p class="font-bold text-indigo-800">Biaya layanan merchant ditanggung merchant</p>
+                  <p class="text-indigo-700/80">Harga yang kamu bayar tetap murni (10k tetap 10k). Fee tier 1k/3k/5k dipotong dari saldo merchant saat settlement, bukan tambah ke totalmu. Audit: fee terlihat di rincian merchant.</p>
+                </div>
+              </div>
               <div class="flex justify-between items-center font-black text-slate-900 pt-2 border-t border-slate-100">
                 <span class="text-xs">Total Estimasi</span>
                 <span class="text-base text-primary">Rp {{ (cartSubtotal + 10000 + cartStore.deliveryFeeSurcharge - cartStore.discountTotal).toLocaleString('id-ID') }}</span>

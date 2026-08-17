@@ -374,6 +374,16 @@ onUnmounted(() => {
                 </div>
               </div>
             </div>
+            <!-- Merchant Fee Audit (Opsi A: merchant bayar, bukan buyer) -->
+            <div v-if="(order as any).merchant_fee || (order as any).food_amount_original" class="ml-11 bg-indigo-50/60 border border-indigo-100 rounded-2xl p-2.5 space-y-1.5">
+              <p class="text-[10px] font-black uppercase tracking-wide text-indigo-800 flex items-center gap-1"><Layers class="w-3 h-3" /> Rincian Pendapatan (Audit)</p>
+              <div class="space-y-1 text-[10px]">
+                <div class="flex justify-between"><span class="text-slate-500">Harga asli makanan</span><span class="font-bold text-slate-800">Rp {{ Number((order as any).food_amount_original || order.estimated_cost || 0).toLocaleString('id-ID') }}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Biaya layanan Tier {{ (order as any).merchant_fee_tier || '-' }} (ditanggung merchant)</span><span class="font-bold text-rose-600">- Rp {{ Number((order as any).merchant_fee || 0).toLocaleString('id-ID') }}</span></div>
+                <div class="flex justify-between border-t border-indigo-100 pt-1.5 mt-1"><span class="font-black text-indigo-900">Diterima merchant</span><span class="font-black text-emerald-700">Rp {{ Number(((order as any).food_amount_original || order.estimated_cost || 0) - ((order as any).merchant_fee || 0)).toLocaleString('id-ID') }}</span></div>
+                <p class="text-[9px] text-indigo-600/70 italic">*Buyer bayar harga asli, fee dipotong dari merchant via escrow. Audit level.</p>
+              </div>
+            </div>
           </div>
 
           <!-- Stepper Progress Bar -->
