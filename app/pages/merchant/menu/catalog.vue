@@ -275,26 +275,13 @@ onMounted(()=>{ fetchProfile() })
         <button class="shrink-0 h-9 px-3.5 rounded-xl text-xs font-black bg-primary text-white flex items-center gap-1 active:scale-95 shadow-md shadow-primary/20" @click="openAddModal"><Plus class="w-4 h-4" /> Tambah</button>
       </div>
 
-      <!-- Kategori Chips - Single row, no duplicate -->
-      <div class="space-y-2">
-        <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <button class="shrink-0 h-8 px-4 rounded-full text-[11px] font-black border transition-all" :class="!activeCategoryId ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-slate-600 border-slate-200'" @click="activeCategoryId=null">Semua</button>
-          <button v-for="cat in categories" :key="cat.id" class="shrink-0 h-8 pl-2 pr-3 rounded-full text-[11px] font-bold border flex items-center gap-1.5 transition-all" :class="activeCategoryId===cat.id ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'" @click="activeCategoryId=cat.id">
-            <div class="w-5 h-5 rounded-full bg-slate-100 overflow-hidden flex items-center justify-center shrink-0"><img v-if="cat.image_url" :src="cat.image_url" class="w-full h-full object-cover" /><Tag v-else class="w-3 h-3 text-slate-400" /></div>
-            {{ cat.name }}
-          </button>
-        </div>
-
-        <!-- Manage kategori - compact, hanya jika ada kategori, tidak duplikat chip -->
-        <div v-if="categories.length>0" class="bg-white border border-slate-100 rounded-2xl p-2.5 flex gap-2 overflow-x-auto">
-          <div v-for="cat in categories" :key="cat.id" class="shrink-0 flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-xl px-2.5 py-1.5">
-            <img v-if="cat.image_url" :src="cat.image_url" class="w-5 h-5 rounded-full object-cover" />
-            <span class="text-[10px] font-bold max-w-[80px] truncate">{{ cat.name }}</span>
-            <button class="w-5 h-5 rounded-full bg-white border flex items-center justify-center active:scale-90" @click="openCategoryModal(cat)"><Edit class="w-3 h-3 text-slate-500" /></button>
-            <button class="w-5 h-5 rounded-full bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center active:scale-90" @click="handleDeleteCategory(cat.id)"><Trash2 class="w-3 h-3" /></button>
-          </div>
-          <button class="shrink-0 h-8 px-3 rounded-xl bg-slate-900 text-white text-[10px] font-bold flex items-center gap-1" @click="openCategoryModal()"><Plus class="w-3 h-3" /> Kategori</button>
-        </div>
+      <!-- Filter kategori chips only - no manage card di tab Menu, manage ada di tab Kategori terpisah -->
+      <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <button class="shrink-0 h-8 px-4 rounded-full text-[11px] font-black border transition-all" :class="!activeCategoryId ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-slate-600 border-slate-200'" @click="activeCategoryId=null">Semua</button>
+        <button v-for="cat in categories" :key="cat.id" class="shrink-0 h-8 pl-2 pr-3 rounded-full text-[11px] font-bold border flex items-center gap-1.5 transition-all" :class="activeCategoryId===cat.id ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'" @click="activeCategoryId=cat.id">
+          <div class="w-5 h-5 rounded-full bg-slate-100 overflow-hidden flex items-center justify-center shrink-0"><img v-if="cat.image_url" :src="cat.image_url" class="w-full h-full object-cover" /><Tag v-else class="w-3 h-3 text-slate-400" /></div>
+          {{ cat.name }}
+        </button>
       </div>
 
       <div v-if="filteredMenus.length===0" class="py-10 px-6 text-center bg-white border border-slate-100 rounded-[24px] shadow-sm">
