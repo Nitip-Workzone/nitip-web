@@ -249,61 +249,61 @@ const cartSubtotal = computed(() =>
 
     <div class="px-4 pt-4 space-y-4">
 
-      <!-- ── MERCHANT HERO CARD - FIX gepeng + cover_url & image_url display ── -->
-      <div class="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
-        <!-- Cover banner - height 160-180, not 16 gepeng, uses cover_url from core -->
-        <div class="relative h-[160px] w-full overflow-hidden bg-slate-100">
-          <!-- Cover image from core - handle signed URL with query params -->
+      <!-- ── MERCHANT HERO CARD - FIX gepeng + cover_url & image_url display + anti potong ── -->
+      <div class="bg-white rounded-3xl border border-slate-100 shadow-sm relative overflow-visible">
+        <!-- Cover banner - height 180, uses cover_url, not overflow-hidden on outer to prevent logo potong -->
+        <div class="relative h-[180px] w-full overflow-hidden bg-slate-100 rounded-t-3xl">
+          <!-- Cover image from core - signed URL -->
           <img
             v-if="merchant?.cover_url"
             :src="merchant.cover_url"
             :alt="`${merchant.name} cover`"
             class="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+            decoding="async"
+            fetchpriority="low"
             @error="(e) => { (e.target as HTMLImageElement).style.display='none' }"
           />
-          <!-- Fallback gradient if no cover -->
           <div
             v-else
-            class="absolute inset-0 flex items-center justify-center text-5xl"
-            :class="merchant?.is_open
-              ? 'bg-gradient-to-br from-primary/10 via-indigo-50 to-violet-50'
-              : 'bg-slate-100'"
+            class="absolute inset-0 flex items-center justify-center text-5xl bg-gradient-to-br from-primary/10 via-indigo-50 to-violet-50"
           >
             🍽️
           </div>
-          <!-- Gradient overlay for readability -->
-          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent" />
-          <!-- Open/closed badge on cover -->
-          <div class="absolute top-3 left-3 flex gap-2">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent pointer-events-none" />
+          <div class="absolute top-3 left-3 flex gap-2 z-10">
             <span
               class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase backdrop-blur-md border shadow-sm"
-              :class="merchant?.is_open
-                ? 'bg-emerald-500/90 text-white border-emerald-400/50'
-                : 'bg-slate-900/60 text-white border-white/20'"
+              :class="merchant?.is_open ? 'bg-emerald-500/90 text-white border-emerald-400/50' : 'bg-slate-900/60 text-white border-white/20'"
             >
               <span class="w-1.5 h-1.5 rounded-full" :class="merchant?.is_open ? 'bg-white animate-pulse' : 'bg-slate-300'" />
               {{ merchant?.is_open ? 'Sedang Buka' : 'Sedang Tutup' }}
             </span>
             <span v-if="merchant?.auto_confirm && merchant?.is_open" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold text-white bg-primary/90 border border-white/20 backdrop-blur-md shadow-sm">
-              <Flame class="w-3 h-3" />
-              Instan
+              <Flame class="w-3 h-3" /> Instan
             </span>
           </div>
-          <!-- Rating on cover -->
-          <div class="absolute top-3 right-3 flex items-center gap-1 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/50 shadow-sm">
+          <div class="absolute top-3 right-3 z-10 flex items-center gap-1 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/50 shadow-sm">
             <Star class="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
             <span class="text-xs font-black text-amber-700">{{ merchant?.rating?.toFixed(1) || '5.0' }}</span>
           </div>
-          <!-- Logo image_url as round overlay at bottom-left of cover -->
-          <div v-if="merchant?.image_url" class="absolute -bottom-10 left-4 w-20 h-20 rounded-2xl overflow-hidden border-4 border-white shadow-lg bg-white">
-            <img :src="merchant.image_url" :alt="`${merchant.name} logo`" class="w-full h-full object-cover" @error="(e) => { (e.target as HTMLImageElement).style.display='none' }" />
-          </div>
-          <div v-else class="absolute -bottom-10 left-4 w-20 h-20 rounded-2xl border-4 border-white shadow-lg bg-white flex items-center justify-center text-3xl">
-            🍽️
+        </div>
+
+        <!-- Logo row - di luar overflow-hidden agar tidak terpotong -->
+        <div class="relative px-4">
+          <div class="flex items-end gap-3 -mt-10 relative z-20">
+            <div class="w-[84px] h-[84px] rounded-[20px] overflow-hidden border-[3px] border-white shadow-xl bg-white shrink-0">
+              <img v-if="merchant?.image_url" :src="merchant.image_url" :alt="`${merchant.name} logo`" class="w-full h-full object-cover" loading="lazy" decoding="async" @error="(e) => { (e.target as HTMLImageElement).style.display='none' }" />
+              <div v-else class="w-full h-full flex items-center justify-center text-3xl bg-slate-50">🍽️</div>
+            </div>
+            <div class="flex-1 min-w-0 pb-1">
+              <h2 class="text-[17px] font-black text-slate-900 leading-tight truncate">{{ merchant?.name || 'Memuat...' }}</h2>
+              <p class="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{{ merchant?.address?.split(',')[0] || 'Alamat Toko' }}</p>
+            </div>
           </div>
         </div>
 
-        <div class="px-4 pb-4" :class="merchant?.image_url ? 'pt-12' : 'pt-4'">
+        <div class="px-4 pb-4 pt-3">
           <!-- Name & rating -->
           <div class="flex items-start justify-between gap-3">
             <div class="flex-1 min-w-0">
@@ -402,12 +402,14 @@ const cartSubtotal = computed(() =>
             :key="item.id"
             class="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm flex gap-0"
           >
-            <!-- Image -->
-            <div class="w-[76px] h-[76px] shrink-0 relative overflow-hidden">
+            <!-- Image - lazy, compressed on backend now 300KB not 8MB -->
+            <div class="w-[76px] h-[76px] shrink-0 relative overflow-hidden bg-slate-50">
               <img
                 v-if="item.image_url"
                 :src="item.image_url"
                 :alt="item.name"
+                loading="lazy"
+                decoding="async"
                 class="w-full h-full object-cover"
               >
               <div v-else class="w-full h-full bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center text-2xl">
