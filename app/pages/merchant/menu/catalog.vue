@@ -508,25 +508,7 @@ onMounted(() => {
           >
         </div>
 
-        <!-- Image Picker & Upload -->
-        <div class="space-y-1.5">
-          <label class="text-[10px] font-bold text-muted-foreground uppercase">Gambar Produk</label>
-          <label class="flex items-center gap-3.5 cursor-pointer">
-            <div class="w-16 h-16 rounded-2xl border border-slate-200 bg-background overflow-hidden flex items-center justify-center flex-shrink-0">
-              <img
-                v-if="previewUrl || menuForm.image_url"
-                :src="previewUrl || menuForm.image_url"
-                alt="Upload Preview"
-                class="w-full h-full object-cover"
-              >
-              <Camera v-else class="w-6 h-6 text-muted-foreground opacity-60" />
-            </div>
-            <div class="flex-1">
-              <span class="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 text-xs font-bold hover:bg-slate-100 transition-all">
-                {{ uploadProgress ? 'Mengunggah...' : 'Ubah Gambar' }}
-              </span>
-              <input
-                type="file"
+        <!-- Image Picker Wajib Crop 1:1 -->
         <div class="space-y-2">
           <label class="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-2">Gambar Produk <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px]">Wajib Crop 1:1 • 1200×1200</span></label>
           <div class="flex items-center gap-3.5">
