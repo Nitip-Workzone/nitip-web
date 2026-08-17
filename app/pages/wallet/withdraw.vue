@@ -380,18 +380,10 @@ function formatCurrency(val: number) {
               </button>
             </div>
 
-            <!-- Read Only Channel Display -->
+            <!-- Read Only Channel Display - Official brand badge replaces AI-generated PNG -->
             <div v-if="selectedType === 'CASH'" class="relative flex items-center mt-2">
               <div v-if="selectedChannel" class="absolute left-3 flex items-center pointer-events-none">
-                <img 
-                  v-if="['BCA', 'MANDIRI', 'BRI', 'DANA', 'OVO'].includes(selectedChannel.code.toUpperCase())" 
-                  :src="`/images/providers/${selectedChannel.code.toLowerCase()}.png`" 
-                  class="w-7 h-7 object-contain p-0.5 bg-white rounded border border-slate-100"
-                  alt="Channel Logo"
-                >
-                <div v-else class="w-7 h-7 flex items-center justify-center bg-white rounded border border-slate-100 text-xs shrink-0 select-none">
-                  💵
-                </div>
+                <CommonBankLogoBadge :code="selectedChannel.code" size="sm" />
               </div>
               <div
                 class="w-full h-12 flex items-center rounded-xl border border-slate-200 bg-slate-100/80 pr-10 text-sm font-semibold text-slate-800 focus:outline-none transition-all cursor-not-allowed"
@@ -418,13 +410,8 @@ function formatCurrency(val: number) {
               </button>
             </div>
             <div class="flex items-center gap-4 p-4 bg-slate-50 text-slate-800 rounded-2xl border border-slate-100">
-              <img 
-                v-if="['BCA', 'MANDIRI', 'BRI', 'DANA', 'OVO'].includes(registeredAccount.bank_name.toUpperCase())" 
-                :src="`/images/providers/${registeredAccount.bank_name.toLowerCase()}.png`" 
-                class="w-12 h-12 object-contain p-1.5 bg-white rounded-xl border border-slate-200 shrink-0"
-                alt="Bank Logo"
-              >
-              <div v-else class="p-3 bg-primary/5 rounded-xl text-primary shrink-0">
+              <CommonBankLogoBadge :code="registeredAccount.bank_name" size="lg" />
+              <div v-if="!['BCA','MANDIRI','BNI','BRI','GOPAY','OVO','DANA','SHOPEEPAY','MANUAL'].includes(registeredAccount.bank_name.toUpperCase())" class="p-3 bg-primary/5 rounded-xl text-primary shrink-0">
                 <ShieldCheck class="w-6 h-6 text-emerald-600" />
               </div>
               <div class="text-xs space-y-0.5 flex-1 min-w-0">

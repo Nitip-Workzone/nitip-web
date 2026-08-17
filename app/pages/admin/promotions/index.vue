@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { TicketPercent, Search, Plus, RefreshCw, Edit, Trash2, Eye, ShieldAlert, Store } from '@lucide/vue'
+import { TicketPercent, Search, Plus, RefreshCw, Edit, Trash2, Eye, ShieldAlert } from '@lucide/vue'
 import { usePromotionsStore, type Promotion } from '~/stores/promotions'
 import { useMerchantsStore } from '~/stores/merchants'
 
@@ -17,13 +17,11 @@ const filterFirstPurchase = ref(false)
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showUsagesModal = ref(false)
-const showSecureModal = ref(false)
-const secureAction = ref<'create' | 'update' | 'delete'>('create')
-const secureLoading = ref(false)
 
 const actionLoading = ref(false)
 const editId = ref('')
 const previewLoading = ref(false)
+const autoCalculate = ref(true) // Nilai diskon otomatis dari budget & kuota sesuai request
 
 const form = ref({
   title: '',
@@ -31,7 +29,7 @@ const form = ref({
   code: '',
   merchant_id: '' as string | null,
   discount_type: 'flat' as 'flat' | 'percent',
-  discount_value: 5000,
+  discount_value: 0, // akan otomatis dari budget/max_uses
   budget_total: 100000,
   max_uses: 15,
   per_user_limit: 1,
@@ -46,6 +44,37 @@ const form = ref({
 const secureForm = ref({
   admin_password: '',
   totp_code: '',
+})
+
+function computeAutoDiscountFromBudget() {
+  if (!form.value.budget_total || !form.value.max_uses) return
+  const flat = form.value.budget_total / form.value.max_uses
+  if (form.value.discount_type === 'flat') {
+    form.value.discount_value = Math.round(flat)
+  }
+  // Untuk percent, percent_est akan diisi dari preview API (butuh avg), tapi sementara flat dulu
+  // Persen akan di-overwrite setelah preview API return percent_est
+}
+
+watch(() => [form.value.budget_total, form.value.max_uses, form.value.discount_type, form.value.merchant_id] as const, ([budget, uses, type, mid]) => {
+  if (autoCalculate.value && budget && uses) {
+    computeAutoDiscountFromBudget()
+    // trigger preview API yang akan kasih percent_est akurat
+    triggerPreview()
+  }
+})
+
+watch(() => promotionsStore.preview, (newVal) => {
+  if (autoCalculate.value && newVal) {
+    if (form.value.discount_type === 'flat') {
+      form.value.discount_value = Math.round(newVal.flat_per_order)
+    } else {
+      // percent type: otomatis dari budget & avg merchant
+      form.value.discount_value = Math.round(newVal.percent_est * 10) / 10 // 1 decimal
+      if (form.value.discount_value > 90) form.value.discount_value = 90
+      if (form.value.discount_value < 1) form.value.discount_value = 1
+    }
+  }
 })
 
 const usagesPromotionId = ref('')
@@ -385,38 +414,57 @@ function badgeDiscount(p: Promotion) {
       </div>
     </UiCard>
 
-    <!-- Add Modal -->
-    <UiModal v-model:open="showAddModal" size="xl">
-      <template #title>Buat Promo Diskon Baru - ex Merdeka81</template>
-      <div class="space-y-5 max-h-[80vh] overflow-y-auto pr-1">
-        <div class="grid grid-cols-2 gap-4">
-          <div class="col-span-2">
+    <!-- Add Modal - Desktop lebar, nilai diskon otomatis dari budget & kuota -->
+    <UiModal v-model:open="showAddModal" max-width="max-w-[1100px]">
+      <template #title>
+        <div class="flex items-center gap-2">
+          <span>Buat Promo Diskon Baru - ex Merdeka81</span>
+          <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] border border-amber-200">Desktop Lebar</span>
+        </div>
+      </template>
+      <div class="space-y-5 max-h-[85vh] overflow-y-auto pr-2">
+        <!-- Top info auto -->
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <input type="checkbox" v-model="autoCalculate" class="w-4 h-4" />
+            <label class="text-xs font-bold text-blue-800">Otomatis hitung nilai diskon dari Budget & Kuota (sesuai story: budget 100rb / 15 order = 20%)</label>
+          </div>
+          <span v-if="autoCalculate" class="text-[10px] px-2 py-1 rounded-full bg-blue-600 text-white font-bold">AUTO ON - Nilai diskon terkunci otomatis</span>
+          <span v-else class="text-[10px] px-2 py-1 rounded-full bg-slate-200 text-slate-600">Manual</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="md:col-span-3">
             <label class="text-sm font-medium">Judul Promo *</label>
             <UiInput v-model="form.title" placeholder="Promo Merdeka - Diskon Kemerdekaan 81" class="mt-1" />
           </div>
-          <div class="col-span-2">
+          <div class="md:col-span-3">
             <label class="text-sm font-medium">Deskripsi</label>
-            <textarea v-model="form.description" placeholder="Khusus 15 order pertama di merchant..." class="mt-1 w-full rounded-md border border-input p-2 text-sm min-h-[60px]" />
+            <textarea v-model="form.description" placeholder="Terbatas, khusus 15 order pertama - budget 100rb dibagi rata otomatis jadi discount persen" class="mt-1 w-full rounded-md border border-input p-2.5 text-sm min-h-[70px]" />
           </div>
-          <div>
+          <div class="md:col-span-2">
             <label class="text-sm font-medium">Kode Voucher Custom * (ex Merdeka81) - kosongkan untuk Auto</label>
             <UiInput v-model="form.code" placeholder="Merdeka81" class="mt-1 font-mono" />
-            <p class="text-[10px] text-muted-foreground mt-1">3-50 karakter A-Z a-z 0-9 _ - , case-insensitive unik, tampil sesuai ketikan. Contoh: Merdeka81, NITIP20, HUTRI81_2026</p>
+            <p class="text-[10px] text-muted-foreground mt-1">3-50 karakter A-Z a-z 0-9 _ - , case-insensitive unik. Contoh: Merdeka81, NITIP20, HUTRI81_2026</p>
           </div>
           <div class="flex flex-col justify-end">
-            <label class="text-sm font-medium flex items-center gap-2"><input type="checkbox" v-model="form.auto_apply" /> Auto Apply First-N (tanpa kode)</label>
-            <p class="text-[10px] text-muted-foreground">Jika centang, kode wajib kosong dan promo otomatis untuk N order pertama.</p>
+            <label class="text-sm font-medium flex items-center gap-2"><input type="checkbox" v-model="form.auto_apply" class="w-4 h-4" /> Auto Apply First-N (tanpa kode)</label>
+            <p class="text-[10px] text-muted-foreground mt-1">Jika centang, kode wajib kosong dan promo otomatis untuk N order pertama, banner info akan tampil otomatis.</p>
           </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label class="text-sm font-medium">Merchant (opsional)</label>
-            <select v-model="form.merchant_id" class="mt-1 w-full h-9 rounded-md border border-input px-3 text-sm">
-              <option :value="null">Global - semua merchant</option>
+            <label class="text-sm font-medium">Merchant (opsional) - untuk hitung avg order</label>
+            <select v-model="form.merchant_id" class="mt-1 w-full h-10 rounded-md border border-input px-3 text-sm">
+              <option :value="null">Global - semua merchant (avg fallback 25k)</option>
               <option v-for="m in merchantsStore.adminMerchants" :key="m.id" :value="m.id">{{ m.name }}</option>
             </select>
+            <p class="text-[10px] text-slate-500 mt-1">Pilih merchant agar % otomatis = flat / avg_harga_merchant *100</p>
           </div>
           <div>
             <label class="text-sm font-medium">Scope Diskon</label>
-            <select v-model="form.discount_scope" class="mt-1 w-full h-9 rounded-md border border-input px-3 text-sm">
+            <select v-model="form.discount_scope" class="mt-1 w-full h-10 rounded-md border border-input px-3 text-sm">
               <option value="item">Item Only (makanan saja)</option>
               <option value="delivery">Delivery Only (ongkir)</option>
               <option value="total">Total (item+ongkir)</option>
@@ -424,148 +472,217 @@ function badgeDiscount(p: Promotion) {
           </div>
           <div>
             <label class="text-sm font-medium">Tipe Diskon *</label>
-            <select v-model="form.discount_type" class="mt-1 w-full h-9 rounded-md border border-input px-3 text-sm">
-              <option value="flat">Flat Rupiah (Rp)</option>
-              <option value="percent">Persentase (%)</option>
+            <select v-model="form.discount_type" class="mt-1 w-full h-10 rounded-md border border-input px-3 text-sm">
+              <option value="flat">Flat Rupiah (Rp) - otomatis flat = budget/kuota</option>
+              <option value="percent">Persentase (%) - otomatis % dari avg merchant</option>
             </select>
           </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label class="text-sm font-medium">Nilai Diskon *</label>
-            <UiInput v-model.number="form.discount_value" type="number" :placeholder="form.discount_type==='flat' ? '5000' : '20'" class="mt-1" />
-            <p class="text-[10px] text-muted-foreground mt-1">{{ form.discount_type==='flat' ? 'Rp per order' : 'Persen 1-90%' }}</p>
+            <label class="text-sm font-medium flex items-center gap-2">
+              Budget Total (Audit) *
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">Input Utama</span>
+            </label>
+            <UiInput v-model.number="form.budget_total" type="number" placeholder="100000" class="mt-1 font-bold" />
+            <p class="text-[10px] text-amber-700 mt-1">Budget dibagi rata. Contoh 100rb untuk 15 order.</p>
           </div>
           <div>
-            <label class="text-sm font-medium">Budget Total (Audit) *</label>
-            <UiInput v-model.number="form.budget_total" type="number" placeholder="100000" class="mt-1" />
-            <p class="text-[10px] text-amber-700 mt-1">Budget hanya audit & batas, tidak potong saldo sistem. Contoh 100rb untuk 15 order.</p>
+            <label class="text-sm font-medium flex items-center gap-2">
+              Max Uses (kuota) *
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">Input Utama</span>
+            </label>
+            <UiInput v-model.number="form.max_uses" type="number" placeholder="15" class="mt-1 font-bold" />
+            <p class="text-[10px] text-slate-500 mt-1">15 order pertama dengan kode voucher</p>
           </div>
-          <div>
-            <label class="text-sm font-medium">Max Uses (kuota) *</label>
-            <UiInput v-model.number="form.max_uses" type="number" placeholder="15" class="mt-1" />
+          <div class="md:col-span-2">
+            <label class="text-sm font-medium flex items-center gap-2">
+              Nilai Diskon *
+              <span v-if="autoCalculate" class="text-[10px] px-2 py-0.5 rounded-full bg-blue-600 text-white font-bold">Otomatis dari Budget & Kuota</span>
+              <span v-else class="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">Manual</span>
+            </label>
+            <div class="relative mt-1">
+              <UiInput v-model.number="form.discount_value" type="number" :placeholder="form.discount_type==='flat' ? 'Otomatis 6666 dari 100000/15' : 'Otomatis 20% dari flat/avg'" :disabled="autoCalculate" :class="autoCalculate ? 'bg-blue-50 border-blue-300 font-bold' : ''" />
+              <span v-if="autoCalculate" class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">AUTO</span>
+            </div>
+            <p class="text-[10px] text-muted-foreground mt-1">
+              <span v-if="form.discount_type==='flat'">Rp per order = Budget / Kuota. Contoh 100rb/15 = Rp6.666/order</span>
+              <span v-else>% = Flat / AvgHargaMerchant *100. Contoh 6.666/33.000 = 20%. Edit Budget & Kuota, % otomatis menyesuaikan.</span>
+            </p>
           </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label class="text-sm font-medium">Per User Limit</label>
             <UiInput v-model.number="form.per_user_limit" type="number" placeholder="1" class="mt-1" />
           </div>
-          <div class="flex flex-col">
-            <label class="text-sm font-medium flex items-center gap-2"><input type="checkbox" v-model="form.first_purchase_only" /> Hanya Pembelian Pertama</label>
-            <p class="text-[10px] text-muted-foreground">Jika aktif, voucher hanya untuk user yang belum pernah completed order (count=0). Cocok untuk akuisisi.</p>
+          <div class="flex flex-col justify-end">
+            <label class="text-sm font-medium flex items-center gap-2"><input type="checkbox" v-model="form.first_purchase_only" class="w-4 h-4" /> Hanya Pembelian Pertama</label>
+            <p class="text-[10px] text-muted-foreground mt-1">Voucher hanya untuk user belum pernah completed order.</p>
           </div>
           <div>
-            <label class="text-sm font-medium">Min Order Amount (opsional)</label>
+            <label class="text-sm font-medium">Min Order (opsional)</label>
             <UiInput v-model.number="form.min_order_amount" type="number" placeholder="0" class="mt-1" />
           </div>
-          <div>
-            <label class="text-sm font-medium">Valid From</label>
-            <UiInput v-model="form.valid_from" type="datetime-local" class="mt-1" />
-          </div>
-          <div>
-            <label class="text-sm font-medium">Valid Until</label>
-            <UiInput v-model="form.valid_until" type="datetime-local" class="mt-1" />
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs font-medium">Valid From</label>
+              <UiInput v-model="form.valid_from" type="datetime-local" class="mt-1" />
+            </div>
+            <div>
+              <label class="text-xs font-medium">Valid Until</label>
+              <UiInput v-model="form.valid_until" type="datetime-local" class="mt-1" />
+            </div>
           </div>
         </div>
 
         <!-- Preview -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <p class="text-xs font-semibold text-blue-800">Preview Kalkulasi Bagi Rata</p>
-          <div v-if="previewLoading" class="text-xs text-blue-600 mt-1">Menghitung...</div>
-          <div v-else-if="promotionsStore.preview" class="text-xs text-blue-700 mt-1">
-            <p>Flat per order: <b>{{ formatRp(promotionsStore.preview.flat_per_order) }}</b></p>
-            <p>Avg merchant: {{ formatRp(promotionsStore.preview.avg_order_value) }}</p>
-            <p>Estimasi persen: <b>{{ promotionsStore.preview.percent_est.toFixed(1) }}%</b></p>
-            <p class="mt-1 italic">{{ promotionsStore.preview.message }}</p>
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <p class="text-sm font-bold text-blue-800 flex items-center gap-2">Preview Kalkulasi Bagi Rata <span class="text-[10px] font-normal bg-blue-600 text-white px-2 py-0.5 rounded-full">Otomatis</span></p>
+          <div v-if="previewLoading" class="text-xs text-blue-600 mt-2 flex items-center gap-2"><div class="w-4 h-4 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>Menghitung dari backend...</div>
+          <div v-else-if="promotionsStore.preview" class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-blue-800">
+            <div class="bg-white rounded-lg p-3 border border-blue-100">
+              <p class="text-[10px] text-slate-500 uppercase font-bold">Flat per order</p>
+              <p class="text-base font-black mt-1">{{ formatRp(promotionsStore.preview.flat_per_order) }}</p>
+              <p class="text-[10px] mt-1">Budget {{ formatRp(form.budget_total) }} / {{ form.max_uses }} order</p>
+            </div>
+            <div class="bg-white rounded-lg p-3 border border-blue-100">
+              <p class="text-[10px] text-slate-500 uppercase font-bold">Avg merchant</p>
+              <p class="text-base font-black mt-1">{{ formatRp(promotionsStore.preview.avg_order_value) }}</p>
+              <p class="text-[10px] mt-1">Dari survey atau 30 order terakhir, fallback 25k</p>
+            </div>
+            <div class="bg-white rounded-lg p-3 border border-blue-200 bg-blue-50">
+              <p class="text-[10px] text-blue-600 uppercase font-bold">Estimasi persen untuk banner</p>
+              <p class="text-2xl font-black mt-1">{{ promotionsStore.preview.percent_est.toFixed(1) }}%</p>
+              <p class="text-[10px] mt-1">Gunakan untuk iklan: Diskon {{ promotionsStore.preview.percent_est.toFixed(0) }}% di {{ form.merchant_id ? (merchantsStore.adminMerchants.find(m=>m.id===form.merchant_id)?.name || 'merchant') : 'semua merchant' }}</p>
+            </div>
+            <div class="md:col-span-3 text-[11px] italic bg-white rounded-lg p-2 border border-blue-100">{{ promotionsStore.preview.message }}</div>
           </div>
-          <p v-else class="text-xs text-blue-600 mt-1">Isi budget & kuota & merchant untuk preview</p>
+          <p v-else class="text-xs text-blue-600 mt-2">Isi Budget & Kuota & Merchant untuk preview otomatis. Nilai diskon akan otomatis menyesuaikan: Flat = Budget/Kuota, % = Flat/AvgMerchant*100</p>
         </div>
 
-        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <p class="text-xs font-medium text-amber-800">Settlement Info</p>
-          <p class="text-xs text-amber-700 mt-1">Merchant tetap dapat full estimated_cost - commission. Selisih diskon (budget_used) adalah liability platform ke merchant. Admin wajib bayar sesuai settlement.</p>
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3">
+          <p class="text-xs font-bold text-amber-800">Settlement Info</p>
+          <p class="text-xs text-amber-700 mt-1">Merchant tetap dapat full estimated_cost - commission. Selisih diskon (budget_used) adalah liability platform ke merchant. Sampaikan % yang otomatis dihitung (contoh 20%) ke merchant untuk dibuat banner iklan.</p>
         </div>
 
         <!-- Secure verify -->
-        <div class="bg-red-50 border border-red-200 rounded-lg p-3 space-y-3">
-          <p class="text-xs font-semibold text-red-800 flex items-center gap-1"><ShieldAlert class="w-4 h-4" /> Verifikasi Keamanan Admin (Wajib)</p>
-          <div class="grid grid-cols-2 gap-3">
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+          <p class="text-sm font-bold text-red-800 flex items-center gap-2"><ShieldAlert class="w-4 h-4" /> Verifikasi Keamanan Admin (Wajib) <span class="text-[10px] font-normal bg-red-600 text-white px-2 py-0.5 rounded-full">Password + TOTP</span></p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label class="text-xs">Password Admin *</label>
+              <label class="text-xs font-medium">Password Admin *</label>
               <UiInput v-model="secureForm.admin_password" type="password" placeholder="Password admin" class="mt-1" />
             </div>
             <div>
-              <label class="text-xs">TOTP 6 digit *</label>
-              <input v-model="secureForm.totp_code" inputmode="numeric" maxlength="6" placeholder="000000" class="mt-1 w-full h-9 text-center font-mono tracking-widest rounded-md border border-input" />
+              <label class="text-xs font-medium">TOTP 6 digit *</label>
+              <input v-model="secureForm.totp_code" inputmode="numeric" maxlength="6" placeholder="000000" class="mt-1 w-full h-10 text-center font-mono tracking-widest rounded-md border border-input font-bold" />
             </div>
           </div>
         </div>
 
-        <div class="flex justify-end gap-2">
-          <UiButton variant="secondary" @click="showAddModal=false">Batal</UiButton>
-          <UiButton variant="primary" :disabled="actionLoading" @click="handleCreate">{{ actionLoading ? 'Memproses...' : 'Buat Promo' }}</UiButton>
+        <div class="flex justify-end gap-2 pt-2 border-t">
+          <UiButton variant="secondary" size="lg" @click="showAddModal=false">Batal</UiButton>
+          <UiButton variant="primary" size="lg" :disabled="actionLoading" @click="handleCreate">{{ actionLoading ? 'Memproses...' : `Buat Promo - Diskon ${promotionsStore.preview ? promotionsStore.preview.percent_est.toFixed(0)+'%' : ''} Otomatis` }}</UiButton>
         </div>
       </div>
     </UiModal>
 
-    <!-- Edit Modal similar -->
-    <UiModal v-model:open="showEditModal" size="xl">
-      <template #title>Edit Promo</template>
-      <div class="space-y-5 max-h-[80vh] overflow-y-auto pr-1">
-        <div class="grid grid-cols-2 gap-4">
-          <div class="col-span-2">
-            <label class="text-sm font-medium">Judul *</label>
-            <UiInput v-model="form.title" class="mt-1" />
+    <!-- Edit Modal - Desktop lebar + auto discount -->
+    <UiModal v-model:open="showEditModal" max-width="max-w-[1100px]">
+      <template #title>
+        <div class="flex items-center gap-2">
+          <span>Edit Promo - Nilai Diskon Otomatis dari Budget & Kuota</span>
+          <span v-if="autoCalculate" class="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px]">AUTO ON</span>
+        </div>
+      </template>
+      <div class="space-y-5 max-h-[85vh] overflow-y-auto pr-2">
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <input type="checkbox" v-model="autoCalculate" class="w-4 h-4" />
+            <label class="text-xs font-bold text-blue-800">Otomatis hitung nilai diskon dari Budget & Kuota</label>
           </div>
-          <div>
+          <span class="text-[10px] text-blue-700">Flat = Budget/Kuota, % = Flat/AvgMerchant*100</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="md:col-span-3">
+            <label class="text-sm font-medium">Judul Promo *</label>
+            <UiInput v-model="form.title" placeholder="Diskon Kemerdekaan - 81" class="mt-1" />
+          </div>
+          <div class="md:col-span-2">
             <label class="text-sm font-medium">Kode Custom ex Merdeka81</label>
             <UiInput v-model="form.code" placeholder="Merdeka81" class="mt-1 font-mono" />
           </div>
-          <div class="flex flex-col justify-end"><label class="text-sm flex items-center gap-2"><input type="checkbox" v-model="form.auto_apply" /> Auto</label></div>
+          <div class="flex flex-col justify-end">
+            <label class="text-sm font-medium flex items-center gap-2"><input type="checkbox" v-model="form.auto_apply" class="w-4 h-4" /> Auto Apply First-N (tanpa kode)</label>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label class="text-sm">Merchant</label>
-            <select v-model="form.merchant_id" class="mt-1 w-full h-9 rounded-md border border-input px-3 text-sm">
-              <option :value="null">Global</option>
+            <label class="text-sm font-medium">Merchant (untuk hitung avg)</label>
+            <select v-model="form.merchant_id" class="mt-1 w-full h-10 rounded-md border border-input px-3 text-sm">
+              <option :value="null">Global - fallback 25k</option>
               <option v-for="m in merchantsStore.adminMerchants" :key="m.id" :value="m.id">{{ m.name }}</option>
             </select>
           </div>
           <div>
-            <label class="text-sm">Tipe</label>
-            <select v-model="form.discount_type" class="mt-1 w-full h-9 rounded-md border border-input px-3 text-sm"><option value="flat">Flat Rp</option><option value="percent">Percent %</option></select>
+            <label class="text-sm font-medium">Tipe Diskon</label>
+            <select v-model="form.discount_type" class="mt-1 w-full h-10 rounded-md border border-input px-3 text-sm">
+              <option value="flat">Flat Rupiah - otomatis flat = budget/kuota</option>
+              <option value="percent">Persentase - otomatis % = flat/avg*100</option>
+            </select>
           </div>
           <div>
-            <label class="text-sm">Nilai</label>
-            <UiInput v-model.number="form.discount_value" type="number" class="mt-1" />
+            <label class="text-sm font-medium flex items-center gap-2">Nilai Diskon <span v-if="autoCalculate" class="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px]">Otomatis {{ form.discount_type==='flat' ? 'Rp'+Math.round(form.budget_total/form.max_uses).toLocaleString('id-ID') : (promotionsStore.preview ? promotionsStore.preview.percent_est.toFixed(1)+'%' : 'hitung...') }}</span></label>
+            <UiInput v-model.number="form.discount_value" type="number" :disabled="autoCalculate" :class="autoCalculate ? 'bg-blue-50 border-blue-300 font-bold mt-1' : 'mt-1'" placeholder="Otomatis dari budget & kuota" />
+            <p class="text-[10px] text-slate-500 mt-1">Jika AUTO ON, nilai diskon otomatis menyesuaikan Budget & Kuota: {{ form.budget_total }}/{{ form.max_uses }} = {{ Math.round(form.budget_total/form.max_uses).toLocaleString('id-ID') }} per order</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="text-sm font-medium">Budget Total *</label>
+            <UiInput v-model.number="form.budget_total" type="number" class="mt-1 font-bold" placeholder="100000" />
           </div>
           <div>
-            <label class="text-sm">Budget Total</label>
-            <UiInput v-model.number="form.budget_total" type="number" class="mt-1" />
+            <label class="text-sm font-medium">Max Uses (kuota) *</label>
+            <UiInput v-model.number="form.max_uses" type="number" class="mt-1 font-bold" placeholder="10" />
           </div>
           <div>
-            <label class="text-sm">Max Uses</label>
-            <UiInput v-model.number="form.max_uses" type="number" class="mt-1" />
-          </div>
-          <div>
-            <label class="text-sm">Per User Limit</label>
+            <label class="text-sm font-medium">Per User Limit</label>
             <UiInput v-model.number="form.per_user_limit" type="number" class="mt-1" />
           </div>
-          <div class="flex flex-col"><label class="text-sm flex items-center gap-2"><input type="checkbox" v-model="form.first_purchase_only" /> First Purchase Only</label></div>
-        </div>
-
-        <div class="bg-red-50 border border-red-200 rounded p-3 space-y-2">
-          <p class="text-xs font-semibold text-red-800">Verifikasi Admin</p>
-          <div class="grid grid-cols-2 gap-2">
-            <UiInput v-model="secureForm.admin_password" type="password" placeholder="Password admin" />
-            <input v-model="secureForm.totp_code" maxlength="6" placeholder="000000" class="h-9 text-center font-mono border rounded-md" />
+          <div class="flex flex-col justify-end">
+            <label class="text-sm font-medium flex items-center gap-2"><input type="checkbox" v-model="form.first_purchase_only" class="w-4 h-4" /> Hanya Pembelian Pertama</label>
           </div>
         </div>
 
-        <div class="flex justify-end gap-2">
-          <UiButton variant="secondary" @click="showEditModal=false">Batal</UiButton>
-          <UiButton variant="primary" :disabled="actionLoading" @click="handleUpdate">Update</UiButton>
+        <div v-if="promotionsStore.preview" class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800">
+          <p class="font-bold">Preview Otomatis: Flat {{ formatRp(promotionsStore.preview.flat_per_order) }} / order → {{ promotionsStore.preview.percent_est.toFixed(1) }}% dari avg {{ formatRp(promotionsStore.preview.avg_order_value) }} - Gunakan {{ promotionsStore.preview.percent_est.toFixed(0) }}% untuk banner iklan merchant</p>
+          <p class="mt-1 italic text-[11px]">{{ promotionsStore.preview.message }}</p>
+        </div>
+
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
+          <p class="text-sm font-bold text-red-800 flex items-center gap-2">Verifikasi Admin (Wajib) <span class="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full">Password + TOTP</span></p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <UiInput v-model="secureForm.admin_password" type="password" placeholder="Password admin" />
+            <input v-model="secureForm.totp_code" maxlength="6" placeholder="000000" class="h-10 text-center font-mono tracking-widest border rounded-md font-bold" />
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2 border-t">
+          <UiButton variant="secondary" size="lg" @click="showEditModal=false">Batal</UiButton>
+          <UiButton variant="primary" size="lg" :disabled="actionLoading" @click="handleUpdate">{{ actionLoading ? 'Memproses...' : 'Update Promo - Otomatis' }}</UiButton>
         </div>
       </div>
     </UiModal>
 
     <!-- Usages Modal -->
-    <UiModal v-model:open="showUsagesModal" size="lg">
+    <UiModal v-model:open="showUsagesModal" max-width="max-w-3xl">
       <template #title>Penggunaan Promo - {{ usagesPromotionId.slice(0,8) }}</template>
       <div class="space-y-3">
         <div class="text-xs">Total: {{ promotionsStore.usagesTotal }} penggunaan</div>

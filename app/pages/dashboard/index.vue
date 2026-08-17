@@ -59,8 +59,8 @@ const kycBannerConfig = computed(() => {
       to: '/kyc/status',
       bg: 'bg-amber-50 border-amber-300',
       iconBg: 'bg-amber-100 text-amber-600',
-      title: 'Sudah Submit - Menunggu Verifikasi Admin',
-      desc: 'Dokumen selfie kamera langsung + Facebook sudah terkirim. Admin sedang meninjau, estimasi 1×24 jam. Badge akan jadi hijau Terverifikasi setelah disetujui.',
+      title: 'Verifikasi Sedang Diproses',
+      desc: 'Data Anda sedang ditinjau. Estimasi proses verifikasi 1x24 jam.',
       titleClass: 'text-amber-800',
       descClass: 'text-amber-700',
     }
@@ -69,8 +69,8 @@ const kycBannerConfig = computed(() => {
       to: '/kyc',
       bg: 'bg-red-50 border-red-300',
       iconBg: 'bg-red-100 text-red-600',
-      title: 'Verifikasi Ditolak - Ajukan Ulang',
-      desc: 'Perbaiki foto selfie wajib kamera langsung yang jelas dan Facebook tidak private, lalu ajukan ulang.',
+      title: 'Verifikasi Ditolak',
+      desc: 'Ajukan ulang dengan dokumen/foto selfie yang lebih jelas.',
       titleClass: 'text-red-800',
       descClass: 'text-red-700',
     }
@@ -453,7 +453,6 @@ const triggerTopUp = async () => {
           <div class="flex-1 min-w-0">
             <p :class="['text-xs font-black leading-tight', kycBannerConfig.titleClass]">{{ kycBannerConfig.title }}</p>
             <p :class="['text-[11px] mt-0.5 leading-snug', kycBannerConfig.descClass]">{{ kycBannerConfig.desc }}</p>
-            <p v-if="kycStatus === 'pending'" class="text-[10px] text-amber-600 mt-1 font-medium">Badge kuning berarti sudah submit, tunggu admin verifikasi (1x24 jam)</p>
           </div>
           <ChevronRight :class="['w-4 h-4 self-center shrink-0', kycStatus === 'pending' ? 'text-amber-500' : kycStatus === 'rejected' ? 'text-red-400' : 'text-amber-400']" />
         </div>
