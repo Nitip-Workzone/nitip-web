@@ -57,12 +57,12 @@ const kycBannerConfig = computed(() => {
   if (status === 'pending') {
     return {
       to: '/kyc/status',
-      bg: 'bg-amber-50 border-amber-300',
-      iconBg: 'bg-amber-100 text-amber-600',
-      title: 'Verifikasi Sedang Diproses',
-      desc: 'Data Anda sedang ditinjau. Estimasi proses verifikasi 1x24 jam.',
-      titleClass: 'text-amber-800',
-      descClass: 'text-amber-700',
+      bg: 'bg-blue-50 border-blue-300',
+      iconBg: 'bg-blue-100 text-blue-600',
+      title: 'Menunggu Verifikasi',
+      desc: 'Sedang ditinjau admin',
+      titleClass: 'text-blue-800',
+      descClass: 'text-blue-700',
     }
   } else if (status === 'rejected') {
     return {
@@ -70,7 +70,7 @@ const kycBannerConfig = computed(() => {
       bg: 'bg-red-50 border-red-300',
       iconBg: 'bg-red-100 text-red-600',
       title: 'Verifikasi Ditolak',
-      desc: 'Ajukan ulang dengan dokumen/foto selfie yang lebih jelas.',
+      desc: 'Ajukan ulang',
       titleClass: 'text-red-800',
       descClass: 'text-red-700',
     }
@@ -79,8 +79,8 @@ const kycBannerConfig = computed(() => {
       to: '/kyc/status',
       bg: 'bg-emerald-50 border-emerald-200',
       iconBg: 'bg-emerald-100 text-emerald-600',
-      title: 'Akun Terverifikasi ✓',
-      desc: 'Selamat! Akun Anda sudah terverifikasi, semua fitur unlocked.',
+      title: 'Terverifikasi ✓',
+      desc: 'Semua fitur unlocked',
       titleClass: 'text-emerald-800',
       descClass: 'text-emerald-700',
     }
@@ -90,7 +90,7 @@ const kycBannerConfig = computed(() => {
       bg: 'bg-amber-50 border-amber-200',
       iconBg: 'bg-amber-100 text-amber-600',
       title: 'Verifikasi e-KYC Diperlukan',
-      desc: 'Lengkapi verifikasi profil untuk transaksi tanpa batas.',
+      desc: 'Lengkapi verifikasi',
       titleClass: 'text-amber-800',
       descClass: 'text-amber-700',
     }
@@ -799,14 +799,14 @@ const triggerTopUp = async () => {
                 >
               </div>
 
-              <!-- Supported Channels Grid at Bottom -->
-              <div class="w-full border-t border-slate-100 pt-2 flex flex-wrap items-center justify-center gap-1.5">
-                <img src="/images/providers/gopay.png" alt="Gopay" class="h-2 w-auto object-contain opacity-80" />
-                <img src="/images/providers/shopeepay.png" alt="ShopeePay" class="h-2 w-auto object-contain opacity-80" />
-                <img src="/images/providers/ovo.png" alt="OVO" class="h-2 w-auto object-contain opacity-80" />
-                <img src="/images/providers/dana.png" alt="DANA" class="h-2 w-auto object-contain opacity-80" />
-                <img src="/images/providers/mandiri.png" alt="Mandiri" class="h-2 w-auto object-contain opacity-80" />
-                <img src="/images/providers/bca.png" alt="BCA" class="h-2 w-auto object-contain opacity-80" />
+              <!-- Supported Channels Grid at Bottom - Official brand badges -->
+              <div class="w-full border-t border-slate-100 pt-2 flex flex-wrap items-center justify-center gap-1">
+                <span class="px-1.5 py-0.5 rounded-full text-[7px] font-black" style="background:#E6F7FC; color:#00AED6; border:1px solid #00AED6">GoPay</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[7px] font-black" style="background:#FEECE8; color:#EE4D2D; border:1px solid #EE4D2D">SPay</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[7px] font-black" style="background:#F0EBFA; color:#4C3497; border:1px solid #4C3497">OVO</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[7px] font-black" style="background:#E7F4FD; color:#118EEA; border:1px solid #118EEA">DANA</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[7px] font-black" style="background:#E6EEF5; color:#003A6E; border:1px solid #003A6E">Mandiri</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[7px] font-black" style="background:#E6F0FA; color:#0060AF; border:1px solid #0060AF">BCA</span>
               </div>
             </div>
 

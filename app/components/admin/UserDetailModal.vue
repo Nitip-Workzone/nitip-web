@@ -417,12 +417,7 @@ const roleVariant = (role: string) => {
               <div class="flex items-center justify-between text-xs border-b border-border/50 pb-2">
                 <span class="text-muted-foreground">Nama Bank:</span>
                 <span class="font-bold text-foreground flex items-center gap-1.5">
-                  <img 
-                    v-if="['BCA', 'MANDIRI', 'BRI', 'DANA', 'OVO'].includes(bankAccount.bank_name.toUpperCase())" 
-                    :src="`/images/providers/${bankAccount.bank_name.toLowerCase()}.png`" 
-                    class="h-4 object-contain"
-                    alt="Logo"
-                  >
+                  <CommonBankLogoBadge :code="bankAccount.bank_name" size="sm" />
                   {{ bankAccount.bank_name }}
                 </span>
               </div>
@@ -469,13 +464,9 @@ const roleVariant = (role: string) => {
               </div>
             </div>
 
-            <!-- Selected Bank Info (Logo & Biaya Admin) -->
+            <!-- Selected Bank Info (Logo & Biaya Admin) - Official badge -->
             <div v-if="bankForm.bank_name" class="flex items-center gap-3 p-3 bg-slate-50/50 rounded-xl border border-border/60 animate-in fade-in duration-200">
-              <img 
-                :src="`/images/providers/${bankForm.bank_name.toLowerCase()}.png`" 
-                class="w-10 h-10 object-contain p-1.5 bg-white rounded-lg border border-border/50"
-                alt="Logo Provider"
-              >
+              <CommonBankLogoBadge :code="bankForm.bank_name" size="lg" />
               <div class="text-xs space-y-0.5">
                 <p class="font-bold text-foreground">Metode Terpilih: {{ bankForm.bank_name }}</p>
                 <p v-if="['DANA', 'OVO'].includes(bankForm.bank_name.toUpperCase())" class="text-amber-600 font-semibold">

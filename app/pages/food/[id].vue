@@ -249,37 +249,79 @@ const cartSubtotal = computed(() =>
 
     <div class="px-4 pt-4 space-y-4">
 
-      <!-- ── MERCHANT HERO CARD ── -->
+      <!-- ── MERCHANT HERO CARD - FIX gepeng + cover_url & image_url display ── -->
       <div class="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
-        <!-- Gradient banner -->
-        <div
-          class="h-16 flex items-center justify-center text-4xl relative"
-          :class="merchant?.is_open
-            ? 'bg-gradient-to-br from-primary/10 via-indigo-50 to-violet-50'
-            : 'bg-slate-50'"
-        >
-          🍽️
-          <div class="absolute inset-0 bg-gradient-to-t from-white/60 to-transparent" />
+        <!-- Cover banner - height 160-180, not 16 gepeng, uses cover_url from core -->
+        <div class="relative h-[160px] w-full overflow-hidden bg-slate-100">
+          <!-- Cover image from core - handle signed URL with query params -->
+          <img
+            v-if="merchant?.cover_url"
+            :src="merchant.cover_url"
+            :alt="`${merchant.name} cover`"
+            class="absolute inset-0 w-full h-full object-cover"
+            @error="(e) => { (e.target as HTMLImageElement).style.display='none' }"
+          />
+          <!-- Fallback gradient if no cover -->
+          <div
+            v-else
+            class="absolute inset-0 flex items-center justify-center text-5xl"
+            :class="merchant?.is_open
+              ? 'bg-gradient-to-br from-primary/10 via-indigo-50 to-violet-50'
+              : 'bg-slate-100'"
+          >
+            🍽️
+          </div>
+          <!-- Gradient overlay for readability -->
+          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent" />
+          <!-- Open/closed badge on cover -->
+          <div class="absolute top-3 left-3 flex gap-2">
+            <span
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase backdrop-blur-md border shadow-sm"
+              :class="merchant?.is_open
+                ? 'bg-emerald-500/90 text-white border-emerald-400/50'
+                : 'bg-slate-900/60 text-white border-white/20'"
+            >
+              <span class="w-1.5 h-1.5 rounded-full" :class="merchant?.is_open ? 'bg-white animate-pulse' : 'bg-slate-300'" />
+              {{ merchant?.is_open ? 'Sedang Buka' : 'Sedang Tutup' }}
+            </span>
+            <span v-if="merchant?.auto_confirm && merchant?.is_open" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold text-white bg-primary/90 border border-white/20 backdrop-blur-md shadow-sm">
+              <Flame class="w-3 h-3" />
+              Instan
+            </span>
+          </div>
+          <!-- Rating on cover -->
+          <div class="absolute top-3 right-3 flex items-center gap-1 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/50 shadow-sm">
+            <Star class="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+            <span class="text-xs font-black text-amber-700">{{ merchant?.rating?.toFixed(1) || '5.0' }}</span>
+          </div>
+          <!-- Logo image_url as round overlay at bottom-left of cover -->
+          <div v-if="merchant?.image_url" class="absolute -bottom-10 left-4 w-20 h-20 rounded-2xl overflow-hidden border-4 border-white shadow-lg bg-white">
+            <img :src="merchant.image_url" :alt="`${merchant.name} logo`" class="w-full h-full object-cover" @error="(e) => { (e.target as HTMLImageElement).style.display='none' }" />
+          </div>
+          <div v-else class="absolute -bottom-10 left-4 w-20 h-20 rounded-2xl border-4 border-white shadow-lg bg-white flex items-center justify-center text-3xl">
+            🍽️
+          </div>
         </div>
 
-        <div class="px-4 pb-4 -mt-2">
+        <div class="px-4 pb-4" :class="merchant?.image_url ? 'pt-12' : 'pt-4'">
           <!-- Name & rating -->
           <div class="flex items-start justify-between gap-3">
-            <h2 class="text-base font-black text-slate-900 leading-tight">{{ merchant?.name || 'Memuat...' }}</h2>
-            <div class="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-xl shrink-0 border border-amber-100">
+            <div class="flex-1 min-w-0">
+              <h2 class="text-lg font-black text-slate-900 leading-tight truncate">{{ merchant?.name || 'Memuat...' }}</h2>
+              <p class="text-[11px] text-slate-500 mt-1 leading-relaxed line-clamp-2">
+                {{ merchant?.description || 'Toko mitra terpercaya di Nitip.' }}
+              </p>
+            </div>
+            <div class="hidden sm:flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-xl shrink-0 border border-amber-100">
               <Star class="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
               <span class="text-xs font-black text-amber-700">{{ merchant?.rating?.toFixed(1) || '5.0' }}</span>
             </div>
           </div>
 
-          <p class="text-[11px] text-slate-500 mt-1 leading-relaxed line-clamp-2">
-            {{ merchant?.description || 'Toko mitra terpercaya di Nitip.' }}
-          </p>
-
           <!-- Info row -->
-          <div class="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100">
+          <div class="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 flex-wrap">
             <span
-              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border sm:hidden"
               :class="merchant?.is_open
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 : 'bg-slate-100 text-slate-400 border-slate-200'"
@@ -288,15 +330,21 @@ const cartSubtotal = computed(() =>
               {{ merchant?.is_open ? 'Sedang Buka' : 'Sedang Tutup' }}
             </span>
 
-            <span v-if="merchant?.auto_confirm && merchant?.is_open" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold text-primary bg-primary/8 border border-primary/15">
-              <Flame class="w-3 h-3" />
-              Konfirmasi Instan
+            <span class="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+              <MapPin class="w-3.5 h-3.5 shrink-0 text-slate-400" />
+              <span class="truncate max-w-[200px]">{{ merchant?.address || 'Trans Sulawesi, Lolak' }}</span>
             </span>
 
-            <span class="text-[10px] text-slate-400 font-semibold flex items-center gap-1 ml-auto">
-              <MapPin class="w-3 h-3 shrink-0" />
-              <span class="truncate max-w-[130px]">{{ merchant?.address?.split(',')[0] || 'Alamat Toko' }}</span>
+            <span class="text-[10px] text-slate-400 ml-auto hidden sm:inline-flex items-center gap-1">
+              <span class="w-1 h-1 rounded-full bg-slate-300"></span>
+              {{ merchant ? `${merchant.latitude.toFixed(4)}, ${merchant.longitude.toFixed(4)}` : '' }}
             </span>
+          </div>
+
+          <!-- Opening hours if available -->
+          <div v-if="merchant?.opening_hours" class="mt-3 flex flex-wrap gap-1.5">
+            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Jam Buka:</span>
+            <span class="text-[10px] text-slate-600">Sen-Ming 08:00-22:00</span>
           </div>
         </div>
       </div>
