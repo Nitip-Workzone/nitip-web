@@ -528,11 +528,14 @@ export const useMerchantsStore = defineStore('merchants', {
     },
     async createToppingOption(groupId: string, payload: { label: string; price_delta?: number; image_url?: string; is_available?: boolean; sort_order?: number }) {
       const { request } = useApi()
-      const res = await request<{ data: { id: string } }>(`/merchant/menu/${groupId}/options`, { method: 'POST', body: payload })
-      // endpoint reuse? actual: /merchant/menu/toppings/:id/options
-      // try both
-      try { return res.data } catch { 
-        const res2 = await request<{ data: { id: string } }>(`/merchant/menu/toppings/${groupId}/options`, { method: 'POST', body: payload })
+      // Fix: endpoint yang benar adalah /merchant/menu/toppings/:groupId/options atau /merchant/menu/addons/:groupId/options
+      // Bug sebelumnya salah pakai /merchant/menu/:groupId/options -> 404 Cannot POST /merchant/menu/{id}/options
+      try {
+        const res = await request<{ data: { id: string } }>(`/merchant/menu/toppings/${groupId}/options`, { method: 'POST', body: payload })
+        return res.data
+      } catch {
+        // fallback alias baru bahasa Indonesia: Tambahan
+        const res2 = await request<{ data: { id: string } }>(`/merchant/menu/addons/${groupId}/options`, { method: 'POST', body: payload })
         return res2.data
       }
     },
