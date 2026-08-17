@@ -280,6 +280,7 @@ export const useMerchantsStore = defineStore('merchants', {
       price: number
       image_url?: string
       is_available: boolean
+      category_id?: string | null
     }) {
       const { request } = useApi()
       try {
@@ -303,6 +304,7 @@ export const useMerchantsStore = defineStore('merchants', {
         price: number
         image_url?: string
         is_available: boolean
+        category_id?: string | null
       }
     ) {
       const { request } = useApi()

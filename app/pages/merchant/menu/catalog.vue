@@ -165,10 +165,16 @@ const handleAddMenu = async () => {
   let finalImageUrl=menuForm.value.image_url
   if (selectedFile.value && !finalImageUrl) { try { finalImageUrl=await merchantsStore.uploadMenuImage(selectedFile.value) } catch { error('Gagal upload'); actionLoading.value=false; return } }
   try {
-    const menu = await merchantsStore.createMenuItem({ name: menuForm.value.name, description: menuForm.value.description, price: Number(menuForm.value.price), image_url: finalImageUrl, is_available: menuForm.value.is_available } as any) as any
-    const menuId=menu?.id
-    if (menuId && menuForm.value.category_id) { const { request } = useApi(); try { await request(`/merchant/menu/${menuId}`, { method:'PUT', body:{ name:menuForm.value.name, description:menuForm.value.description, price:Number(menuForm.value.price), image_url:finalImageUrl, is_available:menuForm.value.is_available, category_id:menuForm.value.category_id } }) } catch {} }
-    success('Menu ditambahkan. Sekarang kelola varian & tambahan via tombol Varian/Tambahan di list.')
+    // Kirim category_id langsung di create, agar tidak hilang (fix bug kategori tidak tersimpan)
+    const menu = await merchantsStore.createMenuItem({ 
+      name: menuForm.value.name, 
+      description: menuForm.value.description, 
+      price: Number(menuForm.value.price), 
+      image_url: finalImageUrl, 
+      is_available: menuForm.value.is_available,
+      category_id: menuForm.value.category_id as any
+    } as any) as any
+    success('Menu ditambahkan' + (menuForm.value.category_id ? ` ke kategori. ` : '. ') + 'Kelola varian & tambahan via tombol di list.')
     showAddModal.value=false
     if (previewUrl.value) { URL.revokeObjectURL(previewUrl.value); previewUrl.value='' }
     await merchantsStore.fetchMerchantMenu()
@@ -333,6 +339,25 @@ const handleSaveAddonMaster = async () => {
   } catch { error('Gagal simpan') } finally { addonMasterSaving.value=false }
 }
 const handleDeleteAddonMaster = async (id:string) => { if (!confirm('Hapus tambahan?')) return; try { const { request } = useApi(); try { await request(`/merchant/addons/${id}`, { method:'DELETE' }) } catch { try { await request(`/merchant/toppings/${id}`, { method:'DELETE' }) } catch {} } addonMasters.value=addonMasters.value.filter(t=>t.id!==id); success('Tambahan dihapus') } catch { error('Gagal hapus') } }
+
+// Pakai tambahan master existing untuk menu yang sedang dikelola
+const useMasterForMenu = async (master:any) => {
+  if (!addonManagerMenu.value?.id) { error('Pilih menu dulu'); return }
+  try {
+    // Buat group baru di menu ini dengan nama master + semua opsinya (foto ikut ke-copy)
+    const g = await merchantsStore.createToppingGroup(addonManagerMenu.value.id, { name: master.name, type: 'multiple', is_required: false, min_select: 0, max_select: null, sort_order: addonManagerGroups.value.length }) as any
+    const gid = g?.id
+    if (gid) {
+      for (const opt of (master.options||[])) {
+        await (merchantsStore as any).createToppingOption(gid, { label: opt.label, price_delta: opt.price_delta, image_url: opt.image_url || opt.previewUrl || '', is_available: true, sort_order: 0 })
+      }
+    }
+    success(`"${master.name}" dipakai ke menu "${addonManagerMenu.value.name}" — ${master.options?.length||0} opsi foto ikut ter-copy`)
+    // refresh
+    const groups = await merchantsStore.fetchToppingGroups(addonManagerMenu.value.id) as any[]
+    addonManagerGroups.value = groups.map((gr:any)=>({ id:gr.id, name:gr.name, type:gr.type, is_required:gr.is_required, min_select:gr.min_select, max_select:gr.max_select, sort_order:gr.sort_order, options:(gr.options||[]).map((o:any)=>({ id:o.id, label:o.label, price_delta:o.price_delta, image_url:o.image_url, previewUrl:o.image_url, is_available:o.is_available, sort_order:o.sort_order })) }))
+  } catch { error('Gagal pakai master') }
+}
 
 onMounted(()=>{ fetchProfile() })
 </script>
@@ -530,13 +555,29 @@ onMounted(()=>{ fetchProfile() })
       <template #footer><div class="flex gap-3 pt-4 border-t mt-4"><button class="flex-1 h-11 rounded-xl border text-[13px] font-bold" @click="showAddVariantOptionModal=false">Batal</button><button class="flex-1 h-11 rounded-xl bg-primary text-white text-[13px] font-bold" @click="handleSaveVariantOption">{{ editingVariantOptionId ? 'Simpan' : 'Tambah' }}</button></div></template>
     </UiModal>
 
-    <!-- TAMBAHAN MANAGER MODAL -->
+    <!-- TAMBAHAN MANAGER MODAL - BISA PAKAI DARI MASTER EXISTING -->
     <UiModal v-model:open="showAddonManagerModal" :title="`Kelola Tambahan — ${addonManagerMenu?.name||''}`" max-width="max-w-xl">
       <div class="space-y-4 max-h-[70vh] overflow-y-auto overflow-x-hidden pr-1">
-        <div class="bg-amber-50 border border-amber-100 rounded-xl p-2.5 text-[11px] text-amber-800">Tambahan per-menu: Keju, Sambal, Kerupuk. Bisa pakai dari master. Foto 400, toggle habis/tersedia.</div>
+        <div class="bg-amber-50 border border-amber-100 rounded-xl p-2.5 text-[11px] text-amber-800 leading-relaxed">Tambahan per-menu bisa <b>pakai dari master existing</b> (Keju, Sambal, Kerupuk, dll yang sudah dibuat di tab Tambahan) agar tidak buat ulang. Foto 400 ikut ter-copy, toggle habis/tersedia.</div>
+
+        <!-- Pakai dari Master Existing -->
+        <div v-if="addonMasters.length>0" class="space-y-2">
+          <p class="text-[10px] font-black uppercase tracking-wide flex items-center gap-1.5"><Sparkles class="w-3.5 h-3.5 text-amber-500" /> Pakai dari Tambahan Master yang Sudah Ada</p>
+          <div class="grid grid-cols-1 gap-2 max-h-[160px] overflow-y-auto pr-1">
+            <div v-for="master in addonMasters" :key="master.id" class="bg-white border border-amber-100 rounded-xl p-2.5 flex items-center gap-2.5 hover:border-amber-300 transition-colors">
+              <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 overflow-hidden flex items-center justify-center shrink-0"><img v-if="master.image_url" :src="master.image_url" class="w-full h-full object-cover" /><CupSoda v-else class="w-4 h-4 text-amber-400" /></div>
+              <div class="flex-1 min-w-0"><p class="text-[11px] font-black truncate">{{ master.name }}</p><p class="text-[9px] text-slate-500">{{ master.options?.length||0 }} opsi • {{ (master.options||[]).slice(0,3).map((o:any)=>o.label).join(', ') }}{{ (master.options||[]).length>3 ? '...' : '' }}</p></div>
+              <button class="shrink-0 h-8 px-3 rounded-full bg-primary text-white text-[10px] font-bold active:scale-95 flex items-center gap-1" @click="useMasterForMenu(master)"><Plus class="w-3 h-3" /> Pakai</button>
+            </div>
+          </div>
+        </div>
+        <div v-else class="bg-slate-50 border border-dashed rounded-xl p-3 text-center"><p class="text-[11px] text-slate-500">Belum ada Tambahan Master. Buat dulu di tab <b>Tambahan</b> (Keju, Sambal, Kerupuk) agar bisa dipakai ulang di banyak menu.</p><button class="mt-2 h-8 px-3 rounded-full bg-slate-900 text-white text-[10px] font-bold" @click="()=>{ showAddonManagerModal=false; activeTab='addon' }">Ke Tab Tambahan</button></div>
+
+        <div class="border-t pt-3" />
+
         <div v-if="addonManagerLoading" class="py-8 text-center"><RefreshCw class="w-6 h-6 animate-spin mx-auto text-primary" /></div>
         <div v-else>
-          <div class="flex items-center justify-between mb-3"><p class="text-[11px] font-black uppercase">Group Tambahan</p><button class="h-8 px-3 rounded-full bg-slate-900 text-white text-[11px] font-bold" @click="showAddAddonGroupModal=true">+ Group</button></div>
+          <div class="flex items-center justify-between mb-3"><p class="text-[11px] font-black uppercase">Group Tambahan di Menu Ini</p><button class="h-8 px-3 rounded-full bg-slate-900 text-white text-[11px] font-bold" @click="showAddAddonGroupModal=true">+ Group Baru</button></div>
           <div v-if="addonManagerGroups.length===0" class="py-6 text-center border border-dashed rounded-2xl"><Sparkles class="w-8 h-8 mx-auto text-slate-300 mb-2" /><p class="text-xs font-bold">Belum ada tambahan</p></div>
           <div v-for="tg in addonManagerGroups" :key="tg.id" class="bg-amber-50/30 border border-amber-100 rounded-2xl p-3 space-y-3 mb-3">
             <div class="flex items-center justify-between"><p class="text-[12px] font-black">{{ tg.name }}</p><div class="flex gap-1"><button class="h-7 px-2.5 rounded-full bg-white border text-[11px] font-bold" @click="openAddAddonOption(tg.id)">+ Opsi</button><button class="w-7 h-7 rounded-full bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center" @click="handleDeleteAddonGroup(tg.id)"><Trash2 class="w-3.5 h-3.5" /></button></div></div>
