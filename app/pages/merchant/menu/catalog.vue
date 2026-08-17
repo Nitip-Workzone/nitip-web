@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// V2 default catalog - Kategori, Varian ±Foto, Topping Foto, COS auto-delete, 3 tabs Menu/Kategori/Topping Master independent shared, mobile-friendly, loading state
 import { Plus, Edit, Trash2, RefreshCw, Utensils, ArrowLeft, Camera, Tag, Layers, PlusCircle } from '@lucide/vue'
 import { useMerchantsStore } from '~/stores/merchants'
 import { useToast } from '~/composables/useToast'
