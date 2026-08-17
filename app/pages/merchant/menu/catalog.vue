@@ -95,7 +95,7 @@ const filteredMenus = computed(() => {
   return (merchantsStore.merchantMenus as any[]).filter((m:any)=> (m.category_id||m.category?.id)===activeCategoryId.value)
 })
 
-// File & Crop handling - FIX foto variant
+// File & Crop handling - FIX foto variant & foto menu utama
 const handleFileChange = async (event: Event, target: 'menu'|'category'|'variantOption'|'addonOption'|'addonMasterOption'='menu') => {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -109,6 +109,11 @@ const handleFileChange = async (event: Event, target: 'menu'|'category'|'variant
   cropperOpen.value=true
   input.value=''
 }
+const openAddFilePicker = () => { addFileInputRef.value?.click() }
+const openEditFilePicker = () => { editFileInputRef.value?.click() }
+const openCategoryFilePicker = () => { catFileInputRef.value?.click() }
+const openVariantOptionFilePicker = () => { variantOptionFileRef.value?.click() }
+const openAddonOptionFilePicker = () => { addonOptionFileRef.value?.click() }
 const onCropped = async (payload: { blob: Blob; url: string; file: File }) => {
   let uploadedUrl=''
   try { uploadedUrl = await merchantsStore.uploadMenuImage(payload.file) } catch {}
@@ -431,7 +436,7 @@ onMounted(()=>{ fetchProfile() })
           <div class="flex gap-3 items-start">
             <div class="w-20 h-20 rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center shrink-0"><img v-if="previewUrl" :src="previewUrl" class="w-full h-full object-cover" /><Camera v-else class="w-7 h-7 text-amber-400" /></div>
             <div class="flex-1 min-w-0 space-y-2">
-              <button type="button" class="w-full h-10 rounded-xl border bg-white text-[12px] font-bold hover:bg-slate-50" @click="()=>addFileInputRef?.click()">{{ previewUrl ? 'Ganti & Crop' : 'Pilih Foto → Crop 1:1' }}</button>
+              <button type="button" class="w-full h-10 rounded-xl border bg-white text-[12px] font-bold hover:bg-slate-50 active:scale-[0.98]" @click="openAddFilePicker">{{ previewUrl ? 'Ganti & Crop' : 'Pilih Foto → Crop 1:1' }}</button>
               <input ref="addFileInputRef" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="(e)=>handleFileChange(e,'menu')" />
               <p v-if="croppedBlob" class="text-[11px] text-emerald-600 font-bold">✓ Crop 1200 siap</p><p v-else class="text-[10px] text-slate-400 leading-tight">Setelah dibuat, kelola varian & tambahan via tombol di list menu.</p>
             </div>
@@ -446,7 +451,7 @@ onMounted(()=>{ fetchProfile() })
         <div class="space-y-1.5"><label class="text-[10px] font-bold uppercase text-slate-600">Nama</label><input v-model="menuForm.name" type="text" class="h-11 w-full rounded-xl border px-4 text-[13px] font-semibold"></div>
         <div class="space-y-1.5"><label class="text-[10px] font-bold uppercase text-slate-600">Harga</label><input v-model.number="menuForm.price" type="number" class="h-11 w-full rounded-xl border px-4 text-[13px] font-bold"></div>
         <div class="space-y-1.5"><label class="text-[10px] font-bold uppercase text-slate-600">Kategori</label><select v-model="menuForm.category_id" class="h-11 w-full rounded-xl border px-3 text-[13px]"><option :value="null">Tanpa</option><option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option></select></div>
-        <div class="space-y-2"><label class="text-[10px] font-bold uppercase">Foto <span class="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px]">Crop 1:1</span></label><div class="flex gap-3 items-center"><div class="w-16 h-16 rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center shrink-0"><img v-if="previewUrl" :src="previewUrl" class="w-full h-full object-cover" /><img v-else-if="menuForm.image_url" :src="menuForm.image_url" class="w-full h-full object-cover opacity-70" /><Camera v-else class="w-6 h-6 text-amber-400" /></div><button type="button" class="h-10 px-4 rounded-xl border bg-slate-50 text-[12px] font-bold" @click="()=>editFileInputRef?.click()">{{ previewUrl ? 'Ganti & Crop' : 'Pilih & Crop' }}</button><input ref="editFileInputRef" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="(e)=>handleFileChange(e,'menu')" /></div></div>
+        <div class="space-y-2"><label class="text-[10px] font-bold uppercase">Foto <span class="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px]">Crop 1:1</span></label><div class="flex gap-3 items-center"><div class="w-16 h-16 rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center shrink-0"><img v-if="previewUrl" :src="previewUrl" class="w-full h-full object-cover" /><img v-else-if="menuForm.image_url" :src="menuForm.image_url" class="w-full h-full object-cover opacity-70" /><Camera v-else class="w-6 h-6 text-amber-400" /></div><button type="button" class="h-10 px-4 rounded-xl border bg-slate-50 text-[12px] font-bold active:scale-[0.98]" @click="openEditFilePicker">{{ previewUrl ? 'Ganti & Crop' : 'Pilih & Crop' }}</button><input ref="editFileInputRef" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="(e)=>handleFileChange(e,'menu')" /></div></div>
       </div>
       <template #footer><div class="flex gap-3 pt-4 border-t mt-4"><button class="flex-1 h-11 rounded-xl border text-[13px] font-bold" @click="showEditModal=false">Batal</button><button class="flex-1 h-11 rounded-xl bg-primary text-white text-[13px] font-bold disabled:opacity-50" :disabled="actionLoading" @click="handleEditMenu">{{ actionLoading ? '...' : 'Simpan' }}</button></div></template>
     </UiModal>
@@ -560,7 +565,7 @@ onMounted(()=>{ fetchProfile() })
         <div class="flex gap-3 items-start">
           <div class="w-20 h-20 rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center shrink-0"><img v-if="addonOptionForm.previewUrl || addonOptionForm.image_url" :src="addonOptionForm.previewUrl || addonOptionForm.image_url" class="w-full h-full object-cover" /><Camera v-else class="w-6 h-6 text-amber-400" /></div>
           <div class="flex-1 min-w-0 space-y-2">
-            <button type="button" class="w-full h-10 rounded-xl border bg-white text-[12px] font-bold" @click="()=>{ cropperTarget='addonOption'; cropperAddonOptionTarget={ groupId: addonOptionForm.groupId, mode: editingAddonOptionId ? 'edit' : 'add' }; addonOptionFileRef?.click() }">{{ addonOptionForm.previewUrl || addonOptionForm.image_url ? 'Ganti Foto' : 'Upload Foto 400' }}</button>
+            <button type="button" class="w-full h-10 rounded-xl border bg-white text-[12px] font-bold active:scale-[0.98]" @click="openAddonOptionFilePicker">{{ addonOptionForm.previewUrl || addonOptionForm.image_url ? 'Ganti Foto' : 'Upload Foto 400' }}</button>
             <input ref="addonOptionFileRef" type="file" accept="image/*" class="hidden" @change="(e)=>handleFileChange(e,'addonOption')" />
             <p class="text-[10px] text-slate-400">Foto 400, toggle habis/tersedia.</p>
           </div>
@@ -576,7 +581,7 @@ onMounted(()=>{ fetchProfile() })
         <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-2.5 text-[11px] text-indigo-700">Icon 1:1 400, COS auto-delete.</div>
         <div class="space-y-1.5"><label class="text-[10px] font-bold uppercase text-slate-600">Nama Kategori *</label><input v-model="categoryForm.name" placeholder="Makanan..." class="h-11 w-full rounded-xl border px-4 text-[13px] font-bold"></div>
         <div class="space-y-1.5"><label class="text-[10px] font-bold uppercase flex items-center gap-2">Icon Foto <span class="px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[8px] border">1:1 • 400</span></label>
-          <div class="flex items-center gap-3"><div class="w-12 h-12 rounded-full border-2 border-dashed border-indigo-200 bg-indigo-50/50 overflow-hidden flex items-center justify-center shrink-0"><img v-if="categoryPreviewUrl" :src="categoryPreviewUrl" class="w-full h-full object-cover" /><Tag v-else class="w-5 h-5 text-indigo-300" /></div><button type="button" class="h-9 px-3 rounded-xl bg-slate-900 text-white text-[11px] font-bold" @click="()=>catFileInputRef?.click()">{{ categoryPreviewUrl ? 'Ganti & Crop' : 'Upload & Crop' }}</button><input ref="catFileInputRef" type="file" accept="image/*" class="hidden" @change="(e)=>handleFileChange(e,'category')" /></div>
+          <div class="flex items-center gap-3"><div class="w-12 h-12 rounded-full border-2 border-dashed border-indigo-200 bg-indigo-50/50 overflow-hidden flex items-center justify-center shrink-0"><img v-if="categoryPreviewUrl" :src="categoryPreviewUrl" class="w-full h-full object-cover" /><Tag v-else class="w-5 h-5 text-indigo-300" /></div><button type="button" class="h-9 px-3 rounded-xl bg-slate-900 text-white text-[11px] font-bold active:scale-[0.98]" @click="openCategoryFilePicker">{{ categoryPreviewUrl ? 'Ganti & Crop' : 'Upload & Crop' }}</button><input ref="catFileInputRef" type="file" accept="image/*" class="hidden" @change="(e)=>handleFileChange(e,'category')" /></div>
         </div>
       </div>
       <template #footer><div class="flex gap-3 pt-4 border-t mt-4"><button class="flex-1 h-11 rounded-xl border text-[13px] font-bold" @click="showCategoryModal=false">Batal</button><button class="flex-1 h-11 rounded-xl bg-slate-900 text-white text-[13px] font-bold disabled:opacity-50" :disabled="saveCategoryLoading" @click="handleSaveCategory">{{ saveCategoryLoading ? '...' : 'Simpan' }}</button></div></template>
@@ -592,7 +597,7 @@ onMounted(()=>{ fetchProfile() })
             <div class="w-11 h-11 rounded-xl bg-amber-50 border border-amber-100 overflow-hidden flex items-center justify-center shrink-0"><img v-if="opt.previewUrl || opt.image_url" :src="opt.previewUrl || opt.image_url" class="w-full h-full object-cover" /><Camera v-else class="w-5 h-5 text-amber-300" /></div>
             <div class="flex-1 min-w-0 space-y-1.5">
               <input v-model="opt.label" placeholder="Keju" class="w-full h-8 rounded-lg border px-2.5 text-[12px] font-bold focus:border-primary focus:outline-none">
-              <div class="flex gap-1.5"><input v-model.number="opt.price_delta" type="number" placeholder="3000" class="flex-1 min-w-0 h-8 rounded-lg border px-2 text-[11px] font-bold"><button type="button" class="shrink-0 h-8 px-2.5 rounded-lg bg-amber-50 border text-[10px] font-bold text-amber-700" @click="(()=>{ cropperAddonMasterIdx=idx; cropperTarget='addonMasterOption'; const input=document.createElement('input'); input.type='file'; input.accept='image/*'; input.onchange=(ev:any)=>{ const f=ev.target?.files?.[0]; if (!f) return; if (cropperSrc) URL.revokeObjectURL(cropperSrc); cropperSrc=URL.createObjectURL(f); cropperOpen=true }; input.click() })()">Foto</button></div>
+              <div class="flex gap-1.5"><input v-model.number="opt.price_delta" type="number" placeholder="3000" class="flex-1 min-w-0 h-8 rounded-lg border px-2 text-[11px] font-bold"><button type="button" class="shrink-0 h-8 px-2.5 rounded-lg bg-amber-50 border text-[10px] font-bold text-amber-700 active:scale-[0.98]" @click="()=>{ cropperAddonMasterIdx=idx; cropperTarget='addonMasterOption'; const input=document.createElement('input'); input.type='file'; input.accept='image/*'; input.onchange=(ev:any)=>{ const f=ev.target?.files?.[0]; if (!f) return; if (cropperSrc) URL.revokeObjectURL(cropperSrc); cropperSrc=URL.createObjectURL(f); cropperOpen=true }; input.click() }">Foto</button></div>
             </div>
             <button class="w-8 h-8 rounded-full bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center shrink-0" @click="addonMasterOptions.splice(idx,1)"><Trash2 class="w-3.5 h-3.5" /></button>
           </div>
