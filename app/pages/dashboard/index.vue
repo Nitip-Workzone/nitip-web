@@ -29,6 +29,74 @@ const isBalanceVisible = ref(true)
 const loading = ref(true)
 const kycVerificationRequired = ref(false)
 
+const kycStatus = ref<string>('none')
+const kycStatusLoading = ref(true)
+
+async function fetchKycStatus() {
+  if (authStore.user?.is_verified) {
+    kycStatus.value = 'approved'
+    kycStatusLoading.value = false
+    return
+  }
+  try {
+    const res = await request<{ data: { status: string } }>('/kyc/me')
+    if (res.data?.status) {
+      kycStatus.value = res.data.status
+    } else {
+      kycStatus.value = 'none'
+    }
+  } catch {
+    kycStatus.value = 'none'
+  } finally {
+    kycStatusLoading.value = false
+  }
+}
+
+const kycBannerConfig = computed(() => {
+  const status = kycStatus.value
+  if (status === 'pending') {
+    return {
+      to: '/kyc/status',
+      bg: 'bg-amber-50 border-amber-300',
+      iconBg: 'bg-amber-100 text-amber-600',
+      title: 'Sudah Submit - Menunggu Verifikasi Admin',
+      desc: 'Dokumen selfie kamera langsung + Facebook sudah terkirim. Admin sedang meninjau, estimasi 1×24 jam. Badge akan jadi hijau Terverifikasi setelah disetujui.',
+      titleClass: 'text-amber-800',
+      descClass: 'text-amber-700',
+    }
+  } else if (status === 'rejected') {
+    return {
+      to: '/kyc',
+      bg: 'bg-red-50 border-red-300',
+      iconBg: 'bg-red-100 text-red-600',
+      title: 'Verifikasi Ditolak - Ajukan Ulang',
+      desc: 'Perbaiki foto selfie wajib kamera langsung yang jelas dan Facebook tidak private, lalu ajukan ulang.',
+      titleClass: 'text-red-800',
+      descClass: 'text-red-700',
+    }
+  } else if (status === 'approved' || authStore.user?.is_verified) {
+    return {
+      to: '/kyc/status',
+      bg: 'bg-emerald-50 border-emerald-200',
+      iconBg: 'bg-emerald-100 text-emerald-600',
+      title: 'Akun Terverifikasi ✓',
+      desc: 'Selamat! Akun Anda sudah terverifikasi, semua fitur unlocked.',
+      titleClass: 'text-emerald-800',
+      descClass: 'text-emerald-700',
+    }
+  } else {
+    return {
+      to: '/kyc/intro',
+      bg: 'bg-amber-50 border-amber-200',
+      iconBg: 'bg-amber-100 text-amber-600',
+      title: 'Verifikasi e-KYC Diperlukan',
+      desc: 'Lengkapi verifikasi profil untuk transaksi tanpa batas.',
+      titleClass: 'text-amber-800',
+      descClass: 'text-amber-700',
+    }
+  }
+})
+
 const toggleBalance = () => {
   isBalanceVisible.value = !isBalanceVisible.value
 }
@@ -135,6 +203,7 @@ async function fetchAll() {
     ordersStore.fetchMyOrders(),
     bannersStore.fetchActiveBanners(),
     fetchPublicConfig(),
+    fetchKycStatus(),
   ])
 }
 
@@ -368,21 +437,25 @@ const triggerTopUp = async () => {
         </div>
       </div>
 
-      <!-- ── KYC Warning Banner (Web Requester) ── -->
+      <!-- ── KYC Warning Banner (Gambar 1) — warna & wording berubah jika sudah submit/pending, klik ke Gambar 3 status ── -->
       <NuxtLink 
-        v-if="kycVerificationRequired && !authStore.user?.is_verified" 
-        to="/kyc/intro"
-        class="block bg-amber-50 border border-amber-200 rounded-2xl p-4 hover:bg-amber-100/50 transition-all active:scale-[0.98] duration-150 shadow-soft"
+        v-if="(kycVerificationRequired && !authStore.user?.is_verified) || (kycStatus === 'pending' && !authStore.user?.is_verified) || kycStatus === 'rejected'"
+        :to="kycBannerConfig.to"
+        :class="['block rounded-2xl p-4 hover:brightness-[0.98] transition-all active:scale-[0.98] duration-150 shadow-soft border', kycBannerConfig.bg]"
       >
         <div class="flex items-center gap-3">
-          <div class="p-2.5 rounded-xl bg-amber-100 text-amber-600 shrink-0">
-            <UserCheck class="w-5 h-5" />
+          <div :class="['p-2.5 rounded-xl shrink-0', kycBannerConfig.iconBg]">
+            <UserCheck v-if="kycStatus === 'none' || !kycStatus" class="w-5 h-5" />
+            <Clock v-else-if="kycStatus === 'pending'" class="w-5 h-5" />
+            <XCircle v-else-if="kycStatus === 'rejected'" class="w-5 h-5" />
+            <CheckCircle v-else class="w-5 h-5" />
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-xs font-black text-amber-800 leading-tight">Verifikasi e-KYC Diperlukan</p>
-            <p class="text-[11px] text-amber-700 mt-0.5 leading-snug">Lengkapi verifikasi profil untuk transaksi tanpa batas.</p>
+            <p :class="['text-xs font-black leading-tight', kycBannerConfig.titleClass]">{{ kycBannerConfig.title }}</p>
+            <p :class="['text-[11px] mt-0.5 leading-snug', kycBannerConfig.descClass]">{{ kycBannerConfig.desc }}</p>
+            <p v-if="kycStatus === 'pending'" class="text-[10px] text-amber-600 mt-1 font-medium">Badge kuning berarti sudah submit, tunggu admin verifikasi (1x24 jam)</p>
           </div>
-          <ChevronRight class="w-4 h-4 text-amber-400 self-center shrink-0" />
+          <ChevronRight :class="['w-4 h-4 self-center shrink-0', kycStatus === 'pending' ? 'text-amber-500' : kycStatus === 'rejected' ? 'text-red-400' : 'text-amber-400']" />
         </div>
       </NuxtLink>
 
