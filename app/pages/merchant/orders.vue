@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ShoppingBag, RefreshCw, Clock, Utensils, Play, PackageCheck, Phone } from '@lucide/vue'
+import { ShoppingBag, RefreshCw, Clock, Utensils, Play, PackageCheck, Phone, Layers, Sparkles } from '@lucide/vue'
 import { useMerchantsStore } from '~/stores/merchants'
 import { useToast } from '~/composables/useToast'
 import { useMerchantPoolStream } from '~/composables/useMerchantPoolStream'
@@ -43,6 +43,12 @@ const formatEstimatedCost = (val: unknown): string => {
 }
 
 const formatShortId = (id: unknown): string => String(id ?? '').slice(0, 8) || '-'
+
+const getOrderItems = (order: MerchantOrder): Array<{ id: string; menu_name?: string; quantity: number; notes?: string; price_at_purchase?: number; variant_label?: string; topping_labels?: string[]; price_delta?: number }> => {
+  const items = (order as any).items
+  if (Array.isArray(items)) return items
+  return []
+}
 
 const formatTime = (dateStr: string): string => {
   try {
@@ -343,16 +349,30 @@ onUnmounted(() => {
 
           <hr class="border-slate-100">
 
-          <!-- Item Details -->
-          <div class="flex gap-3">
-            <div class="w-8 h-8 rounded-xl bg-primary/5 text-primary flex items-center justify-center shrink-0">
-              <Utensils class="w-4 h-4" />
+          <!-- Item Details + Varian & Tambahan (Requester sudah pilih varian±foto & tambahan) -->
+          <div class="space-y-2">
+            <div class="flex gap-3">
+              <div class="w-8 h-8 rounded-xl bg-primary/5 text-primary flex items-center justify-center shrink-0">
+                <Utensils class="w-4 h-4" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-black text-slate-800 leading-relaxed">{{ order.item_details || '' }}</p>
+                <p class="text-[10px] text-slate-400 mt-1 font-semibold">
+                  Estimasi Biaya: <span class="text-slate-800 font-black">Rp {{ formatEstimatedCost(order.estimated_cost) }}</span>
+                </p>
+              </div>
             </div>
-            <div class="min-w-0 flex-1">
-              <p class="text-xs font-black text-slate-800 leading-relaxed">{{ order.item_details || '' }}</p>
-              <p class="text-[10px] text-slate-400 mt-1 font-semibold">
-                Estimasi Biaya: <span class="text-slate-800 font-black">Rp {{ formatEstimatedCost(order.estimated_cost) }}</span>
-              </p>
+            <!-- Detailed items with variant & tambahan (if backend includes items) -->
+            <div v-if="getOrderItems(order).length>0" class="ml-11 space-y-2">
+              <div v-for="it in getOrderItems(order)" :key="it.id" class="bg-slate-50 border border-slate-100 rounded-2xl p-2.5 flex gap-2">
+                <div class="flex-1 min-w-0 space-y-1">
+                  <p class="text-[11px] font-black text-slate-800 truncate">{{ it.menu_name || 'Item' }} <span class="text-slate-500 font-bold">x{{ it.quantity }}</span> — Rp {{ Number(it.price_at_purchase||0).toLocaleString('id-ID') }}</p>
+                  <div v-if="it.variant_label" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-100 text-[9px] font-bold text-indigo-700"><Layers class="w-3 h-3" /> Varian: {{ it.variant_label }}</div>
+                  <div v-if="it.topping_labels && it.topping_labels.length>0" class="flex gap-1 flex-wrap"><span v-for="(tl,idx) in it.topping_labels" :key="idx" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-100 text-[9px] font-bold text-amber-700"><Sparkles class="w-3 h-3" /> {{ tl }}</span></div>
+                  <div v-if="it.notes" class="text-[9px] text-slate-500 italic">Catatan: {{ it.notes }}</div>
+                  <div v-if="it.price_delta" class="text-[9px] text-emerald-600 font-bold">+ Tambahan harga: Rp {{ Number(it.price_delta).toLocaleString('id-ID') }}</div>
+                </div>
+              </div>
             </div>
           </div>
 
