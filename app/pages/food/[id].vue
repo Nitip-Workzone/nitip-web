@@ -38,28 +38,7 @@ const promoError = ref('')
 
 const formatRp = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
 
-// ── SCROLL LOCK for modals: prevent background scroll bleeding ──
-const lockBodyScroll = () => {
-  if (typeof document !== 'undefined') {
-    document.documentElement.style.overflow = 'hidden'
-    document.body.style.overflow = 'hidden'
-    document.body.style.overscrollBehavior = 'none'
-    document.documentElement.style.overscrollBehavior = 'none'
-  }
-}
-const unlockBodyScroll = () => {
-  if (typeof document !== 'undefined') {
-    document.documentElement.style.overflow = ''
-    document.body.style.overflow = ''
-    document.body.style.overscrollBehavior = ''
-    document.documentElement.style.overscrollBehavior = ''
-  }
-}
-watch([showCartDrawer, showVariantPicker, showClearCartConfirm], ([cart, variant, clear]) => {
-  if (cart || variant || clear) lockBodyScroll()
-  else unlockBodyScroll()
-})
-onBeforeUnmount(() => unlockBodyScroll())
+const showVariantPicker = ref(false)
 
 // Watcher COD: jika paymentSource berubah ke cod (future), voucher tidak bisa dan dikosongkan
 watch(paymentSource, (newVal) => {
@@ -107,8 +86,32 @@ onMounted(async () => {
   }
 })
 
+// ── SCROLL LOCK for modals: prevent background scroll bleeding (safe, no preventDefault) ──
+const lockBodyScroll = () => {
+  if (typeof document !== 'undefined') {
+    const { body, documentElement } = document
+    body.dataset.prevOverflow = body.style.overflow
+    documentElement.dataset.prevOverflow = documentElement.style.overflow
+    body.style.overflow = 'hidden'
+    documentElement.style.overflow = 'hidden'
+  }
+}
+const unlockBodyScroll = () => {
+  if (typeof document !== 'undefined') {
+    const { body, documentElement } = document
+    body.style.overflow = body.dataset.prevOverflow || ''
+    documentElement.style.overflow = documentElement.dataset.prevOverflow || ''
+    delete body.dataset.prevOverflow
+    delete documentElement.dataset.prevOverflow
+  }
+}
+watch([showCartDrawer, showVariantPicker, showClearCartConfirm], ([cart, variant, clearCart]) => {
+  if (cart || variant || clearCart) lockBodyScroll()
+  else unlockBodyScroll()
+})
+onBeforeUnmount(() => unlockBodyScroll())
+
 // Variant picker dengan foto varian/topping + price ±
-const showVariantPicker = ref(false)
 const variantPickerMenu = ref<any>(null)
 const selectedVariantOption = ref<{ id: string; label: string; price_delta: number; image_url?: string } | null>(null)
 const selectedToppings = ref<Array<{ id: string; label: string; price_delta: number; image_url?: string }>>([])
@@ -347,7 +350,7 @@ const cartSubtotal = computed(() =>
             decoding="async"
             fetchpriority="low"
             @error="(e) => { (e.target as HTMLImageElement).style.display='none' }"
-          />
+          >
           <div
             v-else
             class="absolute inset-0 flex items-center justify-center text-5xl bg-gradient-to-br from-primary/10 via-indigo-50 to-violet-50"
@@ -377,7 +380,7 @@ const cartSubtotal = computed(() =>
         <div class="relative px-4">
           <div class="flex items-end -mt-10 relative z-20">
             <div class="w-[84px] h-[84px] rounded-[20px] overflow-hidden border-[3px] border-white shadow-xl bg-white shrink-0">
-              <img v-if="merchant?.image_url" :src="merchant.image_url" :alt="`${merchant.name} logo`" class="w-full h-full object-cover" loading="lazy" decoding="async" @error="(e) => { (e.target as HTMLImageElement).style.display='none' }" />
+              <img v-if="merchant?.image_url" :src="merchant.image_url" :alt="`${merchant.name} logo`" class="w-full h-full object-cover" loading="lazy" decoding="async" @error="(e) => { (e.target as HTMLImageElement).style.display='none' }" >
               <div v-else class="w-full h-full flex items-center justify-center text-3xl bg-slate-50">🍽️</div>
             </div>
           </div>
@@ -622,14 +625,10 @@ const cartSubtotal = computed(() =>
         v-if="showCartDrawer"
         class="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm overscroll-contain"
         @click.self="showCartDrawer = false"
-        @touchmove.prevent
-        @wheel.prevent
       >
         <div
           class="bg-white rounded-t-[2rem] w-full max-w-md flex flex-col overflow-hidden overscroll-contain"
-          style="max-height: 92dvh; max-height: 92vh; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;"
-          @touchmove.stop
-          @wheel.stop
+          style="max-height: 92dvh; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;"
         >
           <!-- Handle + Header (fixed) -->
           <div class="px-6 pt-4 pb-3 border-b border-slate-100 shrink-0 bg-white">
@@ -666,7 +665,6 @@ const cartSubtotal = computed(() =>
           <div
             class="flex-1 overflow-y-auto overscroll-contain px-6 py-4 space-y-5"
             style="overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;"
-            @touchmove.stop
           >
             <!-- Cart items list -->
             <div class="space-y-3">
@@ -677,7 +675,7 @@ const cartSubtotal = computed(() =>
                 class="bg-slate-50/80 border border-slate-100 rounded-2xl p-3 flex gap-3 items-start"
               >
                 <div class="w-12 h-12 bg-white border border-slate-100 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
-                  <img v-if="(item as any).image_url" :src="(item as any).image_url" class="w-full h-full object-cover" />
+                  <img v-if="(item as any).image_url" :src="(item as any).image_url" class="w-full h-full object-cover" >
                   <span v-else class="text-xl">🍴</span>
                 </div>
                 <div class="flex-1 min-w-0">
@@ -780,7 +778,7 @@ const cartSubtotal = computed(() =>
                   placeholder="Merdeka81"
                   class="flex-1 h-10 px-3 rounded-xl border border-amber-200 text-xs font-mono font-bold uppercase focus:outline-none focus:border-amber-400 bg-white"
                   @keyup.enter="handleApplyPromo()"
-                />
+                >
                 <button
                   class="h-10 px-5 bg-amber-500 text-white text-[11px] font-black rounded-xl active:scale-95 transition-all disabled:opacity-50 shrink-0"
                   :disabled="promoValidating"
@@ -862,20 +860,16 @@ const cartSubtotal = computed(() =>
         v-if="showVariantPicker"
         class="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm overscroll-contain"
         @click.self="showVariantPicker=false"
-        @touchmove.prevent
-        @wheel.prevent
       >
         <div
           class="bg-white rounded-t-[2rem] w-full max-w-md flex flex-col overflow-hidden overscroll-contain"
-          style="max-height: 88dvh; max-height: 88vh; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;"
-          @touchmove.stop
-          @wheel.stop
+          style="max-height: 88dvh; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;"
         >
           <div class="px-6 pt-4 pb-3 border-b border-slate-100 shrink-0 bg-white">
             <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3 min-w-0 flex-1">
-                <div class="w-12 h-12 rounded-2xl bg-slate-100 overflow-hidden border flex items-center justify-center shrink-0"><img v-if="variantPickerMenu?.image_url" :src="variantPickerMenu.image_url" class="w-full h-full object-cover" /><span v-else class="text-lg">🍽️</span></div>
+                <div class="w-12 h-12 rounded-2xl bg-slate-100 overflow-hidden border flex items-center justify-center shrink-0"><img v-if="variantPickerMenu?.image_url" :src="variantPickerMenu.image_url" class="w-full h-full object-cover" ><span v-else class="text-lg">🍽️</span></div>
                 <div class="min-w-0">
                   <h3 class="text-sm font-black text-slate-900 truncate">{{ variantPickerMenu?.name }}</h3>
                   <p class="text-[11px] text-slate-500 truncate">Pilih varian ± harga & topping + foto</p>
@@ -888,14 +882,13 @@ const cartSubtotal = computed(() =>
           <div
             class="flex-1 overflow-y-auto overscroll-contain px-6 py-4 space-y-5"
             style="overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;"
-            @touchmove.stop
           >
             <!-- Variant Groups -->
             <div v-for="vg in (variantPickerMenu?.variant_groups||variantPickerMenu?.variantGroups||[])" :key="vg.id" class="space-y-2">
               <p class="text-[11px] font-black uppercase flex items-center gap-1.5">{{ vg.name }} <span v-if="vg.is_required" class="px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 text-[8px] border border-rose-100">Wajib</span><span class="text-[9px] font-normal text-slate-400">{{ vg.type==='single'?'Pilih 1':'Boleh banyak' }}</span></p>
               <div class="space-y-2">
                 <button v-for="opt in (vg.options||[])" :key="opt.id" class="w-full flex items-center gap-3 p-2.5 rounded-2xl border text-left transition-all" :class="selectedVariantOption?.id===opt.id ? 'border-primary bg-primary/5' : 'border-slate-100 bg-white hover:bg-slate-50'" @click="selectedVariantOption={ id: opt.id, label: opt.label, price_delta: opt.price_delta, image_url: opt.image_url }">
-                  <div class="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border flex items-center justify-center shrink-0"><img v-if="opt.image_url" :src="opt.image_url" class="w-full h-full object-cover" /><span v-else class="text-[10px]">🍽️</span></div>
+                  <div class="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border flex items-center justify-center shrink-0"><img v-if="opt.image_url" :src="opt.image_url" class="w-full h-full object-cover" ><span v-else class="text-[10px]">🍽️</span></div>
                   <div class="flex-1 min-w-0"><p class="text-xs font-bold truncate">{{ opt.label }}</p><p class="text-[10px] font-bold" :class="opt.price_delta>=0 ? 'text-emerald-600' : 'text-rose-600'">{{ opt.price_delta===0 ? 'Harga dasar' : (opt.price_delta>0 ? `+Rp ${opt.price_delta.toLocaleString('id-ID')}` : `-Rp ${Math.abs(opt.price_delta).toLocaleString('id-ID')}`) }}</p></div>
                   <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0" :class="selectedVariantOption?.id===opt.id ? 'border-primary bg-primary' : 'border-slate-300'"><div v-if="selectedVariantOption?.id===opt.id" class="w-2 h-2 rounded-full bg-white" /></div>
                 </button>
@@ -906,7 +899,7 @@ const cartSubtotal = computed(() =>
               <p class="text-[11px] font-black uppercase flex items-center gap-1.5">{{ tg.name }} <span class="text-[9px] font-normal text-slate-400">{{ tg.type==='single'?'Pilih 1':'Boleh banyak' }}</span></p>
               <div class="space-y-2">
                 <button v-for="opt in (tg.options||[])" :key="opt.id" class="w-full flex items-center gap-3 p-2.5 rounded-2xl border text-left transition-all" :class="selectedToppings.find(t=>t.id===opt.id) ? 'border-amber-400 bg-amber-50' : 'border-slate-100 bg-white'" @click="(()=>{ const exists=selectedToppings.find(t=>t.id===opt.id); if (exists) selectedToppings=selectedToppings.filter(t=>t.id!==opt.id); else selectedToppings=[...selectedToppings,{ id:opt.id, label:opt.label, price_delta:opt.price_delta, image_url:opt.image_url }] })()">
-                  <div class="w-10 h-10 rounded-xl bg-slate-100 overflow-hidden border flex items-center justify-center shrink-0"><img v-if="opt.image_url" :src="opt.image_url" class="w-full h-full object-cover" /><span v-else class="text-[9px]">🧀</span></div>
+                  <div class="w-10 h-10 rounded-xl bg-slate-100 overflow-hidden border flex items-center justify-center shrink-0"><img v-if="opt.image_url" :src="opt.image_url" class="w-full h-full object-cover" ><span v-else class="text-[9px]">🧀</span></div>
                   <div class="flex-1 min-w-0"><p class="text-xs font-bold truncate">{{ opt.label }}</p><p class="text-[10px] font-bold text-emerald-600">+Rp {{ opt.price_delta.toLocaleString('id-ID') }}</p></div>
                   <div class="w-5 h-5 rounded-lg border-2 flex items-center justify-center shrink-0" :class="selectedToppings.find(t=>t.id===opt.id) ? 'border-amber-500 bg-amber-500 text-white' : 'border-slate-300'"><span v-if="selectedToppings.find(t=>t.id===opt.id)">✓</span></div>
                 </button>

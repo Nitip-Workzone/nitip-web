@@ -284,7 +284,7 @@ const scrollToTop = () => {
               loading="lazy"
               decoding="async"
               @error="(e) => { (e.target as HTMLImageElement).style.display = 'none' }"
-            />
+            >
             <!-- Fallback emoji selalu di belakang, muncul ketika img hidden / tidak ada -->
             <div
               class="absolute inset-0 flex items-center justify-center text-3xl"
