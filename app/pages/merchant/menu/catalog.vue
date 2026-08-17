@@ -57,28 +57,33 @@ const fetchProfile = async () => {
   }
 }
 
+// Shared file input refs agar bisa dipicu tanpa bergantung pada <label> di dalam UiModal
+const addFileInputRef = ref<HTMLInputElement | null>(null)
+const editFileInputRef = ref<HTMLInputElement | null>(null)
+
 const handleFileChange = async (event: Event) => {
   const target = event.target as HTMLInputElement
-  if (target.files && target.files.length > 0) {
-    const file = target.files[0]
-    if (!file) return
-    // Validasi wajib
-    if (!file.type.startsWith('image/')) {
-      error('File harus berupa gambar JPEG/PNG/WEBP')
-      target.value = ''
-      return
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      error('Ukuran gambar maksimal 10MB')
-      target.value = ''
-      return
-    }
-    cropperPendingFile.value = file
-    if (cropperSrc.value) URL.revokeObjectURL(cropperSrc.value)
-    cropperSrc.value = URL.createObjectURL(file)
-    cropperOpen.value = true
+  if (!target.files || target.files.length === 0) return
+  const file = target.files[0]
+  if (!file) return
+  if (!file.type.startsWith('image/')) {
+    error('File harus berupa gambar JPEG/PNG/WEBP')
     target.value = ''
+    return
   }
+  if (file.size > 10 * 1024 * 1024) {
+    error('Ukuran gambar maksimal 10MB')
+    target.value = ''
+    return
+  }
+  // Otomatis masuk crop setelah pilih - sesuai request
+  cropperPendingFile.value = file
+  if (cropperSrc.value) URL.revokeObjectURL(cropperSrc.value)
+  cropperSrc.value = URL.createObjectURL(file)
+  // Delay sedikit agar modal UiModal tidak menutupi, lalu buka cropper full screen z-9999
+  await nextTick()
+  cropperOpen.value = true
+  target.value = ''
 }
 
 const onCropped = (payload: { blob: Blob; url: string; file: File }) => {
@@ -86,8 +91,8 @@ const onCropped = (payload: { blob: Blob; url: string; file: File }) => {
   selectedFile.value = payload.file
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
   previewUrl.value = payload.url
-  // Close cropper
   if (cropperSrc.value) {
+    // jangan revoke cropperSrc yang sama dengan payload.url? payload.url dari blob baru, jadi aman revoke src lama
     URL.revokeObjectURL(cropperSrc.value)
     cropperSrc.value = ''
   }
@@ -102,7 +107,18 @@ const onCropCancel = () => {
   }
   cropperOpen.value = false
   cropperPendingFile.value = null
-  // Jangan set preview, tetap wajib crop
+  // Tetap wajib crop, clear preview file jika cancel
+  if (!previewUrl.value) {
+    selectedFile.value = null
+    croppedBlob.value = null
+  }
+}
+
+const triggerAddFile = () => {
+  addFileInputRef.value?.click()
+}
+const triggerEditFile = () => {
+  editFileInputRef.value?.click()
 }
 
 const openAddModal = () => {
@@ -430,10 +446,10 @@ onMounted(() => {
               <Camera v-else class="w-6 h-6 text-amber-400" />
             </div>
             <div class="flex-1 space-y-1.5">
-              <label class="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 text-xs font-bold hover:bg-slate-100 transition-all cursor-pointer">
+              <button type="button" class="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 text-xs font-bold hover:bg-slate-100 transition-all active:scale-95" :disabled="uploadProgress" @click="triggerAddFile">
                 {{ uploadProgress ? 'Mengunggah...' : (previewUrl ? 'Ganti & Crop Otomatis 1:1' : 'Pilih Gambar → Otomatis Crop 1:1') }}
-                <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" :disabled="uploadProgress" @change="handleFileChange" />
-              </label>
+              </button>
+              <input ref="addFileInputRef" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="handleFileChange" />
               <p class="text-[10px] text-slate-500">Setelah pilih foto, editor crop otomatis terbuka. Geser/zoom agar produk di tengah.</p>
               <p v-if="selectedFile && !croppedBlob" class="text-[10px] text-rose-600 font-bold animate-pulse">⚠️ Foto belum di-crop! Editor otomatis akan terbuka, atau klik pilih lagi.</p>
               <p v-if="croppedBlob" class="text-[10px] text-emerald-600 font-bold">✓ Sudah di-crop wajib 1200×1200 siap disimpan</p>
@@ -500,7 +516,7 @@ onMounted(() => {
           >
         </div>
 
-        <!-- Image Picker Wajib Crop 1:1 -->
+        <!-- Image Picker Wajib Crop 1:1 - Edit -->
         <div class="space-y-2">
           <label class="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-2">Gambar Produk <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px]">Wajib Crop 1:1 • 1200×1200</span></label>
           <div class="flex items-center gap-3.5">
@@ -510,13 +526,13 @@ onMounted(() => {
               <Camera v-else class="w-6 h-6 text-amber-400" />
             </div>
             <div class="flex-1 space-y-1.5">
-              <label class="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 text-xs font-bold hover:bg-slate-100 transition-all cursor-pointer">
+              <button type="button" class="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 text-xs font-bold hover:bg-slate-100 transition-all active:scale-95" :disabled="uploadProgress" @click="triggerEditFile">
                 {{ uploadProgress ? 'Mengunggah...' : (previewUrl ? 'Ganti & Crop Ulang 1:1' : 'Pilih & Crop Wajib 1:1') }}
-                <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" :disabled="uploadProgress" @change="handleFileChange" />
-              </label>
-              <p class="text-[10px] text-slate-500">Wajib crop 1:1 square agar konsisten di katalog pembeli.</p>
-              <p v-if="selectedFile && !croppedBlob" class="text-[10px] text-rose-600 font-bold">⚠️ Belum di-crop! Pilih ulang untuk crop.</p>
-              <p v-if="croppedBlob" class="text-[10px] text-emerald-600 font-bold">✓ Sudah di-crop siap upload</p>
+              </button>
+              <input ref="editFileInputRef" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="handleFileChange" />
+              <p class="text-[10px] text-slate-500">Pilih foto → otomatis crop editor terbuka. Wajib crop agar tidak gepeng.</p>
+              <p v-if="selectedFile && !croppedBlob" class="text-[10px] text-rose-600 font-bold animate-pulse">⚠️ Belum di-crop! Pilih ulang.</p>
+              <p v-if="croppedBlob" class="text-[10px] text-emerald-600 font-bold">✓ Sudah di-crop</p>
             </div>
           </div>
         </div>
