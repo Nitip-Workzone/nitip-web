@@ -25,9 +25,36 @@ const selfieStream = ref<MediaStream | null>(null)
 const selfieCameraActive = ref(false)
 const selfieCameraError = ref<string | null>(null)
 const selfieCapturedFromCamera = ref(false) // must be true to ensure camera capture, not file
+const isSecureContext = ref<boolean>(true)
+
+if (import.meta.client) {
+  isSecureContext.value = window.isSecureContext || location.hostname === 'localhost' || location.protocol === 'https:'
+}
 
 const loading = ref(false)
 const errors = ref<Record<string, string>>({})
+
+// Fallback for insecure context / old WebView: still must be camera capture attribute, not gallery
+const onFallbackSelfieFile = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+  if (file.size > 20 * 1024 * 1024) {
+    toastStore.add('Ukuran gambar maksimal 20MB')
+    return
+  }
+  if (!file.type.startsWith('image/')) {
+    toastStore.add('Hanya menerima format gambar')
+    return
+  }
+  const preview = URL.createObjectURL(file)
+  // Mark as camera captured via fallback (capture=user ensures camera intent on mobile)
+  selfieFile.value = file
+  selfiePreview.value = preview
+  selfieCapturedFromCamera.value = true
+  delete errors.value.selfie
+  selfieCameraError.value = null
+}
 
 const onFileChange = (e: Event, type: 'facebook') => {
   const target = e.target as HTMLInputElement
@@ -63,24 +90,44 @@ const clearFile = (type: 'facebook' | 'selfie') => {
   }
 }
 
+async function attachSelfieStreamToVideo() {
+  await nextTick()
+  const video = selfieVideoRef.value
+  const stream = selfieStream.value
+  if (!video || !stream) return
+  video.srcObject = stream
+  video.muted = true
+  video.playsInline = true
+  try {
+    await video.play()
+  } catch {
+    // play might be blocked, try again on canplay
+    video.addEventListener('canplay', () => { video.play().catch(() => {}) }, { once: true })
+  }
+}
+
 async function startSelfieCamera() {
   selfieCameraError.value = null
-  selfieCameraActive.value = false
+  // Render video container first, then get stream
+  selfieCameraActive.value = true
+  await nextTick()
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 1024 } },
       audio: false,
     })
     selfieStream.value = stream
-    if (selfieVideoRef.value) {
-      selfieVideoRef.value.srcObject = stream
-      await selfieVideoRef.value.play().catch(() => {})
-    }
-    selfieCameraActive.value = true
+    await attachSelfieStreamToVideo()
   } catch (err: unknown) {
-    const msg = (err as { name?: string })?.name === 'NotAllowedError' ? 'Akses kamera ditolak, aktifkan izin kamera di browser' : 'Gagal membuka kamera selfie, pastikan perangkat memiliki kamera depan'
+    selfieCameraActive.value = false
+    const name = (err as { name?: string })?.name
+    const msg = name === 'NotAllowedError' ? 'Akses kamera ditolak, aktifkan izin kamera di browser' : name === 'NotFoundError' ? 'Kamera tidak ditemukan di perangkat ini' : `Gagal membuka kamera selfie (${name || 'unknown'}), pastikan perangkat memiliki kamera depan`
     selfieCameraError.value = msg
     toastStore.add(msg)
+    if (selfieStream.value) {
+      selfieStream.value.getTracks().forEach(t => t.stop())
+      selfieStream.value = null
+    }
   }
 }
 
@@ -88,6 +135,11 @@ function stopSelfieCamera() {
   if (selfieStream.value) {
     selfieStream.value.getTracks().forEach(t => t.stop())
     selfieStream.value = null
+  }
+  if (selfieVideoRef.value) {
+    const v = selfieVideoRef.value
+    v.pause()
+    v.srcObject = null
   }
   selfieCameraActive.value = false
 }
@@ -304,43 +356,75 @@ const stepLabel = 'Langkah 1 dari 2'
           </button>
         </div>
 
-        <!-- Camera live -->
+        <!-- Camera live - FIXED preview hitam: nextTick attach + playsInline + secure context check -->
         <div v-else class="space-y-3">
-          <!-- Video element -->
+          <!-- Video element - always mounted when cameraActive, with proper lifecycle -->
           <div v-if="selfieCameraActive" class="relative w-full rounded-2xl overflow-hidden border-2 border-primary/30 bg-black" style="aspect-ratio: 3/4;">
-            <video ref="selfieVideoRef" autoplay playsinline muted class="w-full h-full object-cover scale-x-[-1]"></video>
+            <video
+              ref="selfieVideoRef"
+              autoplay
+              playsinline
+              muted
+              class="absolute inset-0 w-full h-full object-cover"
+              style="transform: scaleX(-1);"
+              @loadedmetadata="() => { if (selfieVideoRef) selfieVideoRef.play().catch(()=>{}) }"
+            ></video>
+            <!-- Fallback black overlay hidden when video has dimensions -->
+            <div class="absolute inset-0 flex items-center justify-center pointer-events-none" :class="selfieVideoRef && selfieVideoRef.videoWidth>0 ? 'hidden' : 'flex'">
+              <div class="text-white/60 text-xs">Memuat kamera...</div>
+            </div>
             <canvas ref="selfieCanvasRef" class="hidden"></canvas>
-            <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
-              <button class="px-5 py-2.5 bg-white text-slate-800 rounded-xl text-sm font-bold shadow" @click="stopSelfieCamera()">Batal</button>
-              <button class="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow flex items-center gap-2" @click="captureSelfieFromCamera()">
+            <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-3 z-10">
+              <button class="min-w-[90px] px-5 py-3 bg-white text-slate-800 rounded-2xl text-sm font-bold shadow-lg" @click="stopSelfieCamera()">Batal</button>
+              <button class="min-w-[130px] px-5 py-3 bg-primary text-white rounded-2xl text-sm font-bold shadow-lg flex items-center gap-2 justify-center" @click="captureSelfieFromCamera()">
                 <Camera class="w-4 h-4" /> Ambil Selfie
               </button>
             </div>
-            <div class="absolute top-2 left-2 px-2 py-1 rounded-full bg-black/60 text-white text-[10px] font-bold">Kamera Aktif - Wajah terlihat jelas, tanpa masker</div>
+            <div class="absolute top-2 left-2 right-2 flex justify-between z-10">
+              <span class="px-2.5 py-1 rounded-full bg-black/60 text-white text-[10px] font-bold backdrop-blur-sm">Kamera Aktif - Wajah jelas, tanpa masker</span>
+              <span v-if="selfieStream" class="px-2 py-1 rounded-full bg-emerald-500/90 text-white text-[9px] font-bold">● LIVE</span>
+            </div>
           </div>
 
           <!-- Start camera button - wajib kamera, tidak ada galeri -->
           <button
             v-if="!selfieCameraActive"
-            class="w-full rounded-2xl p-4 border-2 flex items-center gap-4 hover:border-primary/50 transition-colors bg-white"
+            class="w-full rounded-2xl p-4 border-2 flex items-center gap-4 hover:border-primary/50 transition-colors bg-white text-left"
             :class="errors.selfie ? 'border-red-300 bg-red-50' : 'border-slate-200'"
             @click="startSelfieCamera()"
           >
             <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <Camera class="w-6 h-6 text-primary" />
             </div>
-            <div class="text-left">
+            <div class="text-left flex-1">
               <p class="text-sm font-bold text-slate-800">Ambil Selfie Sekarang - Wajib Kamera</p>
               <p class="text-xs text-slate-500 mt-0.5">Wajib dari kamera langsung, tidak boleh pilih file. Pastikan wajah jelas, tanpa masker</p>
+              <p v-if="!isSecureContext" class="text-[10px] text-amber-600 mt-1">⚠️ Memerlukan HTTPS - jika tidak support, akan fallback ke capture</p>
             </div>
-            <span class="ml-auto text-slate-300">›</span>
+            <span class="ml-auto text-slate-300 text-xl">›</span>
           </button>
+
+          <!-- Fallback capture input for insecure context or iOS WebView lama -->
+          <div v-if="!selfieCameraActive && !isSecureContext" class="space-y-2">
+            <label class="relative block cursor-pointer">
+              <input type="file" accept="image/*" capture="user" class="hidden" @change="e => onFallbackSelfieFile(e)">
+              <div class="rounded-2xl p-3 border border-amber-300 bg-amber-50 flex items-center gap-3">
+                <Camera class="w-5 h-5 text-amber-600" />
+                <div class="text-left">
+                  <p class="text-xs font-bold text-amber-800">Fallback: Ambil via Kamera Sistem</p>
+                  <p class="text-[10px] text-amber-700">Jika preview hitam, gunakan ini (tetap wajib kamera)</p>
+                </div>
+              </div>
+            </label>
+          </div>
+
           <canvas ref="selfieCanvasRef" class="hidden"></canvas>
 
-          <p v-if="selfieCameraError" class="text-xs text-red-500 font-medium bg-red-50 p-2 rounded-xl">{{ selfieCameraError }}</p>
+          <p v-if="selfieCameraError" class="text-xs text-red-500 font-medium bg-red-50 p-3 rounded-xl border border-red-200 whitespace-pre-wrap">{{ selfieCameraError }}</p>
           <div class="rounded-xl p-3 bg-amber-50 border border-amber-200 text-[11px] text-amber-800">
             <p class="font-bold">🔒 Keamanan eKYC:</p>
-            <p class="mt-1">Foto selfie <strong>wajib diambil langsung dari kamera</strong> perangkat, tidak boleh memilih file dari galeri. Ini untuk memastikan keaslian verifikasi wajah Anda.</p>
+            <p class="mt-1">Foto selfie <strong>wajib diambil langsung dari kamera</strong> perangkat, tidak boleh memilih file dari galeri. Preview harus menampilkan wajah Anda secara live sebelum klik Ambil Selfie.</p>
+            <p v-if="selfieCameraActive && selfieVideoRef && selfieVideoRef.videoWidth===0" class="mt-2 text-[10px] text-amber-700">Debug: videoWidth=0, stream={{ !!selfieStream }}, tracks={{ selfieStream?.getVideoTracks().length || 0 }}, jika tetap hitam coba tutup dan buka lagi atau cek izin kamera browser.</p>
           </div>
         </div>
         <p v-if="errors.selfie" class="text-xs text-red-500 font-medium">{{ errors.selfie }}</p>

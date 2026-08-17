@@ -136,25 +136,39 @@ const avatarCameraActive = ref(false)
 const avatarCameraError = ref<string | null>(null)
 const avatarCapturedFromCamera = ref(false)
 
+async function attachAvatarStream() {
+  await nextTick()
+  const video = avatarVideoRef.value
+  const stream = avatarStream.value
+  if (!video || !stream) return
+  video.srcObject = stream
+  video.muted = true
+  video.playsInline = true
+  try { await video.play() } catch { video.addEventListener('canplay', () => { video.play().catch(()=>{}) }, { once: true }) }
+}
 async function startAvatarCamera() {
   avatarCameraError.value = null
+  avatarCameraActive.value = true
+  await nextTick()
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1024 }, height: { ideal: 1024 } }, audio: false })
     avatarStream.value = stream
-    if (avatarVideoRef.value) {
-      avatarVideoRef.value.srcObject = stream
-      await avatarVideoRef.value.play().catch(() => {})
-    }
-    avatarCameraActive.value = true
+    await attachAvatarStream()
   } catch {
+    avatarCameraActive.value = false
     avatarCameraError.value = 'Gagal membuka kamera avatar, pastikan izin kamera aktif'
     toastStore.add('Gagal membuka kamera avatar')
+    if (avatarStream.value) { avatarStream.value.getTracks().forEach(t=>t.stop()); avatarStream.value=null }
   }
 }
 function stopAvatarCamera() {
   if (avatarStream.value) {
     avatarStream.value.getTracks().forEach(t => t.stop())
     avatarStream.value = null
+  }
+  if (avatarVideoRef.value) {
+    const v = avatarVideoRef.value
+    v.pause(); v.srcObject = null
   }
   avatarCameraActive.value = false
 }
@@ -467,21 +481,22 @@ const openLink = (url: string) => {
                 </div>
               </div>
 
-              <!-- Camera live for avatar -->
+              <!-- Camera live for avatar - FIXED black preview: nextTick + scaleX(-1) -->
               <div v-if="avatarCameraActive" class="relative rounded-xl overflow-hidden border-2 border-primary/30 bg-black aspect-square">
-                <video ref="avatarVideoRef" autoplay playsinline muted class="w-full h-full object-cover scale-x-[-1]"></video>
+                <video ref="avatarVideoRef" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover" style="transform: scaleX(-1);" @loadedmetadata="() => { if (avatarVideoRef) avatarVideoRef.play().catch(()=>{}) }"></video>
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none" :class="avatarVideoRef && avatarVideoRef.videoWidth>0 ? 'hidden' : 'flex'"><span class="text-white/60 text-xs">Memuat kamera...</span></div>
                 <canvas ref="avatarCanvasRef" class="hidden"></canvas>
-                <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
+                <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2 z-10">
                   <button type="button" class="px-4 py-2 bg-white text-slate-800 rounded-xl text-xs font-bold shadow" @click="stopAvatarCamera()">Batal</button>
                   <button type="button" class="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold shadow" @click="captureAvatarFromCamera()">Ambil Avatar</button>
                 </div>
+                <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-emerald-500/90 text-white text-[9px] font-bold z-10">● LIVE - Wajib Kamera</span>
               </div>
               <canvas ref="avatarCanvasRef" class="hidden"></canvas>
-              <p v-if="avatarCameraError" class="text-[10px] text-red-600 bg-red-50 p-2 rounded">{{ avatarCameraError }}</p>
+              <p v-if="avatarCameraError" class="text-[10px] text-red-600 bg-red-50 p-2 rounded border border-red-200 whitespace-pre-wrap">{{ avatarCameraError }}</p>
               <div class="rounded-xl p-2 bg-amber-50 border border-amber-200 text-[10px] text-amber-800">
-                🔒 Foto profil wajib kamera langsung, tidak boleh pilih file dari galeri, untuk keamanan eKYC & register.
+                🔒 Foto profil wajib kamera langsung, tidak boleh pilih file dari galeri, untuk keamanan eKYC & register. Preview harus live sebelum ambil.
               </div>
-              <!-- Legacy file input hidden but kept for fallback, now blocked via logic -->
               <input type="file" accept="image/*" class="hidden" @change="onAvatarChange">
             </div>
             
