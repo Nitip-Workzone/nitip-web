@@ -214,6 +214,15 @@ function onAvatarChange(e: Event) {
   editAvatarPreview.value = URL.createObjectURL(file)
 }
 
+function clearAvatarPreview() {
+  if (editAvatarPreview.value) {
+    URL.revokeObjectURL(editAvatarPreview.value)
+  }
+  editAvatarPreview.value = null
+  editAvatarFile.value = null
+  avatarCapturedFromCamera.value = false
+}
+
 async function saveProfile() {
   if (!validateProfile()) {
     const firstErr = Object.values(profileErrors.value)[0]
@@ -416,16 +425,16 @@ const openLink = (url: string) => {
                   </h2>
                   <ShieldCheck v-if="authStore.user?.is_verified" class="w-4.5 h-4.5 text-emerald-500 shrink-0" />
                   <span v-if="authStore.user?.is_verified" class="inline-flex items-center gap-1 text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Terverifikasi
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"/> Terverifikasi
                   </span>
                   <span v-else-if="(kycStatus as { status?: string; admin_note?: string })?.status==='pending'" class="inline-flex items-center gap-1.5 text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-300 px-2.5 py-1 rounded-full animate-pulse">
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Menunggu Verifikasi Admin - Sudah Submit
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"/> Menunggu Verifikasi Admin - Sudah Submit
                   </span>
                   <span v-else-if="(kycStatus as { status?: string; admin_note?: string })?.status==='rejected'" class="inline-flex items-center gap-1 text-[9px] font-bold bg-red-50 text-red-700 border border-red-300 px-2.5 py-1 rounded-full">
-                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Ditolak - Ajukan Ulang
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"/> Ditolak - Ajukan Ulang
                   </span>
                   <span v-else class="inline-flex items-center gap-1 text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-full">
-                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Belum Verifikasi
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400"/> Belum Verifikasi
                   </span>
                 </div>
                 <div v-if="kycStatus" class="mt-2 space-y-1.5">
@@ -495,23 +504,23 @@ const openLink = (url: string) => {
                   <p class="text-[9px] text-slate-500">Wajib dari kamera langsung, tidak boleh pilih file. Max 5MB, JPG/PNG</p>
                   <div class="mt-2 flex gap-2">
                     <button type="button" class="px-3 py-1.5 rounded-full bg-primary text-white text-[10px] font-bold" @click="startAvatarCamera()">Ambil dari Kamera</button>
-                    <button v-if="editAvatarPreview" type="button" class="px-3 py-1.5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold" @click="() => { if(editAvatarPreview) URL.revokeObjectURL(editAvatarPreview); editAvatarPreview=null; editAvatarFile=null; avatarCapturedFromCamera=false }">Hapus</button>
+                    <button v-if="editAvatarPreview" type="button" class="px-3 py-1.5 rounded-full bg-slate-200 text-slate-650 text-[10px] font-bold" @click="clearAvatarPreview">Hapus</button>
                   </div>
                 </div>
               </div>
 
               <!-- Camera live for avatar - FIXED black preview: nextTick + scaleX(-1) -->
               <div v-if="avatarCameraActive" class="relative rounded-xl overflow-hidden border-2 border-primary/30 bg-black aspect-square">
-                <video ref="avatarVideoRef" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover" style="transform: scaleX(-1);" @loadedmetadata="() => { if (avatarVideoRef) avatarVideoRef.play().catch(()=>{}) }"></video>
+                <video ref="avatarVideoRef" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover" style="transform: scaleX(-1);" @loadedmetadata="() => { if (avatarVideoRef) avatarVideoRef.play().catch(()=>{}) }"/>
                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none" :class="avatarVideoRef && avatarVideoRef.videoWidth>0 ? 'hidden' : 'flex'"><span class="text-white/60 text-xs">Memuat kamera...</span></div>
-                <canvas ref="avatarCanvasRef" class="hidden"></canvas>
+                <canvas ref="avatarCanvasRef" class="hidden"/>
                 <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2 z-10">
                   <button type="button" class="px-4 py-2 bg-white text-slate-800 rounded-xl text-xs font-bold shadow" @click="stopAvatarCamera()">Batal</button>
                   <button type="button" class="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold shadow" @click="captureAvatarFromCamera()">Ambil Avatar</button>
                 </div>
                 <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-emerald-500/90 text-white text-[9px] font-bold z-10">● LIVE - Wajib Kamera</span>
               </div>
-              <canvas ref="avatarCanvasRef" class="hidden"></canvas>
+              <canvas ref="avatarCanvasRef" class="hidden"/>
               <p v-if="avatarCameraError" class="text-[10px] text-red-600 bg-red-50 p-2 rounded border border-red-200 whitespace-pre-wrap">{{ avatarCameraError }}</p>
               <div class="rounded-xl p-2 bg-amber-50 border border-amber-200 text-[10px] text-amber-800">
                 🔒 Foto profil wajib kamera langsung, tidak boleh pilih file dari galeri, untuk keamanan eKYC & register. Preview harus live sebelum ambil.

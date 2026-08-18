@@ -653,9 +653,9 @@ const formatDate = (date: string) =>
                 <span class="text-xs font-mono text-slate-600 truncate flex-1">{{ generatedLink }}</span>
                 <button 
                   type="button" 
-                  @click="copyInviteLink"
                   class="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-700 transition"
                   title="Salin tautan"
+                  @click="copyInviteLink"
                 >
                   <Copy class="w-4 h-4" />
                 </button>
@@ -682,8 +682,8 @@ const formatDate = (date: string) =>
               </a>
               <button 
                 type="button" 
-                @click="copyFullMessage"
                 class="flex-1 h-10 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition active:scale-95"
+                @click="copyFullMessage"
               >
                 <Copy class="w-4 h-4" />
                 Salin Pesan

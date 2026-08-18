@@ -169,21 +169,21 @@ const proceedToForm = () => {
     <!-- Status Banner Dynamic -->
     <div v-if="!loading && kycStatus !== 'none' && kycStatus !== ''" class="px-6 pb-4">
       <div v-if="kycStatus === 'pending'" class="rounded-2xl p-4 border-2 border-amber-300 bg-amber-50 flex items-start gap-3">
-        <div class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse mt-1 shrink-0"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse mt-1 shrink-0"/>
         <div class="flex-1">
           <p class="text-sm font-bold text-amber-800">Sudah Submit - Menunggu Verifikasi Admin</p>
           <p class="text-xs text-amber-700 mt-1 leading-relaxed">Dokumen selfie kamera langsung + Facebook sudah terkirim. Admin sedang meninjau, estimasi 1x24 jam. Badge akan jadi hijau Terverifikasi setelah disetujui.</p>
         </div>
       </div>
       <div v-else-if="kycStatus === 'rejected'" class="rounded-2xl p-4 border-2 border-red-300 bg-red-50 flex items-start gap-3">
-        <div class="w-2.5 h-2.5 rounded-full bg-red-500 mt-1 shrink-0"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-red-500 mt-1 shrink-0"/>
         <div class="flex-1">
           <p class="text-sm font-bold text-red-800">Ditolak - Ajukan Ulang</p>
           <p class="text-xs text-red-700 mt-1">Verifikasi sebelumnya ditolak. Perbaiki foto selfie wajib kamera langsung yang jelas dan Facebook tidak private, lalu ajukan ulang.</p>
         </div>
       </div>
       <div v-else-if="kycStatus === 'approved'" class="rounded-2xl p-4 border-2 border-emerald-300 bg-emerald-50 flex items-start gap-3">
-        <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-1 shrink-0"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-1 shrink-0"/>
         <div class="flex-1">
           <p class="text-sm font-bold text-emerald-800">Terverifikasi - Akun Sudah Verified ✓</p>
           <p class="text-xs text-emerald-700 mt-1">Selamat! Semua fitur unlocked. Tidak perlu verifikasi lagi.</p>
@@ -202,7 +202,7 @@ const proceedToForm = () => {
       </button>
       <template v-else-if="kycStatus === 'pending'">
         <div class="w-full h-14 rounded-2xl font-bold text-base bg-amber-100 text-amber-800 border-2 border-amber-300 flex items-center justify-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+          <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"/>
           Sudah Submit - Menunggu Admin (1x24 jam)
         </div>
         <button

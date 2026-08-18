@@ -267,15 +267,15 @@ const scrollToTop = () => {
       <!-- ── MERCHANT LIST ── -->
       <div v-else class="space-y-3">
         <NuxtLink
-          v-for="(m, idx) in paginatedMerchants"
+          v-for="m in paginatedMerchants"
           :key="m.id"
           :to="`/food/${m.id}`"
-          class="group bg-white rounded-3xl border border-slate-100 overflow-hidden flex gap-0 shadow-sm hover:shadow-md hover:border-primary/15 active:scale-[0.99] transition-all duration-200"
-          :class="!m.is_open ? 'opacity-65 bg-slate-50/60 grayscale border-slate-200/50' : ''"
+          class="group bg-white rounded-[20px] border border-slate-100 overflow-hidden flex gap-0 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:border-slate-200 active:scale-[0.98] transition-all duration-200"
+          :class="!m.is_open ? 'opacity-70 bg-slate-50/80' : ''"
         >
-          <!-- Left: Visual Avatar - IKUTI EXISTING food/[id].vue: langsung pakai image_url (absolute URL dari backend) -->
-          <div class="w-[88px] shrink-0 relative self-stretch overflow-hidden rounded-l-3xl bg-slate-50">
-            <!-- Merchant profile image: sama seperti detail food/[id].vue -> :src="merchant.image_url" -->
+          <!-- Left: Visual — foto profile diperbesar + promo highlight -->
+          <div class="w-[108px] shrink-0 relative self-stretch overflow-hidden bg-slate-50 flex items-center justify-center">
+            <!-- Merchant profile image — diperbesar, object-cover agar penuh, backend raw https://upload.nihtip.com/ clean uuid_nano.jpg <1MB -->
             <img
               v-if="m.image_url"
               :src="m.image_url"
@@ -285,97 +285,64 @@ const scrollToTop = () => {
               decoding="async"
               @error="(e) => { (e.target as HTMLImageElement).style.display = 'none' }"
             >
-            <!-- Fallback emoji selalu di belakang, muncul ketika img hidden / tidak ada -->
+            <!-- Fallback emoji HANYA jika tidak ada image_url — piring sendok tidak timpa foto lagi -->
             <div
-              class="absolute inset-0 flex items-center justify-center text-3xl"
-              :class="[
-                m.is_open
-                  ? 'bg-gradient-to-br from-primary/8 via-indigo-50 to-violet-50'
-                  : 'bg-slate-50'
-              ]"
+              v-if="!m.image_url"
+              class="w-full h-full flex items-center justify-center text-[30px]"
+              :class="m.is_open ? 'bg-gradient-to-br from-orange-50 to-amber-50' : 'bg-slate-100'"
             >
               {{ getCategoryEmoji(m.category) }}
             </div>
 
-            <!-- Closed overlay badge on avatar -->
-            <div v-if="!m.is_open" class="absolute inset-0 bg-black/35 backdrop-blur-[0.5px] flex items-center justify-center">
-              <span class="text-[9px] font-black text-white tracking-widest uppercase bg-rose-500/90 px-1.5 py-0.5 rounded shadow-sm">TUTUP</span>
+            <!-- Closed overlay -->
+            <div v-if="!m.is_open" class="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center z-10">
+              <span class="text-[10px] font-black text-white tracking-widest uppercase bg-black/60 px-2.5 py-1 rounded-full">TUTUP</span>
             </div>
-            <!-- Rank badge for top 3 open merchants -->
+
+            <!-- Promo corner ribbon — highlight promo agar kelihatan -->
             <div
-              v-if="idx < 3 && m.is_open"
-              class="absolute top-1.5 left-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black shadow-sm z-10"
-              :class="idx === 0 ? 'bg-amber-400 text-white' : idx === 1 ? 'bg-slate-300 text-slate-700' : 'bg-orange-300 text-white'"
+              v-if="merchantsStore.activePromotions[m.id]"
+              class="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-black tracking-wider uppercase px-1.5 py-1 text-center leading-none z-[2]"
             >
-              {{ idx + 1 }}
+              {{ (merchantsStore.activePromotions[m.id]?.discount_value || 0) }}{{ merchantsStore.activePromotions[m.id]?.discount_type==='flat' ? 'K' : '%' }} OFF
             </div>
           </div>
 
-          <!-- Right: Content -->
-          <div class="flex-1 min-w-0 px-3.5 py-3.5">
-            <!-- Promo badge if active -->
-            <div v-if="merchantsStore.activePromotions[m.id]" class="flex items-center gap-1 mb-1.5">
-              <span class="inline-flex px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px] font-black border border-amber-200">
-                {{ merchantsStore.activePromotions[m.id]?.code || 'AUTO' }} {{ merchantsStore.activePromotions[m.id]?.discount_type==='flat' ? 'Rp'+(merchantsStore.activePromotions[m.id]?.discount_value||0) : (merchantsStore.activePromotions[m.id]?.discount_value||0)+'%' }} OFF
-              </span>
-              <span class="text-[8px] text-slate-400">Sisa {{ (merchantsStore.activePromotions[m.id]?.max_uses||0) - (merchantsStore.activePromotions[m.id]?.used_count||0) }}</span>
-              <span v-if="merchantsStore.activePromotions[m.id]?.first_purchase_only" class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[8px] font-bold">First Buy</span>
-            </div>
-            <!-- Name & Rating row -->
+          <!-- Right: Content — clean tapi promo highlight -->
+          <div class="flex-1 min-w-0 px-3.5 py-3 flex flex-col justify-center">
+            <!-- Top row: name + rating -->
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0 flex-1">
-                <h3 class="text-[13px] font-black text-slate-900 truncate leading-tight">{{ m.name }}</h3>
-                <p class="text-[10px] text-slate-400 font-medium mt-0.5 line-clamp-1 leading-normal">
-                  {{ m.description || 'Toko mitra terdekat di sekitarmu' }}
+                <h3 class="text-[15px] font-bold text-slate-900 truncate leading-tight">{{ m.name }}</h3>
+                <p class="text-[11px] text-slate-500 mt-0.5 line-clamp-1 leading-snug">
+                  {{ m.description || 'Mitra kuliner terpercaya' }}
                 </p>
               </div>
-              <!-- Rating chip -->
-              <div
-                class="flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-lg"
-                :class="(m.rating || 5) >= 4 ? 'bg-amber-50' : 'bg-slate-50'"
-              >
-                <Star class="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
-                <span class="text-[11px] font-black" :class="getRatingColor(m.rating || 5)">
-                  {{ (m.rating || 5).toFixed(1) }}
-                </span>
+              <div class="flex items-center gap-1 shrink-0 bg-amber-50 px-2 py-1 rounded-full border border-amber-100">
+                <Star class="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <span class="text-[12px] font-bold text-slate-800">{{ (m.rating || 5).toFixed(1) }}</span>
               </div>
             </div>
 
-            <!-- Badges row -->
-            <div class="flex items-center gap-1.5 mt-2.5 flex-wrap">
-              <!-- Open/Closed status -->
-              <span
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase border"
-                :class="m.is_open
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-slate-100 text-slate-400 border-slate-200'"
-              >
+            <!-- Promo highlight row — lebih kelihatan -->
+            <div v-if="merchantsStore.activePromotions[m.id]" class="mt-2.5 flex items-center gap-2">
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-black tracking-wide shadow-[0_2px_8px_rgba(245,158,11,0.3)]">
+                🎉 {{ merchantsStore.activePromotions[m.id]?.code || 'PROMO' }} {{ merchantsStore.activePromotions[m.id]?.discount_type==='flat' ? 'Rp'+(merchantsStore.activePromotions[m.id]?.discount_value||0) : (merchantsStore.activePromotions[m.id]?.discount_value||0)+'%' }} OFF
+              </span>
+              <span class="text-[10px] text-slate-400">Sisa {{ (merchantsStore.activePromotions[m.id]?.max_uses||0) - (merchantsStore.activePromotions[m.id]?.used_count||0) }}</span>
+            </div>
+
+            <!-- Bottom row: status + location -->
+            <div class="flex items-center gap-2 mt-2">
+              <span class="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border" :class="m.is_open ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-slate-400 bg-slate-100 border-slate-200'">
                 <span class="w-1.5 h-1.5 rounded-full" :class="m.is_open ? 'bg-emerald-500' : 'bg-slate-300'" />
                 {{ m.is_open ? 'Buka' : 'Tutup' }}
               </span>
-
-              <!-- Auto confirm badge -->
-              <span
-                v-if="m.auto_confirm && m.is_open"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold text-primary bg-primary/8 border border-primary/15"
-              >
-                <Flame class="w-2.5 h-2.5" />
-                Instan
-              </span>
-
-              <!-- Location -->
-              <span class="text-[9px] text-slate-400 font-semibold flex items-center gap-0.5 ml-auto">
-                <MapPin class="w-2.5 h-2.5 shrink-0" />
-                <span class="truncate max-w-[100px]">
-                  {{ m.address ? m.address.split(',')[0] : 'Sekitar ' + searchRadius + ' km' }}
-                </span>
+              <span class="text-[10px] text-slate-400 flex items-center gap-1 ml-auto truncate">
+                <MapPin class="w-3 h-3 shrink-0" />
+                {{ m.address ? m.address.split(',')[0] : searchRadius + ' km' }}
               </span>
             </div>
-          </div>
-
-          <!-- Arrow indicator -->
-          <div class="flex items-center pr-3 pl-1">
-            <ArrowRight class="w-4 h-4 text-slate-200 group-hover:text-primary transition-colors" />
           </div>
         </NuxtLink>
       </div>

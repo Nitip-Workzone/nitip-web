@@ -48,7 +48,7 @@ const sizeClasses = computed(() => {
   >
     <span class="relative">
       {{ brand.short }}
-      <span v-if="brand.accent" class="absolute -bottom-0.5 left-0 right-0 h-0.5 rounded-full" :style="{ backgroundColor: brand.accent }"></span>
+      <span v-if="brand.accent" class="absolute -bottom-0.5 left-0 right-0 h-0.5 rounded-full" :style="{ backgroundColor: brand.accent }"/>
     </span>
   </div>
 </template>

@@ -37,8 +37,8 @@ const form = ref({
   discount_scope: 'item' as 'item' | 'delivery' | 'total',
   min_order_amount: 0,
   auto_apply: false,
-  valid_from: '' as string | null,
-  valid_until: '' as string | null,
+  valid_from: undefined as string | undefined,
+  valid_until: undefined as string | undefined,
 })
 
 const secureForm = ref({
@@ -124,8 +124,8 @@ function openAdd() {
     discount_scope: 'item',
     min_order_amount: 0,
     auto_apply: false,
-    valid_from: null,
-    valid_until: null,
+    valid_from: undefined,
+    valid_until: undefined,
   }
   secureForm.value = { admin_password: '', totp_code: '' }
   showAddModal.value = true
@@ -148,8 +148,8 @@ function openEdit(p: Promotion) {
     discount_scope: p.discount_scope as any,
     min_order_amount: p.min_order_amount,
     auto_apply: p.auto_apply,
-    valid_from: p.valid_from ? p.valid_from.slice(0,16) : null,
-    valid_until: p.valid_until ? p.valid_until.slice(0,16) : null,
+    valid_from: p.valid_from ? p.valid_from.slice(0,16) : undefined,
+    valid_until: p.valid_until ? p.valid_until.slice(0,16) : undefined,
   }
   secureForm.value = { admin_password: '', totp_code: '' }
   showEditModal.value = true
@@ -342,7 +342,7 @@ function badgeDiscount(p: Promotion) {
           <label class="text-xs font-medium">Search kode/title ex Merdeka81</label>
           <div class="relative mt-1">
             <Search class="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-            <input v-model="searchQuery" placeholder="Cari kode atau judul..." class="w-full h-9 pl-9 pr-3 rounded-md border border-input text-sm" @keyup.enter="refresh" />
+            <input v-model="searchQuery" placeholder="Cari kode atau judul..." class="w-full h-9 pl-9 pr-3 rounded-md border border-input text-sm" @keyup.enter="refresh" >
           </div>
         </div>
         <div class="min-w-[200px]">
@@ -353,8 +353,8 @@ function badgeDiscount(p: Promotion) {
           </select>
         </div>
         <div class="flex items-center gap-2">
-          <label class="text-xs flex items-center gap-1"><input type="checkbox" v-model="filterActive" /> Aktif saja</label>
-          <label class="text-xs flex items-center gap-1"><input type="checkbox" v-model="filterFirstPurchase" /> First Purchase Only</label>
+          <label class="text-xs flex items-center gap-1"><input v-model="filterActive" type="checkbox" > Aktif saja</label>
+          <label class="text-xs flex items-center gap-1"><input v-model="filterFirstPurchase" type="checkbox" > First Purchase Only</label>
         </div>
         <UiButton size="sm" @click="refresh">Filter</UiButton>
       </div>
@@ -391,7 +391,7 @@ function badgeDiscount(p: Promotion) {
               </td>
               <td class="px-3 py-2">
                 <div class="text-xs">{{ formatRp(p.budget_used) }} / {{ formatRp(p.budget_total) }}</div>
-                <div class="w-full h-1.5 bg-gray-200 rounded mt-1"><div class="h-1.5 bg-amber-500 rounded" :style="{ width: Math.min(100, (p.budget_used/p.budget_total)*100).toFixed(0)+'%' }"></div></div>
+                <div class="w-full h-1.5 bg-gray-200 rounded mt-1"><div class="h-1.5 bg-amber-500 rounded" :style="{ width: Math.min(100, (p.budget_used/p.budget_total)*100).toFixed(0)+'%' }"/></div>
               </td>
               <td class="px-3 py-2 text-xs">{{ p.used_count }} / {{ p.max_uses }}</td>
               <td class="px-3 py-2 text-[10px]">
@@ -426,7 +426,7 @@ function badgeDiscount(p: Promotion) {
         <!-- Top info auto -->
         <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <input type="checkbox" v-model="autoCalculate" class="w-4 h-4" />
+            <input v-model="autoCalculate" type="checkbox" class="w-4 h-4" >
             <label class="text-xs font-bold text-blue-800">Otomatis hitung nilai diskon dari Budget & Kuota (sesuai story: budget 100rb / 15 order = 20%)</label>
           </div>
           <span v-if="autoCalculate" class="text-[10px] px-2 py-1 rounded-full bg-blue-600 text-white font-bold">AUTO ON - Nilai diskon terkunci otomatis</span>
@@ -448,7 +448,7 @@ function badgeDiscount(p: Promotion) {
             <p class="text-[10px] text-muted-foreground mt-1">3-50 karakter A-Z a-z 0-9 _ - , case-insensitive unik. Contoh: Merdeka81, NITIP20, HUTRI81_2026</p>
           </div>
           <div class="flex flex-col justify-end">
-            <label class="text-sm font-medium flex items-center gap-2"><input type="checkbox" v-model="form.auto_apply" class="w-4 h-4" /> Auto Apply First-N (tanpa kode)</label>
+            <label class="text-sm font-medium flex items-center gap-2"><input v-model="form.auto_apply" type="checkbox" class="w-4 h-4" > Auto Apply First-N (tanpa kode)</label>
             <p class="text-[10px] text-muted-foreground mt-1">Jika centang, kode wajib kosong dan promo otomatis untuk N order pertama, banner info akan tampil otomatis.</p>
           </div>
         </div>
@@ -519,7 +519,7 @@ function badgeDiscount(p: Promotion) {
             <UiInput v-model.number="form.per_user_limit" type="number" placeholder="1" class="mt-1" />
           </div>
           <div class="flex flex-col justify-end">
-            <label class="text-sm font-medium flex items-center gap-2"><input type="checkbox" v-model="form.first_purchase_only" class="w-4 h-4" /> Hanya Pembelian Pertama</label>
+            <label class="text-sm font-medium flex items-center gap-2"><input v-model="form.first_purchase_only" type="checkbox" class="w-4 h-4" > Hanya Pembelian Pertama</label>
             <p class="text-[10px] text-muted-foreground mt-1">Voucher hanya untuk user belum pernah completed order.</p>
           </div>
           <div>
@@ -541,7 +541,7 @@ function badgeDiscount(p: Promotion) {
         <!-- Preview -->
         <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
           <p class="text-sm font-bold text-blue-800 flex items-center gap-2">Preview Kalkulasi Bagi Rata <span class="text-[10px] font-normal bg-blue-600 text-white px-2 py-0.5 rounded-full">Otomatis</span></p>
-          <div v-if="previewLoading" class="text-xs text-blue-600 mt-2 flex items-center gap-2"><div class="w-4 h-4 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>Menghitung dari backend...</div>
+          <div v-if="previewLoading" class="text-xs text-blue-600 mt-2 flex items-center gap-2"><div class="w-4 h-4 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"/>Menghitung dari backend...</div>
           <div v-else-if="promotionsStore.preview" class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-blue-800">
             <div class="bg-white rounded-lg p-3 border border-blue-100">
               <p class="text-[10px] text-slate-500 uppercase font-bold">Flat per order</p>
@@ -578,7 +578,7 @@ function badgeDiscount(p: Promotion) {
             </div>
             <div>
               <label class="text-xs font-medium">TOTP 6 digit *</label>
-              <input v-model="secureForm.totp_code" inputmode="numeric" maxlength="6" placeholder="000000" class="mt-1 w-full h-10 text-center font-mono tracking-widest rounded-md border border-input font-bold" />
+              <input v-model="secureForm.totp_code" inputmode="numeric" maxlength="6" placeholder="000000" class="mt-1 w-full h-10 text-center font-mono tracking-widest rounded-md border border-input font-bold" >
             </div>
           </div>
         </div>
@@ -601,7 +601,7 @@ function badgeDiscount(p: Promotion) {
       <div class="space-y-5 max-h-[85vh] overflow-y-auto pr-2">
         <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <input type="checkbox" v-model="autoCalculate" class="w-4 h-4" />
+            <input v-model="autoCalculate" type="checkbox" class="w-4 h-4" >
             <label class="text-xs font-bold text-blue-800">Otomatis hitung nilai diskon dari Budget & Kuota</label>
           </div>
           <span class="text-[10px] text-blue-700">Flat = Budget/Kuota, % = Flat/AvgMerchant*100</span>
@@ -617,7 +617,7 @@ function badgeDiscount(p: Promotion) {
             <UiInput v-model="form.code" placeholder="Merdeka81" class="mt-1 font-mono" />
           </div>
           <div class="flex flex-col justify-end">
-            <label class="text-sm font-medium flex items-center gap-2"><input type="checkbox" v-model="form.auto_apply" class="w-4 h-4" /> Auto Apply First-N (tanpa kode)</label>
+            <label class="text-sm font-medium flex items-center gap-2"><input v-model="form.auto_apply" type="checkbox" class="w-4 h-4" > Auto Apply First-N (tanpa kode)</label>
           </div>
         </div>
 
@@ -657,7 +657,7 @@ function badgeDiscount(p: Promotion) {
             <UiInput v-model.number="form.per_user_limit" type="number" class="mt-1" />
           </div>
           <div class="flex flex-col justify-end">
-            <label class="text-sm font-medium flex items-center gap-2"><input type="checkbox" v-model="form.first_purchase_only" class="w-4 h-4" /> Hanya Pembelian Pertama</label>
+            <label class="text-sm font-medium flex items-center gap-2"><input v-model="form.first_purchase_only" type="checkbox" class="w-4 h-4" > Hanya Pembelian Pertama</label>
           </div>
         </div>
 
@@ -670,7 +670,7 @@ function badgeDiscount(p: Promotion) {
           <p class="text-sm font-bold text-red-800 flex items-center gap-2">Verifikasi Admin (Wajib) <span class="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full">Password + TOTP</span></p>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <UiInput v-model="secureForm.admin_password" type="password" placeholder="Password admin" />
-            <input v-model="secureForm.totp_code" maxlength="6" placeholder="000000" class="h-10 text-center font-mono tracking-widest border rounded-md font-bold" />
+            <input v-model="secureForm.totp_code" maxlength="6" placeholder="000000" class="h-10 text-center font-mono tracking-widest border rounded-md font-bold" >
           </div>
         </div>
 

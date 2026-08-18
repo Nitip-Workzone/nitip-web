@@ -213,9 +213,10 @@ export function useMerchantPoolStream(opts: UseMerchantPoolStreamOpts = {}) {
 
     if (fetchAborted) return
 
-    // Fallback to EventSource with cookie auth (no token in URL)
+    // Fallback to EventSource with query param token (since EventSource doesn't support custom headers and backend doesn't support cookies)
     try {
-      es = new EventSource(url)
+      const esUrl = authStore.token ? `${url}?token=${encodeURIComponent(authStore.token)}` : url
+      es = new EventSource(esUrl)
 
       es.onopen = () => {
         isLive.value = true

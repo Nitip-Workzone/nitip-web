@@ -59,6 +59,8 @@ export interface UserOrder {
     runner_phone?: string
     runner_last_lat?: number
     runner_last_lng?: number
+    discount_amount?: number
+    promotion_code?: string
 }
 
 export const useUserOrdersStore = defineStore('user-orders', {

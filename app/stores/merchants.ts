@@ -15,6 +15,7 @@ export interface Merchant {
   rating: number
   image_url?: string
   cover_url?: string
+  opening_hours?: string
   created_at: string
   updated_at: string
 }
@@ -417,8 +418,8 @@ export const useMerchantsStore = defineStore('merchants', {
         const res = await request<{ data: ActivePromotion[] }>(`/promotions/active?merchant_id=${merchantId}`)
         if (res.data && res.data.length > 0) {
           // prefer auto or first
-          this.activePromotions[merchantId] = res.data[0]
-          return res.data[0]
+          this.activePromotions[merchantId] = res.data[0] || null
+          return res.data[0] || null
         } else {
           this.activePromotions[merchantId] = null
           return null

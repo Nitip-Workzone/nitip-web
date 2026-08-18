@@ -39,17 +39,25 @@ onMounted(async () => {
   }
 })
 
-const goHome = () => router.push('/dashboard')
+// Back harus step back, bukan ke home — agar dari keranjang belanja → KYC → back balik ke keranjang (sesuai request)
+const goBack = () => {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/dashboard')
+  }
+}
+const goHome = () => goBack()
 const retryKyc = () => router.push('/kyc')
 </script>
 
 <template>
   <div class="min-h-screen bg-white flex flex-col max-w-md mx-auto">
-    <!-- AppBar -->
+    <!-- AppBar — back step back bukan home -->
     <div class="flex items-center px-4 h-14 mt-6">
       <button
         class="p-2 -ml-2 rounded-full hover:bg-slate-100 transition-colors text-slate-800"
-        @click="goHome"
+        @click="goBack"
       >
         <ArrowLeft class="w-5 h-5" />
       </button>
@@ -134,9 +142,9 @@ const retryKyc = () => router.push('/kyc')
       <button
         v-else-if="kycStatus === 'pending'"
         class="w-full h-14 rounded-2xl font-bold text-base bg-slate-100 text-slate-600 active:scale-[0.98] transition-all"
-        @click="goHome"
+        @click="goBack"
       >
-        Kembali ke Beranda
+        Kembali
       </button>
       <button
         v-else

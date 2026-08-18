@@ -27,9 +27,9 @@ const paymentSource = ref<'wallet' | 'qris' | 'cod'>('wallet')
 const codEnabled = ref(true)
 const authStore = useAuthStore()
 const isCodKycRestricted = computed(() => {
-  // Food (merchant) COD hanya jika sudah e-KYC, sesuai backend service.go line 453-456
   return codEnabled.value && !authStore.user?.is_verified
 })
+const isQrisKycRestricted = computed(() => !authStore.user?.is_verified)
 const fetchPublicCodConfig = async () => {
   try {
     const res = await request<{ data: { cod_enabled?: boolean } }>('/configs/public')
@@ -40,43 +40,54 @@ const fetchPublicCodConfig = async () => {
   }
 }
 
-// Handle klik COD: jika belum verified, cek status KYC lalu navigasi
 const kycChecking = ref(false)
+const checkKycAndNavigate = async () => {
+  kycChecking.value = true
+  try {
+    const res = await request<{ data: { status: string } }>('/kyc/me')
+    const st = (res.data?.status || 'none').toLowerCase()
+    if (st === 'pending') {
+      router.push('/kyc/status')
+      return 'pending'
+    } else if (st === 'rejected' || st === 'none' || st === '' ) {
+      router.push('/kyc/intro')
+      return 'none'
+    } else if (st === 'approved') {
+      if (authStore.user) authStore.user.is_verified = true
+      return 'approved'
+    } else {
+      router.push('/kyc/intro')
+      return 'none'
+    }
+  } catch {
+    router.push('/kyc/intro')
+    return 'none'
+  } finally {
+    kycChecking.value = false
+  }
+}
+
 const handleCodClick = async () => {
   if (!codEnabled.value) {
     error('COD sedang dinonaktifkan oleh admin')
     return
   }
-  // Jika belum verified (KYC required), cek status untuk arahkan ke halaman yang tepat
   if (isCodKycRestricted.value) {
-    kycChecking.value = true
-    try {
-      // Cek status KYC existing via /kyc/me (sama seperti intro.vue & status.vue)
-      const res = await request<{ data: { status: string } }>('/kyc/me')
-      const st = (res.data?.status || 'none').toLowerCase()
-      if (st === 'pending') {
-        // Sudah pending → halaman status e-KYC
-        router.push('/kyc/status')
-      } else if (st === 'rejected' || st === 'none' || st === '' ) {
-        // Belum pengajuan atau ditolak → intro e-KYC
-        router.push('/kyc/intro')
-      } else if (st === 'approved') {
-        // Sudah approved tapi is_verified belum sync → set verified true local dan allow COD
-        if (authStore.user) authStore.user.is_verified = true
-        paymentSource.value = 'cod'
-      } else {
-        router.push('/kyc/intro')
-      }
-    } catch {
-      // Jika 404 / tidak ada KYC → belum pengajuan → intro
-      router.push('/kyc/intro')
-    } finally {
-      kycChecking.value = false
-    }
+    const status = await checkKycAndNavigate()
+    if (status === 'approved') paymentSource.value = 'cod'
     return
   }
-  // Sudah verified & COD enabled → pilih COD
   paymentSource.value = 'cod'
+}
+
+const handleQrisClick = async () => {
+  // Jika belum verified / pending → tampilkan eKYC (request user)
+  if (isQrisKycRestricted.value) {
+    const status = await checkKycAndNavigate()
+    if (status === 'approved') paymentSource.value = 'qris'
+    return
+  }
+  paymentSource.value = 'qris'
 }
 
 // Delivery address — default current location user
@@ -133,21 +144,81 @@ async function fetchCurrentLocationAsDelivery() {
   })
 }
 
+const deliveryFeeEstimating = ref(false)
+const estimatedDeliveryFee = ref<number | null>(null)
+const lastEstimatedAt = ref<string>('')
+let deliveryFeeAbortController: AbortController | null = null
+
+async function fetchDeliveryFeeEstimate() {
+  // Business: hitung ongkir dinamis berdasarkan jarak merchant -> delivery via backend POST /orders/estimate-fee
+  // Food: hanya ongkir, tanpa checking fee (checking=0 di BE), service fee ditanggung merchant tidak tampil ke requester
+  if (!merchant.value?.latitude || !merchant.value?.longitude) return
+  if (!deliveryLat.value || !deliveryLng.value) return
+
+  if (deliveryFeeAbortController) {
+    deliveryFeeAbortController.abort()
+  }
+  deliveryFeeAbortController = new AbortController()
+
+  deliveryFeeEstimating.value = true
+  try {
+    const res = await request<{ data: { estimated_fee: number; distance_km: number; order_type: string } }>('/orders/estimate-fee', {
+      method: 'POST',
+      signal: deliveryFeeAbortController.signal,
+      body: {
+        pickup_lat: merchant.value.latitude,
+        pickup_lng: merchant.value.longitude,
+        delivery_lat: deliveryLat.value,
+        delivery_lng: deliveryLng.value,
+        weight_kg: 0.5,
+        volume_liters: 1.0,
+        order_type: 'instant',
+        merchant_id: merchantId,
+      }
+    })
+    if (res.data?.estimated_fee) {
+      // BE untuk food sudah subtract checking fee agar konsisten dengan keranjang 10k awal
+      estimatedDeliveryFee.value = res.data.estimated_fee
+      lastEstimatedAt.value = new Date().toLocaleTimeString('id-ID')
+    }
+  } catch (e: any) {
+    if (e.name === 'AbortError' || e.message?.includes('aborted')) return
+    // Fallback ke 10k jika estimate gagal (offline / BE down) — jangan blokir checkout
+    console.warn('[DeliveryFee] estimate failed, fallback 10k', e)
+    estimatedDeliveryFee.value = null
+  } finally {
+    deliveryFeeEstimating.value = false
+  }
+}
+
 function handleDeliveryLocationSelect(payload: { lat: number; lng: number; address: string; name?: string }) {
   deliveryLat.value = payload.lat
   deliveryLng.value = payload.lng
   deliveryAddress.value = payload.address
-  isCurrentLocation.value = false // user manual pick
+  isCurrentLocation.value = false
   showDeliveryLocationPicker.value = false
+  // Business: setiap ganti alamat, hit cek ongkir agar memperbarui ongkirnya
+  fetchDeliveryFeeEstimate()
 }
 
 function useCurrentLocationAgain() {
-  fetchCurrentLocationAsDelivery()
+  fetchCurrentLocationAsDelivery().then(() => {
+    fetchDeliveryFeeEstimate()
+  })
 }
 
 const merchant = computed(() =>
   merchantsStore.merchants.find(m => m.id === merchantId) || merchantsStore.currentMerchant
 )
+
+// Watcher bisnis: ketika merchant location atau delivery berubah, auto hit cek ongkir (debounce 500ms)
+let feeDebounce: ReturnType<typeof setTimeout> | null = null
+watch([() => merchant.value?.latitude, () => merchant.value?.longitude, () => deliveryLat.value, () => deliveryLng.value], () => {
+  if (feeDebounce) clearTimeout(feeDebounce)
+  feeDebounce = setTimeout(() => {
+    fetchDeliveryFeeEstimate()
+  }, 500)
+})
 
 const activePromo = ref<any>(null)
 const promoCodeInput = ref('')
@@ -195,7 +266,7 @@ onMounted(async () => {
   fetchPublicCodConfig()
 
   // Fetch current location sebagai alamat pengantaran default (label: Lokasi saat ini)
-  fetchCurrentLocationAsDelivery()
+  await fetchCurrentLocationAsDelivery()
 })
 
 // ── SCROLL LOCK for modals: prevent background scroll bleeding (safe, no preventDefault) ──
@@ -304,6 +375,17 @@ const getItemQty = (itemId: string) => {
   return item ? item.quantity : 0
 }
 
+// Delivery fee display konsisten — business: full ongkir untuk requester, hit dinamis saat ganti lokasi pengantaran
+// - Saat baru order (keranjang): pakai estimated fee dari BE POST /orders/estimate-fee jika ada, fallback 10k
+// - Sesudah order dibuat (detail): pakai order.delivery_fee dari BE (sudah full, checking=0 untuk food)
+// - Food: hanya ongkir, tanpa biaya pengecekan, service fee ditanggung merchant
+const deliveryFeeDisplay = computed(() => {
+  if (estimatedDeliveryFee.value && estimatedDeliveryFee.value > 0) {
+    return estimatedDeliveryFee.value
+  }
+  return 10000
+})
+
 const handleIncrement = (itemId: string) => {
   try {
     cartStore.updateQuantity(itemId, getItemQty(itemId) + 1)
@@ -406,10 +488,23 @@ const handleCheckout = async () => {
       }
     })
     if (res.data) {
-      success('Pesanan berhasil dibuat!')
-      cartStore.clearCart()
-      showCartDrawer.value = false
-      router.push(`/orders/${res.data.id}`)
+      const orderId = (res.data as any)?.id || (res as any)?.data?.id || (res as any)?.id
+      if (!orderId) {
+        console.warn('[Checkout] res.data.id missing', res)
+        success('Pesanan berhasil dibuat! Lihat di Order Saya.')
+        cartStore.clearCart()
+        showCartDrawer.value = false
+        await navigateTo('/orders')
+      } else {
+        success('Pesanan berhasil dibuat! Mengalihkan ke detail pesanan...')
+        cartStore.clearCart()
+        showCartDrawer.value = false
+        // Langsung direct ke halaman detail order yang sedang berjalan (running order)
+        // Tunda sedikit agar drawer close animation selesai, lalu push
+        setTimeout(async () => {
+          await navigateTo(`/orders/${orderId}`)
+        }, 150)
+      }
     }
   } catch (err: unknown) {
     error((err as { data?: { message?: string } })?.data?.message || 'Gagal mengirimkan pesanan.')
@@ -855,10 +950,10 @@ const cartSubtotal = computed(() =>
                   <span class="flex items-center gap-1 text-[10px] font-bold"><Wallet class="w-3 h-3" />Wallet</span>
                   <span class="text-[9px] font-medium truncate">Rp {{ walletStore.balance.toLocaleString('id-ID') }}</span>
                 </button>
-                <!-- QRIS -->
-                <button type="button" :class="['p-2 border rounded-lg text-left h-[52px] flex flex-col justify-between active:scale-[0.98] transition-all', paymentSource === 'qris' ? 'border-primary bg-primary text-white shadow-sm' : 'border-slate-100 bg-white text-slate-600 hover:border-slate-200']" @click="paymentSource = 'qris'">
+                <!-- QRIS — jika pending/belum verified tampilkan eKYC sesuai request -->
+                <button type="button" :class="['p-2 border rounded-lg text-left h-[52px] flex flex-col justify-between active:scale-[0.98] transition-all', paymentSource === 'qris' ? 'border-primary bg-primary text-white shadow-sm' : isQrisKycRestricted ? 'border-dashed border-slate-200 bg-slate-50/60 text-slate-400' : 'border-slate-100 bg-white text-slate-600 hover:border-slate-200']" @click="handleQrisClick">
                   <span class="flex items-center gap-1 text-[10px] font-bold"><CreditCard class="w-3 h-3" />QRIS</span>
-                  <span class="text-[9px] font-medium">Langsung</span>
+                  <span class="text-[9px] font-medium">{{ isQrisKycRestricted ? 'Butuh KYC' : 'Langsung' }}</span>
                 </button>
                 <!-- COD - symmetric same size -->
                 <button type="button" :class="['p-2 border rounded-lg text-left h-[52px] flex flex-col justify-between active:scale-[0.98] transition-all', paymentSource === 'cod' ? 'border-primary bg-primary text-white shadow-sm' : isCodKycRestricted || !codEnabled ? 'border-dashed border-slate-200 bg-slate-50/60 text-slate-400' : 'border-slate-100 bg-white text-slate-600 hover:border-slate-200']" @click="handleCodClick">
@@ -897,17 +992,21 @@ const cartSubtotal = computed(() =>
               <p v-else-if="activePromo && !cartStore.appliedPromotion" class="text-[10px] text-slate-500">Ada promo {{ activePromo.code || 'AUTO' }} {{ activePromo.discount_type==='flat' ? formatRp(activePromo.discount_value) : activePromo.discount_value+'%' }} - sisa {{ activePromo.max_uses - activePromo.used_count }}</p>
             </section>
 
-            <!-- 5. Summary - compact -->
+            <!-- 5. Summary - compact — bisnis: ongkir dinamis hit saat ganti lokasi, konsisten dengan detail order -->
             <section class="space-y-2.5">
-              <p class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Ringkasan</p>
+              <div class="flex items-center justify-between">
+                <p class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Ringkasan</p>
+                <span v-if="deliveryFeeEstimating" class="text-[9px] text-primary font-bold flex items-center gap-1"><span class="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /> Hitung ongkir...</span>
+                <span v-else-if="lastEstimatedAt" class="text-[9px] text-slate-400">Update: {{ lastEstimatedAt }}</span>
+              </div>
               <div class="bg-white border border-slate-100 rounded-2xl p-4 space-y-2.5">
                 <div class="flex justify-between text-[12px]">
                   <span class="text-slate-500">Subtotal</span>
                   <span class="font-bold text-slate-800">Rp {{ cartSubtotal.toLocaleString('id-ID') }}</span>
                 </div>
                 <div class="flex justify-between text-[12px]">
-                  <span class="text-slate-500">Ongkos Kirim</span>
-                  <span class="font-bold text-slate-800">Rp 10.000</span>
+                  <span class="text-slate-500">Ongkos Kirim <span v-if="estimatedDeliveryFee" class="text-[9px] text-emerald-600 font-bold">(dinamis)</span></span>
+                  <span class="font-bold text-slate-800">Rp {{ deliveryFeeDisplay.toLocaleString('id-ID') }}</span>
                 </div>
                 <div v-if="cartStore.deliveryFeeSurcharge > 0" class="flex justify-between text-[12px] font-bold">
                   <span class="text-slate-500">Surcharge</span>
@@ -920,7 +1019,7 @@ const cartSubtotal = computed(() =>
                 <div class="h-px bg-slate-100 my-1" />
                 <div class="flex justify-between items-center">
                   <span class="text-[12px] font-black text-slate-900">Total</span>
-                  <span class="text-[15px] font-black text-slate-900">Rp {{ (cartSubtotal + 10000 + cartStore.deliveryFeeSurcharge - cartStore.discountTotal).toLocaleString('id-ID') }}</span>
+                  <span class="text-[15px] font-black text-slate-900">Rp {{ (cartSubtotal + deliveryFeeDisplay + cartStore.deliveryFeeSurcharge - cartStore.discountTotal).toLocaleString('id-ID') }}</span>
                 </div>
                 <p v-if="cartStore.discountTotal>0" class="text-[10px] text-emerald-600 font-bold text-right">Hemat {{ formatRp(cartStore.discountTotal) }}</p>
                 <p class="text-[9px] text-slate-400 leading-relaxed bg-slate-50 rounded-lg px-2.5 py-1.5">ℹ️ Biaya layanan ditanggung merchant. Harga murni, fee potong saldo merchant saat settlement.</p>

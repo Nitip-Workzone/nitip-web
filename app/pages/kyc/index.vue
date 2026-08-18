@@ -368,12 +368,12 @@ const stepLabel = 'Langkah 1 dari 2'
               class="absolute inset-0 w-full h-full object-cover"
               style="transform: scaleX(-1);"
               @loadedmetadata="() => { if (selfieVideoRef) selfieVideoRef.play().catch(()=>{}) }"
-            ></video>
+            />
             <!-- Fallback black overlay hidden when video has dimensions -->
             <div class="absolute inset-0 flex items-center justify-center pointer-events-none" :class="selfieVideoRef && selfieVideoRef.videoWidth>0 ? 'hidden' : 'flex'">
               <div class="text-white/60 text-xs">Memuat kamera...</div>
             </div>
-            <canvas ref="selfieCanvasRef" class="hidden"></canvas>
+            <canvas ref="selfieCanvasRef" class="hidden"/>
             <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-3 z-10">
               <button class="min-w-[90px] px-5 py-3 bg-white text-slate-800 rounded-2xl text-sm font-bold shadow-lg" @click="stopSelfieCamera()">Batal</button>
               <button class="min-w-[130px] px-5 py-3 bg-primary text-white rounded-2xl text-sm font-bold shadow-lg flex items-center gap-2 justify-center" @click="captureSelfieFromCamera()">
@@ -418,7 +418,7 @@ const stepLabel = 'Langkah 1 dari 2'
             </label>
           </div>
 
-          <canvas ref="selfieCanvasRef" class="hidden"></canvas>
+          <canvas ref="selfieCanvasRef" class="hidden"/>
 
           <p v-if="selfieCameraError" class="text-xs text-red-500 font-medium bg-red-50 p-3 rounded-xl border border-red-200 whitespace-pre-wrap">{{ selfieCameraError }}</p>
           <div class="rounded-xl p-3 bg-amber-50 border border-amber-200 text-[11px] text-amber-800">

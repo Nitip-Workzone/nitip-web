@@ -231,8 +231,8 @@ async function handleSave() {
         <!-- Store Shop Cover/Sampul Wajib 16:9 -->
         <div class="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-soft">
           <div class="relative h-36 bg-gradient-to-br from-indigo-500 to-purple-600 overflow-hidden">
-            <img v-if="coverPreview" :src="coverPreview" class="absolute inset-0 w-full h-full object-cover" />
-            <img v-else-if="coverUrl" :src="coverUrl" class="absolute inset-0 w-full h-full object-cover opacity-80" />
+            <img v-if="coverPreview" :src="coverPreview" class="absolute inset-0 w-full h-full object-cover" >
+            <img v-else-if="coverUrl" :src="coverUrl" class="absolute inset-0 w-full h-full object-cover opacity-80" >
             <div class="absolute -right-6 -bottom-6 w-20 h-20 bg-white/10 rounded-full blur-lg pointer-events-none" />
             <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div v-if="!coverPreview && !coverUrl" class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/20">
@@ -250,7 +250,7 @@ async function handleSave() {
             </div>
             <label class="h-9 px-3 rounded-xl bg-slate-900 text-white text-[10px] font-bold flex items-center gap-1.5 cursor-pointer active:scale-95">
               <Camera class="w-3.5 h-3.5" /> {{ coverPreview ? 'Ganti & Crop 16:9' : 'Upload & Crop 16:9' }}
-              <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="openCoverPicker" />
+              <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="openCoverPicker" >
             </label>
           </div>
         </div>
@@ -258,8 +258,8 @@ async function handleSave() {
         <!-- Logo Merchant Wajib 1:1 Circular -->
         <div class="bg-white border border-slate-100 rounded-3xl p-4 shadow-soft flex items-center gap-4">
           <div class="w-20 h-20 rounded-full border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center shrink-0">
-            <img v-if="logoPreview" :src="logoPreview" class="w-full h-full object-cover" />
-            <img v-else-if="imageUrl" :src="imageUrl" class="w-full h-full object-cover opacity-80" />
+            <img v-if="logoPreview" :src="logoPreview" class="w-full h-full object-cover" >
+            <img v-else-if="imageUrl" :src="imageUrl" class="w-full h-full object-cover opacity-80" >
             <Store v-else class="w-7 h-7 text-amber-400" />
           </div>
           <div class="flex-1 min-w-0 space-y-1">
@@ -267,7 +267,7 @@ async function handleSave() {
             <p class="text-[9px] text-slate-500">Rasio tetap bulat, dipakai 84×84 di hero food/[id]</p>
             <label class="inline-flex h-8 px-3 rounded-xl bg-slate-900 text-white text-[10px] font-bold items-center gap-1 cursor-pointer active:scale-95 mt-1">
               <Camera class="w-3 h-3" /> {{ logoPreview ? 'Ganti & Crop 1:1' : 'Upload & Crop 1:1' }}
-              <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="openLogoPicker" />
+              <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="openLogoPicker" >
             </label>
             <p v-if="croppedLogoBlob" class="text-[9px] text-emerald-600 font-bold">✓ Sudah crop circular siap</p>
           </div>
@@ -319,11 +319,11 @@ async function handleSave() {
 
           <div v-if="imageUrl && !logoPreview" class="space-y-1.5">
             <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">URL Logo Lama (fallback)</label>
-            <input v-model="imageUrl" type="url" class="w-full h-11 rounded-2xl border border-slate-200 px-4 text-xs font-semibold bg-slate-50/50" />
+            <input v-model="imageUrl" type="url" class="w-full h-11 rounded-2xl border border-slate-200 px-4 text-xs font-semibold bg-slate-50/50" >
           </div>
           <div v-if="coverUrl && !coverPreview" class="space-y-1.5">
             <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">URL Sampul Lama (fallback)</label>
-            <input v-model="coverUrl" type="url" class="w-full h-11 rounded-2xl border border-slate-200 px-4 text-xs font-semibold bg-slate-50/50" />
+            <input v-model="coverUrl" type="url" class="w-full h-11 rounded-2xl border border-slate-200 px-4 text-xs font-semibold bg-slate-50/50" >
           </div>
         </div>
 

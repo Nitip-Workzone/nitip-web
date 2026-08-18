@@ -101,7 +101,7 @@ export const usePromotionsStore = defineStore('promotions', {
         const res = await request<{ data: { data: Promotion[]; total: number } }>(`/admin/promotions?${q.toString()}`)
         if (res.data) {
           // API returns {data: [], total} wrapped in envelope data
-          const inner = res.data as unknown as { data?: Promotion[]; total?: number } & Promotion[]
+          const inner = res.data as unknown as { data?: Promotion[]; total?: number } | Promotion[]
           if (Array.isArray(inner)) {
             this.promotions = inner as Promotion[]
           } else if (inner.data) {

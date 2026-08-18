@@ -293,7 +293,7 @@ const getCategoryLabel = (value: string) => {
         >
           <!-- Store Image or Placeholder -->
           <div class="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center shrink-0 overflow-hidden border border-slate-100">
-            <img v-if="store.image_url" :src="store.image_url" :alt="store.name" class="w-full h-full object-cover" />
+            <img v-if="store.image_url" :src="store.image_url" :alt="store.name" class="w-full h-full object-cover" >
             <Store v-else class="w-7 h-7 text-orange-500" />
           </div>
 

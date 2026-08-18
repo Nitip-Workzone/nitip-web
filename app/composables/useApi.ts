@@ -7,6 +7,7 @@ interface ApiOptions {
     body?: Record<string, unknown> | BodyInit | null
     headers?: Record<string, string>
     query?: Record<string, string | number | boolean>
+    signal?: AbortSignal
 }
 
 export const useApi = () => {
@@ -15,7 +16,7 @@ export const useApi = () => {
     // Jika NUXT_PUBLIC_NITIP_API_URL diset (production), browser menembak langsung ke API domain
     // Jika kosong (development), gunakan proxy lokal /api/v1 via Nitro
     const rawApiUrl = (config.public.nitipApiUrl as string || '').replace(/\/$/, '')
-    const baseURL = rawApiUrl 
+    const baseURL = rawApiUrl
         ? (rawApiUrl.endsWith('/api/v1') ? rawApiUrl : `${rawApiUrl}/api/v1`)
         : '/api/v1'
 
@@ -46,6 +47,7 @@ export const useApi = () => {
                 body: options.body,
                 query: options.query,
                 headers,
+                signal: options.signal,
                 onRequest() {
                     // verbose request logging removed for performance & security (2026-07-28 cleanup)
                 },
@@ -56,13 +58,13 @@ export const useApi = () => {
                         if (duration < 1500) {
                             connectivityStore.setPoorConnection(false)
                         }
-                    } catch {}
+                    } catch { }
                 },
                 async onResponseError({ request, response }) {
                     clearTimeout(poorConnectionTimeout)
                     try {
                         connectivityStore.setPoorConnection(true)
-                    } catch {}
+                    } catch { }
 
                     const isLoginRequest = request.toString().includes('/auth/login')
                     const status = response?.status
@@ -72,7 +74,7 @@ export const useApi = () => {
                         try {
                             const errorStore = useErrorStore()
                             errorStore.showError('Gagal terhubung ke server. Pastikan koneksi internet Anda aktif.', 'Kesalahan Jaringan')
-                        } catch {}
+                        } catch { }
                         return
                     }
 
@@ -84,7 +86,7 @@ export const useApi = () => {
                                 } else {
                                     authStore.token = null
                                 }
-                            } catch {}
+                            } catch { }
                         } else {
                             try {
                                 const errorStore = useErrorStore()
@@ -101,14 +103,14 @@ export const useApi = () => {
                                     }
                                 }
                                 errorStore.showError(humanMessage, 'Gagal Masuk')
-                            } catch {}
+                            } catch { }
                         }
                     } else if (status && status >= 400 && status <= 599) {
                         try {
                             const errorStore = useErrorStore()
                             const errData = response._data as { message?: string; error_code?: string; errors?: Array<{ field: string; message: string }> }
                             let msg = errData?.message || 'Terjadi kesalahan sistem. Silakan coba beberapa saat lagi.'
-                            
+
                             // Extract and join validation errors if present
                             const validationErrors = errData?.errors
                             if (validationErrors && validationErrors.length > 0) {
@@ -135,7 +137,7 @@ export const useApi = () => {
                             }
                             // Jangan throw 500 ke error.vue, cukup toast
                             errorStore.showError(msg, 'Permintaan Gagal')
-                        } catch {}
+                        } catch { }
                     }
                 },
             })

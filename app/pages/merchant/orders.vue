@@ -403,7 +403,8 @@ onUnmounted(() => {
             <div class="flex items-center justify-between w-full">
               <!-- Step 1 -->
               <div class="flex flex-col items-center flex-1">
-                <div class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black" 
+                <div
+class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black" 
                      :class="getStepIndex(order.status) >= 1 ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-200 text-slate-400'">
                   1
                 </div>
@@ -413,7 +414,8 @@ onUnmounted(() => {
               
               <!-- Step 2 -->
               <div class="flex flex-col items-center flex-1">
-                <div class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black" 
+                <div
+class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black" 
                      :class="getStepIndex(order.status) >= 2 ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-200 text-slate-400'">
                   2
                 </div>
@@ -423,7 +425,8 @@ onUnmounted(() => {
               
               <!-- Step 3 -->
               <div class="flex flex-col items-center flex-1">
-                <div class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black" 
+                <div
+class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black" 
                      :class="getStepIndex(order.status) >= 3 ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-200 text-slate-400'">
                   3
                 </div>
@@ -433,7 +436,8 @@ onUnmounted(() => {
               
               <!-- Step 4 -->
               <div class="flex flex-col items-center flex-1">
-                <div class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black" 
+                <div
+class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black" 
                      :class="getStepIndex(order.status) >= 4 ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-200 text-slate-400'">
                   4
                 </div>
@@ -443,7 +447,8 @@ onUnmounted(() => {
               
               <!-- Step 5 -->
               <div class="flex flex-col items-center flex-1">
-                <div class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black" 
+                <div
+class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black" 
                      :class="getStepIndex(order.status) >= 5 ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-200 text-slate-400'">
                   5
                 </div>
@@ -484,7 +489,7 @@ onUnmounted(() => {
               :disabled="actionLoadingId === order.id"
               @click="handleAccept(order.id)"
             >
-              <Play v-slot="icon" v-if="actionLoadingId !== order.id" class="w-3.5 h-3.5 fill-current" />
+              <Play v-if="actionLoadingId !== order.id" v-slot="icon" class="w-3.5 h-3.5 fill-current" />
               <RefreshCw v-else class="w-3.5 h-3.5 animate-spin" />
               Terima Pesanan
             </button>

@@ -258,7 +258,7 @@ onMounted(async () => {
                       :src="getImageUrl(merchant.cover_url)"
                       class="absolute inset-0 w-full h-full object-cover"
                       alt="Cover"
-                    />
+                    >
                     <div v-else class="absolute inset-0 bg-slate-100 flex items-center justify-center text-[8px] font-bold text-muted-foreground uppercase">Cover</div>
                     
                     <!-- Logo/Avatar overlay -->
@@ -268,7 +268,7 @@ onMounted(async () => {
                         :src="getImageUrl(merchant.image_url)"
                         class="w-full h-full object-cover"
                         alt="Logo"
-                      />
+                      >
                       <Store v-else class="w-2.5 h-2.5 text-muted-foreground" />
                     </div>
                   </div>

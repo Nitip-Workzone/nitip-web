@@ -17,8 +17,6 @@ let L: any = null
 let isInitialized = false
 
 const initMap = async () => {
-  if (isInitialized) return
-
   const originLat = route.query.origin_lat ? parseFloat(route.query.origin_lat as string) : null
   const originLng = route.query.origin_lng ? parseFloat(route.query.origin_lng as string) : null
   const destLat = route.query.dest_lat ? parseFloat(route.query.dest_lat as string) : null
@@ -29,27 +27,44 @@ const initMap = async () => {
     return
   }
 
-  isInitialized = true
+  // If coordinates are 0, wait for valid data
+  if (originLat === 0 && originLng === 0 && destLat === 0 && destLng === 0) {
+    console.warn('Coordinates are zero, waiting for real coordinates')
+    return
+  }
 
-  L = await import('leaflet')
-  await import('leaflet/dist/leaflet.css')
+  if (!isInitialized) {
+    isInitialized = true
 
-  // Fix marker icons
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  delete (L.Icon.Default.prototype as any)._getIconUrl
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  })
+    L = await import('leaflet')
+    await import('leaflet/dist/leaflet.css')
 
-  map = L.map(mapContainer.value!, {
-    zoomControl: false
-  })
+    // Fix marker icons
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (L.Icon.Default.prototype as any)._getIconUrl
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    })
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map)
+    map = L.map(mapContainer.value!, {
+      zoomControl: false
+    })
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map)
+  }
+
+  // Clear existing markers and polylines
+  if (map && L) {
+    map.eachLayer((layer: any) => {
+      if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+        map.removeLayer(layer)
+      }
+    })
+  }
 
   // Customize origin (green) and destination (red) markers
   const originIcon = L.divIcon({

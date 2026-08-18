@@ -289,7 +289,7 @@ onMounted(() => {
           accept=".json"
           class="hidden"
           @change="handleBatchUpload"
-        />
+        >
         
         <button
           id="btn-import-stores"
@@ -487,7 +487,7 @@ onMounted(() => {
                 type="text"
                 placeholder="Contoh: Pasar Bersehati, Alfamart Kotamobagu"
                 class="w-full text-sm p-3.5 border border-border/60 rounded-2xl focus:outline-none focus:border-primary/50 bg-slate-50/50"
-              />
+              >
             </div>
 
             <!-- Alamat -->
@@ -499,7 +499,7 @@ onMounted(() => {
                 type="text"
                 placeholder="Jalan, kelurahan, kecamatan..."
                 class="w-full text-sm p-3.5 border border-border/60 rounded-2xl focus:outline-none focus:border-primary/50 bg-slate-50/50"
-              />
+              >
             </div>
 
             <!-- Kategori -->
@@ -532,7 +532,7 @@ onMounted(() => {
                     inputmode="decimal"
                     placeholder="0.881122"
                     class="w-full text-sm p-3.5 border border-border/60 rounded-2xl focus:outline-none focus:border-primary/50 bg-slate-50/50 font-mono"
-                  />
+                  >
                 </div>
                 <div>
                   <label class="text-[10px] text-muted-foreground mb-1 block">Longitude</label>
@@ -543,7 +543,7 @@ onMounted(() => {
                     inputmode="decimal"
                     placeholder="124.014567"
                     class="w-full text-sm p-3.5 border border-border/60 rounded-2xl focus:outline-none focus:border-primary/50 bg-slate-50/50 font-mono"
-                  />
+                  >
                 </div>
               </div>
 
@@ -581,7 +581,7 @@ onMounted(() => {
                 type="url"
                 placeholder="https://..."
                 class="w-full text-sm p-3.5 border border-border/60 rounded-2xl focus:outline-none focus:border-primary/50 bg-slate-50/50"
-              />
+              >
             </div>
 
             <!-- Status Toggle -->

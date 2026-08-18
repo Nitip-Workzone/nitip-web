@@ -16,25 +16,25 @@ const emit = defineEmits<{
   (e: 'cancel'): void
 }>()
 
-const RATIOS: Record<string, number> = {
+const RATIOS = {
   product: 1,
   logo: 1,
   cover: 16 / 9,
 }
-const OUTPUTS: Record<string, { w: number; h: number }> = {
+const OUTPUTS = {
   product: { w: 1200, h: 1200 },
   logo: { w: 400, h: 400 },
   cover: { w: 1200, h: 675 },
 }
-const LABELS: Record<string, { title: string; sub: string; size: string }> = {
+const LABELS = {
   product: { title: 'Crop Foto Produk Wajib 1:1', sub: 'Geser & zoom agar produk di tengah, hasil konsisten 1200×1200', size: '1:1 • 1200×1200' },
   logo: { title: 'Crop Logo Toko Wajib 1:1', sub: 'Logo bulat, wajah/logo di tengah. Output 400×400', size: '1:1 Circular • 400×400' },
   cover: { title: 'Crop Sampul Toko Wajib 16:9', sub: 'Banner sampul agar tidak gepeng di detail merchant. Output 1200×675', size: '16:9 • 1200×675' },
 }
 
-const aspect = computed(() => RATIOS[props.type] ?? 1)
-const output = computed(() => OUTPUTS[props.type] ?? OUTPUTS.product)
-const label = computed(() => LABELS[props.type] ?? LABELS.product)
+const aspect = computed<number>(() => RATIOS[(props.type ?? 'product') as 'product' | 'logo' | 'cover'])
+const output = computed<{ w: number; h: number }>(() => OUTPUTS[(props.type ?? 'product') as 'product' | 'logo' | 'cover'])
+const label = computed<{ title: string; sub: string; size: string }>(() => LABELS[(props.type ?? 'product') as 'product' | 'logo' | 'cover'])
 const isCircular = computed(() => props.type === 'logo')
 
 const containerRef = ref<HTMLDivElement | null>(null)
@@ -141,8 +141,11 @@ const getPoint = (e: PointerEvent | TouchEvent) => {
 const handlePinch = (e: TouchEvent) => {
   if (e.touches.length !== 2) return
   e.preventDefault()
-  const dx = e.touches[0].clientX - e.touches[1].clientX
-  const dy = e.touches[0].clientY - e.touches[1].clientY
+  const t1 = e.touches[0]
+  const t2 = e.touches[1]
+  if (!t1 || !t2) return
+  const dx = t1.clientX - t2.clientX
+  const dy = t1.clientY - t2.clientY
   const dist = Math.sqrt(dx * dx + dy * dy)
   if (initialPinchDist === 0) {
     initialPinchDist = dist

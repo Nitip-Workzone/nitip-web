@@ -211,9 +211,9 @@ const skipBiometrics = () => {
             <button
               v-if="isBiometricsSupported && !showTotp"
               type="button"
-              @click="handleBiometricLogin"
               class="w-[52px] h-[52px] flex items-center justify-center bg-slate-100 hover:bg-slate-200 border border-border/50 rounded-xl active:scale-[0.95] transition-all text-primary shrink-0"
               title="Masuk dengan Sidik Jari / Wajah"
+              @click="handleBiometricLogin"
             >
               <svg v-if="isAppleDevice" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 22c5.523 0 10-4.577 10-10S17.523 2 12 2 2 6.577 2 12s4.523 10 10 10zM8 9.5a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm5 0a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm-5.5 6c.5 1.5 2 2.5 4.5 2.5s4-1 4.5-2.5" />
@@ -255,15 +255,15 @@ const skipBiometrics = () => {
         <div class="flex flex-col gap-2 pt-2">
           <button 
             type="button" 
-            @click="registerBiometrics" 
-            class="w-full py-3 bg-primary text-white font-bold rounded-xl active:scale-[0.98] transition-transform text-sm"
+            class="w-full py-3 bg-primary text-white font-bold rounded-xl active:scale-[0.98] transition-transform text-sm" 
+            @click="registerBiometrics"
           >
             Aktifkan Sekarang
           </button>
           <button 
             type="button" 
-            @click="skipBiometrics" 
-            class="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl active:scale-[0.98] transition-transform text-sm"
+            class="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl active:scale-[0.98] transition-transform text-sm" 
+            @click="skipBiometrics"
           >
             Mungkin Nanti
           </button>

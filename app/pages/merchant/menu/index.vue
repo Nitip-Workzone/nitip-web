@@ -105,7 +105,7 @@ const fetchOwnerPromos = async () => {
   promoLoading.value = true
   try {
     const promos = await merchantsStore.fetchOwnerPromotions()
-    ownerPromos.value = promos as typeof ownerPromos.value
+    ownerPromos.value = promos as any
     const settlement = await merchantsStore.fetchOwnerSettlement()
     ownerSettlement.value = settlement as typeof ownerSettlement.value
   } catch (e) {

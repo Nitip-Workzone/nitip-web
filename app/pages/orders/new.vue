@@ -127,7 +127,7 @@ async function fetchActiveGlobalPromo() {
     if (res.data && res.data.length > 0) {
       // prefer global auto
       const auto = res.data.find(p => !p.code) || res.data[0]
-      activeGlobalPromo.value = auto
+      activeGlobalPromo.value = auto || null
     }
   } catch { /* ignore */ }
 }
@@ -588,8 +588,8 @@ function formatCurrency(amount: number) {
         <div v-else-if="nearbyStores.length > 0" class="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory">
           <button
             v-for="store in nearbyStores"
-            :key="store.id"
             :id="`store-suggestion-${store.id}`"
+            :key="store.id"
             :class="[
               'flex-shrink-0 snap-start w-48 text-left border rounded-2xl p-3.5 transition-all active:scale-[0.98]',
               pickupLat === store.lat && pickupLng === store.lng
@@ -773,7 +773,7 @@ function formatCurrency(amount: number) {
           <span class="text-amber-600 text-[11px]">ℹ️</span>
           <p class="text-[11px] text-amber-800 leading-relaxed">
             Voucher diskon seperti <strong>{{ activeGlobalPromo?.code || 'Merdeka81' }}</strong> saat ini <strong>hanya berlaku untuk Nitip Food</strong> (terafiliasi merchant). Untuk Nitip Beli / Kirim Regular tidak bisa digunakan karena tidak terafiliasi merchant.
-            <br/>
+            <br>
             Silakan pesan via <strong>Nitip Food</strong> untuk menggunakan voucher. Jika ingin tetap ada promo global, hubungi admin.
           </p>
         </div>
@@ -785,7 +785,7 @@ function formatCurrency(amount: number) {
               placeholder="Merdeka81 - hanya Food"
               disabled
               class="flex-1 h-11 px-4 rounded-2xl border border-slate-200 text-xs font-mono font-bold uppercase bg-white"
-            />
+            >
             <button disabled class="h-11 px-5 bg-slate-300 text-white text-[11px] font-black rounded-2xl">Apply</button>
           </div>
         </div>

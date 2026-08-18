@@ -65,7 +65,7 @@ async function handleAction(action: 'resolve' | 'release' | 'close') {
         </div>
       </div>
 
-      <div class="flex items-center gap-2" v-if="supportStore.currentTicket">
+      <div v-if="supportStore.currentTicket" class="flex items-center gap-2">
         <!-- Hubungi Klien via WA -->
         <a 
           v-if="supportStore.currentTicket.user_whatsapp && supportStore.currentTicket.assigned_cs_id && !['closed', 'resolved'].includes(supportStore.currentTicket.status)"

@@ -22,7 +22,7 @@ const customEndDate = ref('')
 const dateParams = computed(() => {
   const end = new Date()
   const endStr = end.toISOString().split('T')[0] + 'T23:59:59Z'
-  let start = new Date()
+  const start = new Date()
   
   if (dateFilterType.value === '5days') {
     start.setDate(end.getDate() - 5)

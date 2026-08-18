@@ -38,7 +38,7 @@ watch(() => props.open, (v) => {
 </script>
 
 <template>
-  <UiModal :open="open" @update:open="emit('update:open', $event)" size="md">
+  <UiModal :open="open" size="md" @update:open="emit('update:open', $event)">
     <template #title>
       <div class="flex items-center gap-2">
         <ShieldAlert class="w-5 h-5 text-red-600" />
@@ -78,7 +78,7 @@ watch(() => props.open, (v) => {
             maxlength="6"
             placeholder="000000"
             class="mt-1 w-full h-12 text-center text-xl font-mono tracking-widest rounded-md border border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none"
-          />
+          >
         </div>
       </div>
 
@@ -91,6 +91,6 @@ watch(() => props.open, (v) => {
       </div>
     </div>
 
-    <AdminTotpModal v-model:open="showTotpModal" />
+    <AdminTotpModal v-model="showTotpModal" />
   </UiModal>
 </template>

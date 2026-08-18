@@ -328,6 +328,22 @@ const handleSaveAddonOption = async () => {
 const handleDeleteAddonOption = async (optionId:string) => { if (!confirm('Hapus opsi tambahan?')) return; try { await merchantsStore.deleteToppingOption(optionId); success('Opsi dihapus'); addonManagerGroups.value=addonManagerGroups.value.map(g=>({ ...g, options: g.options.filter(o=>o.id!==optionId) })) } catch { error('Gagal hapus') } }
 const toggleAddonOptionAvailable = async (opt:any) => { try { const { request } = useApi(); await request(`/merchant/menu/toppings/options/${opt.id}`, { method:'PUT', body:{ label:opt.label, price_delta:opt.price_delta, image_url:opt.image_url, is_available:!opt.is_available, sort_order:opt.sort_order } }); opt.is_available=!opt.is_available; success(opt.is_available ? `${opt.label} tersedia` : `${opt.label} habis`) } catch { error('Gagal toggle') } }
 const startCropAddonOption = (groupId:string) => { cropperTarget.value='addonOption'; cropperAddonOptionTarget.value={ groupId, mode: editingAddonOptionId.value ? 'edit' : 'add' }; addonOptionFileRef.value?.click() }
+const startCropAddonMasterOption = (idx: number) => {
+  cropperAddonMasterIdx.value = idx
+  cropperTarget.value = 'addonMasterOption'
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  input.onchange = (ev: Event) => {
+    const target = ev.target as HTMLInputElement
+    const f = target.files?.[0]
+    if (!f) return
+    if (cropperSrc.value) URL.revokeObjectURL(cropperSrc.value)
+    cropperSrc.value = URL.createObjectURL(f)
+    cropperOpen.value = true
+  }
+  input.click()
+}
 
 // Addon Master (shared)
 const openAddonMasterModal = (master?:any) => { if (master) { addonMasterForm.value={ name:master.name, image_url:master.image_url||'' }; addonMasterOptions.value=(master.options||[]).map((o:any)=>({ id:o.id, label:o.label, price_delta:o.price_delta, image_url:o.image_url, previewUrl:o.image_url })); (addonMasterForm as any).id=master.id } else { addonMasterForm.value={ name:'', image_url:'' }; addonMasterOptions.value=[{ label:'Keju Parut', price_delta:3000, image_url:'', previewUrl:'' }] } showAddonMasterModal.value=true }
@@ -388,7 +404,7 @@ onMounted(()=>{ fetchProfile() })
         <div class="flex gap-2 overflow-x-auto pb-1">
           <button class="shrink-0 h-8 px-4 rounded-full text-[11px] font-black border" :class="!activeCategoryId ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'" @click="activeCategoryId=null">Semua</button>
           <button v-for="cat in categories" :key="cat.id" class="shrink-0 h-8 pl-2 pr-3 rounded-full text-[11px] font-bold border flex items-center gap-1.5" :class="activeCategoryId===cat.id ? 'bg-primary text-white border-primary' : 'bg-white text-slate-700 border-slate-200'" @click="activeCategoryId=cat.id">
-            <div class="w-5 h-5 rounded-full bg-slate-100 overflow-hidden flex items-center justify-center shrink-0"><img v-if="cat.image_url" :src="toDisplayUrl(cat.image_url)" class="w-full h-full object-cover" /><Tag v-else class="w-3 h-3 text-slate-400" /></div>{{ cat.name }}
+            <div class="w-5 h-5 rounded-full bg-slate-100 overflow-hidden flex items-center justify-center shrink-0"><img v-if="cat.image_url" :src="toDisplayUrl(cat.image_url)" class="w-full h-full object-cover" ><Tag v-else class="w-3 h-3 text-slate-400" /></div>{{ cat.name }}
           </button>
         </div>
         <div v-if="filteredMenus.length===0" class="py-10 px-6 text-center bg-white border rounded-[24px]"><div class="w-14 h-14 mx-auto rounded-2xl bg-slate-50 border flex items-center justify-center mb-3"><Utensils class="w-7 h-7 text-slate-400" /></div><p class="text-[13px] font-black">Belum Ada Menu</p><p class="text-[11px] text-slate-500 mt-1">Buat menu dulu, lalu kelola varian & tambahan via tombol Varian/Tambahan.</p><button class="mt-4 h-10 px-5 rounded-full text-xs font-black bg-primary text-white" @click="openAddModal">+ Tambah Menu</button></div>
@@ -424,7 +440,7 @@ onMounted(()=>{ fetchProfile() })
           <div v-if="categories.length===0" class="py-10 text-center"><div class="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 border flex items-center justify-center mb-3"><Tag class="w-7 h-7 text-indigo-400" /></div><p class="text-xs font-black">Belum Ada Kategori</p><button class="mt-3 h-9 px-4 rounded-full bg-slate-900 text-white text-xs font-bold" @click="openCategoryModal()">+ Tambah</button></div>
           <div v-else class="grid grid-cols-1 gap-2">
             <div v-for="cat in categories" :key="cat.id" class="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex items-center gap-2.5">
-              <div class="w-11 h-11 rounded-full bg-white border shadow-sm overflow-hidden flex items-center justify-center shrink-0"><img v-if="cat.image_url" :src="toDisplayUrl(cat.image_url)" class="w-full h-full object-cover" /><Tag v-else class="w-5 h-5 text-slate-400" /></div>
+              <div class="w-11 h-11 rounded-full bg-white border shadow-sm overflow-hidden flex items-center justify-center shrink-0"><img v-if="cat.image_url" :src="toDisplayUrl(cat.image_url)" class="w-full h-full object-cover" ><Tag v-else class="w-5 h-5 text-slate-400" /></div>
               <div class="flex-1 min-w-0"><p class="text-[12px] font-black truncate">{{ cat.name }}</p><p class="text-[9px] text-slate-400">Sort {{ cat.sort_order }} • {{ cat.is_active ? 'Aktif' : 'Nonaktif' }}</p></div>
               <div class="flex gap-1"><button class="w-8 h-8 rounded-full bg-white border flex items-center justify-center" @click="openCategoryModal(cat)"><Edit class="w-3.5 h-3.5" /></button><button class="w-8 h-8 rounded-full bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center" :disabled="deleteCategoryId===cat.id" @click="handleDeleteCategory(cat.id)"><RefreshCw v-if="deleteCategoryId===cat.id" class="w-3.5 h-3.5 animate-spin" /><Trash2 v-else class="w-3.5 h-3.5" /></button></div>
             </div>
@@ -440,8 +456,8 @@ onMounted(()=>{ fetchProfile() })
           <div v-if="addonMasters.length===0" class="py-10 text-center"><div class="w-12 h-12 mx-auto rounded-2xl bg-amber-50 border flex items-center justify-center mb-2"><CupSoda class="w-6 h-6 text-amber-400" /></div><p class="text-xs text-slate-500">Belum ada tambahan.</p><button class="mt-3 h-9 px-4 rounded-full bg-primary text-white text-xs font-bold" @click="openAddonMasterModal()">+ Tambah</button></div>
           <div v-else class="space-y-2.5">
             <div v-for="tm in addonMasters" :key="tm.id" class="bg-amber-50/50 border border-amber-100 rounded-2xl p-3 flex items-start gap-3">
-              <div class="w-12 h-12 rounded-xl bg-white border overflow-hidden flex items-center justify-center shrink-0"><img v-if="tm.image_url" :src="toDisplayUrl(tm.image_url)" class="w-full h-full object-cover" /><CupSoda v-else class="w-5 h-5 text-amber-400" /></div>
-              <div class="flex-1 min-w-0"><p class="text-xs font-black">{{ tm.name }}</p><p class="text-[10px] text-slate-500">{{ tm.options?.length||0 }} opsi</p><div class="flex gap-1 mt-1.5 flex-wrap"><span v-for="opt in (tm.options||[]).slice(0,6)" :key="opt.id" class="px-2 py-0.5 rounded-full bg-white border text-[9px] font-bold flex items-center gap-1"><span v-if="opt.image_url||opt.previewUrl" class="w-3 h-3 rounded-full overflow-hidden inline-flex"><img :src="toDisplayUrl(opt.image_url||opt.previewUrl)" class="w-full h-full object-cover" /></span>{{ opt.label }} +{{ Number(opt.price_delta).toLocaleString('id-ID') }}</span></div></div>
+              <div class="w-12 h-12 rounded-xl bg-white border overflow-hidden flex items-center justify-center shrink-0"><img v-if="tm.image_url" :src="toDisplayUrl(tm.image_url)" class="w-full h-full object-cover" ><CupSoda v-else class="w-5 h-5 text-amber-400" /></div>
+              <div class="flex-1 min-w-0"><p class="text-xs font-black">{{ tm.name }}</p><p class="text-[10px] text-slate-500">{{ tm.options?.length||0 }} opsi</p><div class="flex gap-1 mt-1.5 flex-wrap"><span v-for="opt in (tm.options||[]).slice(0,6)" :key="opt.id" class="px-2 py-0.5 rounded-full bg-white border text-[9px] font-bold flex items-center gap-1"><span v-if="opt.image_url||opt.previewUrl" class="w-3 h-3 rounded-full overflow-hidden inline-flex"><img :src="toDisplayUrl(opt.image_url||opt.previewUrl)" class="w-full h-full object-cover" ></span>{{ opt.label }} +{{ Number(opt.price_delta).toLocaleString('id-ID') }}</span></div></div>
               <div class="flex gap-1 shrink-0"><button class="w-7 h-7 rounded-full bg-white border flex items-center justify-center" @click="openAddonMasterModal(tm)"><Edit class="w-3 h-3" /></button><button class="w-7 h-7 rounded-full bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center" @click="handleDeleteAddonMaster(tm.id)"><Trash2 class="w-3 h-3" /></button></div>
             </div>
           </div>
@@ -463,10 +479,10 @@ onMounted(()=>{ fetchProfile() })
         <div class="space-y-2.5 pt-2 border-t">
           <label class="text-[11px] font-black uppercase flex items-center gap-2">Foto Produk <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px]">Crop 1:1 • 1200</span></label>
           <div class="flex gap-3 items-start">
-            <div class="w-20 h-20 rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center shrink-0"><img v-if="previewUrl" :src="previewUrl" class="w-full h-full object-cover" /><Camera v-else class="w-7 h-7 text-amber-400" /></div>
+            <div class="w-20 h-20 rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center shrink-0"><img v-if="previewUrl" :src="previewUrl" class="w-full h-full object-cover" ><Camera v-else class="w-7 h-7 text-amber-400" /></div>
             <div class="flex-1 min-w-0 space-y-2">
               <button type="button" class="w-full h-10 rounded-xl border bg-white text-[12px] font-bold hover:bg-slate-50 active:scale-[0.98]" @click="openAddFilePicker">{{ previewUrl ? 'Ganti & Crop' : 'Pilih Foto → Crop 1:1' }}</button>
-              <input ref="addFileInputRef" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="(e)=>handleFileChange(e,'menu')" />
+              <input ref="addFileInputRef" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="(e)=>handleFileChange(e,'menu')" >
               <p v-if="croppedBlob" class="text-[11px] text-emerald-600 font-bold">✓ Crop 1200 siap</p><p v-else class="text-[10px] text-slate-400 leading-tight">Setelah dibuat, kelola varian & tambahan via tombol di list menu.</p>
             </div>
           </div>
@@ -480,7 +496,7 @@ onMounted(()=>{ fetchProfile() })
         <div class="space-y-1.5"><label class="text-[10px] font-bold uppercase text-slate-600">Nama</label><input v-model="menuForm.name" type="text" class="h-11 w-full rounded-xl border px-4 text-[13px] font-semibold"></div>
         <div class="space-y-1.5"><label class="text-[10px] font-bold uppercase text-slate-600">Harga</label><input v-model.number="menuForm.price" type="number" class="h-11 w-full rounded-xl border px-4 text-[13px] font-bold"></div>
         <div class="space-y-1.5"><label class="text-[10px] font-bold uppercase text-slate-600">Kategori</label><select v-model="menuForm.category_id" class="h-11 w-full rounded-xl border px-3 text-[13px]"><option :value="null">Tanpa</option><option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option></select></div>
-        <div class="space-y-2"><label class="text-[10px] font-bold uppercase">Foto <span class="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px]">Crop 1:1</span></label><div class="flex gap-3 items-center"><div class="w-16 h-16 rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center shrink-0"><img v-if="previewUrl" :src="previewUrl" class="w-full h-full object-cover" /><img v-else-if="menuForm.image_url" :src="toDisplayUrl(menuForm.image_url)" class="w-full h-full object-cover opacity-70" /><Camera v-else class="w-6 h-6 text-amber-400" /></div><button type="button" class="h-10 px-4 rounded-xl border bg-slate-50 text-[12px] font-bold active:scale-[0.98]" @click="openEditFilePicker">{{ previewUrl ? 'Ganti & Crop' : 'Pilih & Crop' }}</button><input ref="editFileInputRef" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="(e)=>handleFileChange(e,'menu')" /></div></div>
+        <div class="space-y-2"><label class="text-[10px] font-bold uppercase">Foto <span class="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px]">Crop 1:1</span></label><div class="flex gap-3 items-center"><div class="w-16 h-16 rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center shrink-0"><img v-if="previewUrl" :src="previewUrl" class="w-full h-full object-cover" ><img v-else-if="menuForm.image_url" :src="toDisplayUrl(menuForm.image_url)" class="w-full h-full object-cover opacity-70" ><Camera v-else class="w-6 h-6 text-amber-400" /></div><button type="button" class="h-10 px-4 rounded-xl border bg-slate-50 text-[12px] font-bold active:scale-[0.98]" @click="openEditFilePicker">{{ previewUrl ? 'Ganti & Crop' : 'Pilih & Crop' }}</button><input ref="editFileInputRef" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="(e)=>handleFileChange(e,'menu')" ></div></div>
       </div>
       <template #footer><div class="flex gap-3 pt-4 border-t mt-4"><button class="flex-1 h-11 rounded-xl border text-[13px] font-bold" @click="showEditModal=false">Batal</button><button class="flex-1 h-11 rounded-xl bg-primary text-white text-[13px] font-bold disabled:opacity-50" :disabled="actionLoading" @click="handleEditMenu">{{ actionLoading ? '...' : 'Simpan' }}</button></div></template>
     </UiModal>
@@ -500,7 +516,7 @@ onMounted(()=>{ fetchProfile() })
             </div>
             <div v-if="vg.options.length===0" class="py-3 text-center text-[11px] text-slate-400 border border-dashed rounded-xl bg-white">Belum ada opsi. Tambah Regular, Besar, dll dengan foto.</div>
             <div v-for="opt in vg.options" :key="opt.id" class="bg-white border rounded-xl p-2.5 flex gap-2.5 items-start">
-              <div class="w-14 h-14 rounded-xl bg-slate-100 overflow-hidden border flex items-center justify-center shrink-0"><img v-if="opt.previewUrl || opt.image_url" :src="toDisplayUrl(opt.previewUrl || opt.image_url)" class="w-full h-full object-cover" /><Camera v-else class="w-5 h-5 text-slate-300" /></div>
+              <div class="w-14 h-14 rounded-xl bg-slate-100 overflow-hidden border flex items-center justify-center shrink-0"><img v-if="opt.previewUrl || opt.image_url" :src="toDisplayUrl(opt.previewUrl || opt.image_url)" class="w-full h-full object-cover" ><Camera v-else class="w-5 h-5 text-slate-300" /></div>
               <div class="flex-1 min-w-0 space-y-1">
                 <div class="flex items-center gap-1.5 flex-wrap"><p class="text-[12px] font-black truncate">{{ opt.label }}</p><span v-if="opt.is_default" class="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[8px] font-bold flex items-center gap-0.5"><Star class="w-2.5 h-2.5" /> Default</span><span class="px-1.5 py-0.5 rounded-full text-[8px] font-bold" :class="opt.is_available ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'">{{ opt.is_available ? 'Tersedia' : 'Habis' }}</span></div>
                 <p class="text-[11px] font-bold" :class="opt.price_delta>=0 ? 'text-emerald-600' : 'text-rose-600'">{{ opt.price_delta===0 ? 'Harga dasar' : (opt.price_delta>0 ? `+Rp ${opt.price_delta.toLocaleString('id-ID')}` : `-Rp ${Math.abs(opt.price_delta).toLocaleString('id-ID')}`) }}</p>
@@ -539,10 +555,10 @@ onMounted(()=>{ fetchProfile() })
     <UiModal v-model:open="showAddVariantOptionModal" :title="editingVariantOptionId ? 'Edit Opsi Varian' : 'Tambah Opsi Varian'" max-width="max-w-md">
       <div class="space-y-4">
         <div class="flex gap-3 items-start">
-          <div class="w-20 h-20 rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center shrink-0"><img v-if="variantOptionForm.previewUrl || variantOptionForm.image_url" :src="toDisplayUrl(variantOptionForm.previewUrl || variantOptionForm.image_url)" class="w-full h-full object-cover" /><Camera v-else class="w-6 h-6 text-amber-400" /></div>
+          <div class="w-20 h-20 rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center shrink-0"><img v-if="variantOptionForm.previewUrl || variantOptionForm.image_url" :src="toDisplayUrl(variantOptionForm.previewUrl || variantOptionForm.image_url)" class="w-full h-full object-cover" ><Camera v-else class="w-6 h-6 text-amber-400" /></div>
           <div class="flex-1 min-w-0 space-y-2">
             <button type="button" class="w-full h-10 rounded-xl border bg-white text-[12px] font-bold" @click="()=>{ cropperTarget='variantOption'; cropperVariantOptionTarget={ groupId: variantOptionForm.groupId, optionId: editingVariantOptionId, mode: editingVariantOptionId ? 'edit' : 'add' }; variantOptionFileRef?.click() }">{{ variantOptionForm.previewUrl || variantOptionForm.image_url ? 'Ganti Foto & Crop 1:1' : 'Upload Foto & Crop 1:1' }}</button>
-            <input ref="variantOptionFileRef" type="file" accept="image/*" class="hidden" @change="(e)=>handleFileChange(e,'variantOption')" />
+            <input ref="variantOptionFileRef" type="file" accept="image/*" class="hidden" @change="(e)=>handleFileChange(e,'variantOption')" >
             <p class="text-[10px] text-slate-400 leading-tight">Foto 600x600, crop otomatis 1:1. Bisa dinonaktifkan jika habis.</p>
           </div>
         </div>
@@ -552,8 +568,8 @@ onMounted(()=>{ fetchProfile() })
           <div class="space-y-1.5"><label class="text-[10px] font-bold uppercase text-slate-600">Urutan</label><input v-model.number="variantOptionForm.sort_order" type="number" class="h-11 w-full rounded-xl border px-4 text-[13px] font-bold"></div>
         </div>
         <div class="grid grid-cols-2 gap-3">
-          <label class="flex items-center gap-2 bg-slate-50 border rounded-xl px-3 h-11 text-[12px] font-bold"><input type="checkbox" v-model="variantOptionForm.is_default" class="w-4 h-4 rounded"> Default</label>
-          <label class="flex items-center gap-2 bg-slate-50 border rounded-xl px-3 h-11 text-[12px] font-bold"><input type="checkbox" v-model="variantOptionForm.is_available" class="w-4 h-4 rounded"> Tersedia <span v-if="!variantOptionForm.is_available" class="text-[10px] text-rose-500">(Habis)</span></label>
+          <label class="flex items-center gap-2 bg-slate-50 border rounded-xl px-3 h-11 text-[12px] font-bold"><input v-model="variantOptionForm.is_default" type="checkbox" class="w-4 h-4 rounded"> Default</label>
+          <label class="flex items-center gap-2 bg-slate-50 border rounded-xl px-3 h-11 text-[12px] font-bold"><input v-model="variantOptionForm.is_available" type="checkbox" class="w-4 h-4 rounded"> Tersedia <span v-if="!variantOptionForm.is_available" class="text-[10px] text-rose-500">(Habis)</span></label>
         </div>
       </div>
       <template #footer><div class="flex gap-3 pt-4 border-t mt-4"><button class="flex-1 h-11 rounded-xl border text-[13px] font-bold" @click="showAddVariantOptionModal=false">Batal</button><button class="flex-1 h-11 rounded-xl bg-primary text-white text-[13px] font-bold" @click="handleSaveVariantOption">{{ editingVariantOptionId ? 'Simpan' : 'Tambah' }}</button></div></template>
@@ -569,7 +585,7 @@ onMounted(()=>{ fetchProfile() })
           <p class="text-[10px] font-black uppercase tracking-wide flex items-center gap-1.5"><Sparkles class="w-3.5 h-3.5 text-amber-500" /> Pakai dari Tambahan Master yang Sudah Ada</p>
           <div class="grid grid-cols-1 gap-2 max-h-[160px] overflow-y-auto pr-1">
             <div v-for="master in addonMasters" :key="master.id" class="bg-white border border-amber-100 rounded-xl p-2.5 flex items-center gap-2.5 hover:border-amber-300 transition-colors">
-              <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 overflow-hidden flex items-center justify-center shrink-0"><img v-if="master.image_url" :src="toDisplayUrl(master.image_url)" class="w-full h-full object-cover" /><CupSoda v-else class="w-4 h-4 text-amber-400" /></div>
+              <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 overflow-hidden flex items-center justify-center shrink-0"><img v-if="master.image_url" :src="toDisplayUrl(master.image_url)" class="w-full h-full object-cover" ><CupSoda v-else class="w-4 h-4 text-amber-400" /></div>
               <div class="flex-1 min-w-0"><p class="text-[11px] font-black truncate">{{ master.name }}</p><p class="text-[9px] text-slate-500">{{ master.options?.length||0 }} opsi • {{ (master.options||[]).slice(0,3).map((o:any)=>o.label).join(', ') }}{{ (master.options||[]).length>3 ? '...' : '' }}</p></div>
               <button class="shrink-0 h-8 px-3 rounded-full bg-primary text-white text-[10px] font-bold active:scale-95 flex items-center gap-1" @click="useMasterForMenu(master)"><Plus class="w-3 h-3" /> Pakai</button>
             </div>
@@ -587,7 +603,7 @@ onMounted(()=>{ fetchProfile() })
             <div class="flex items-center justify-between"><p class="text-[12px] font-black">{{ tg.name }}</p><div class="flex gap-1"><button class="h-7 px-2.5 rounded-full bg-white border text-[11px] font-bold" @click="openAddAddonOption(tg.id)">+ Opsi</button><button class="w-7 h-7 rounded-full bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center" @click="handleDeleteAddonGroup(tg.id)"><Trash2 class="w-3.5 h-3.5" /></button></div></div>
             <div v-if="tg.options.length===0" class="py-3 text-center text-[11px] text-slate-400 border border-dashed rounded-xl bg-white">Belum ada opsi.</div>
             <div v-for="opt in tg.options" :key="opt.id" class="bg-white border rounded-xl p-2.5 flex gap-2.5 items-start">
-              <div class="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border flex items-center justify-center shrink-0"><img v-if="opt.previewUrl || opt.image_url" :src="toDisplayUrl(opt.previewUrl || opt.image_url)" class="w-full h-full object-cover" /><Camera v-else class="w-4 h-4 text-slate-300" /></div>
+              <div class="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border flex items-center justify-center shrink-0"><img v-if="opt.previewUrl || opt.image_url" :src="toDisplayUrl(opt.previewUrl || opt.image_url)" class="w-full h-full object-cover" ><Camera v-else class="w-4 h-4 text-slate-300" /></div>
               <div class="flex-1 min-w-0"><p class="text-[12px] font-black truncate">{{ opt.label }}</p><p class="text-[11px] font-bold text-emerald-600">+Rp {{ Number(opt.price_delta).toLocaleString('id-ID') }}</p><span class="px-1.5 py-0.5 rounded-full text-[8px] font-bold" :class="opt.is_available ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'">{{ opt.is_available ? 'Tersedia' : 'Habis' }}</span></div>
               <div class="flex flex-col gap-1 shrink-0"><div class="flex gap-1"><button class="w-7 h-7 rounded-lg border bg-white flex items-center justify-center" @click="openEditAddonOption(tg.id,opt)"><Edit class="w-3.5 h-3.5" /></button><button class="w-7 h-7 rounded-lg border flex items-center justify-center" :class="opt.is_available ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-rose-50 border-rose-100 text-rose-600'" @click="toggleAddonOptionAvailable(opt)"><Eye v-if="opt.is_available" class="w-3.5 h-3.5" /><EyeOff v-else class="w-3.5 h-3.5" /></button></div><button class="w-14 h-6 rounded-full bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center" @click="handleDeleteAddonOption(opt.id)"><Trash2 class="w-3 h-3" /></button></div>
             </div>
@@ -608,10 +624,10 @@ onMounted(()=>{ fetchProfile() })
     <UiModal v-model:open="showAddAddonOptionModal" :title="editingAddonOptionId ? 'Edit Tambahan' : 'Tambah Tambahan'" max-width="max-w-md">
       <div class="space-y-4">
         <div class="flex gap-3 items-start">
-          <div class="w-20 h-20 rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center shrink-0"><img v-if="addonOptionForm.previewUrl || addonOptionForm.image_url" :src="toDisplayUrl(addonOptionForm.previewUrl || addonOptionForm.image_url)" class="w-full h-full object-cover" /><Camera v-else class="w-6 h-6 text-amber-400" /></div>
+          <div class="w-20 h-20 rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 overflow-hidden flex items-center justify-center shrink-0"><img v-if="addonOptionForm.previewUrl || addonOptionForm.image_url" :src="toDisplayUrl(addonOptionForm.previewUrl || addonOptionForm.image_url)" class="w-full h-full object-cover" ><Camera v-else class="w-6 h-6 text-amber-400" /></div>
           <div class="flex-1 min-w-0 space-y-2">
             <button type="button" class="w-full h-10 rounded-xl border bg-white text-[12px] font-bold active:scale-[0.98]" @click="openAddonOptionFilePicker">{{ addonOptionForm.previewUrl || addonOptionForm.image_url ? 'Ganti Foto' : 'Upload Foto 400' }}</button>
-            <input ref="addonOptionFileRef" type="file" accept="image/*" class="hidden" @change="(e)=>handleFileChange(e,'addonOption')" />
+            <input ref="addonOptionFileRef" type="file" accept="image/*" class="hidden" @change="(e)=>handleFileChange(e,'addonOption')" >
             <p class="text-[10px] text-slate-400">Foto 400, toggle habis/tersedia.</p>
           </div>
         </div>
@@ -626,7 +642,7 @@ onMounted(()=>{ fetchProfile() })
         <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-2.5 text-[11px] text-indigo-700">Icon 1:1 400, COS auto-delete.</div>
         <div class="space-y-1.5"><label class="text-[10px] font-bold uppercase text-slate-600">Nama Kategori *</label><input v-model="categoryForm.name" placeholder="Makanan..." class="h-11 w-full rounded-xl border px-4 text-[13px] font-bold"></div>
         <div class="space-y-1.5"><label class="text-[10px] font-bold uppercase flex items-center gap-2">Icon Foto <span class="px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[8px] border">1:1 • 400</span></label>
-          <div class="flex items-center gap-3"><div class="w-12 h-12 rounded-full border-2 border-dashed border-indigo-200 bg-indigo-50/50 overflow-hidden flex items-center justify-center shrink-0"><img v-if="categoryPreviewUrl" :src="categoryPreviewUrl" class="w-full h-full object-cover" /><Tag v-else class="w-5 h-5 text-indigo-300" /></div><button type="button" class="h-9 px-3 rounded-xl bg-slate-900 text-white text-[11px] font-bold active:scale-[0.98]" @click="openCategoryFilePicker">{{ categoryPreviewUrl ? 'Ganti & Crop' : 'Upload & Crop' }}</button><input ref="catFileInputRef" type="file" accept="image/*" class="hidden" @change="(e)=>handleFileChange(e,'category')" /></div>
+          <div class="flex items-center gap-3"><div class="w-12 h-12 rounded-full border-2 border-dashed border-indigo-200 bg-indigo-50/50 overflow-hidden flex items-center justify-center shrink-0"><img v-if="categoryPreviewUrl" :src="categoryPreviewUrl" class="w-full h-full object-cover" ><Tag v-else class="w-5 h-5 text-indigo-300" /></div><button type="button" class="h-9 px-3 rounded-xl bg-slate-900 text-white text-[11px] font-bold active:scale-[0.98]" @click="openCategoryFilePicker">{{ categoryPreviewUrl ? 'Ganti & Crop' : 'Upload & Crop' }}</button><input ref="catFileInputRef" type="file" accept="image/*" class="hidden" @change="(e)=>handleFileChange(e,'category')" ></div>
         </div>
       </div>
       <template #footer><div class="flex gap-3 pt-4 border-t mt-4"><button class="flex-1 h-11 rounded-xl border text-[13px] font-bold" @click="showCategoryModal=false">Batal</button><button class="flex-1 h-11 rounded-xl bg-slate-900 text-white text-[13px] font-bold disabled:opacity-50" :disabled="saveCategoryLoading" @click="handleSaveCategory">{{ saveCategoryLoading ? '...' : 'Simpan' }}</button></div></template>
@@ -639,10 +655,10 @@ onMounted(()=>{ fetchProfile() })
         <div class="space-y-2">
           <div class="flex items-center justify-between"><p class="text-[11px] font-black uppercase">Opsi dengan Foto 400</p><button class="h-7 px-3 rounded-full bg-primary text-white text-[11px] font-bold" @click="addonMasterOptions.push({ label:'', price_delta:3000, image_url:'', previewUrl:'' })">+ Opsi</button></div>
           <div v-for="(opt,idx) in addonMasterOptions" :key="idx" class="bg-white border rounded-xl p-2.5 flex gap-2 items-center">
-            <div class="w-11 h-11 rounded-xl bg-amber-50 border border-amber-100 overflow-hidden flex items-center justify-center shrink-0"><img v-if="opt.previewUrl || opt.image_url" :src="toDisplayUrl(opt.previewUrl || opt.image_url)" class="w-full h-full object-cover" /><Camera v-else class="w-5 h-5 text-amber-300" /></div>
+            <div class="w-11 h-11 rounded-xl bg-amber-50 border border-amber-100 overflow-hidden flex items-center justify-center shrink-0"><img v-if="opt.previewUrl || opt.image_url" :src="toDisplayUrl(opt.previewUrl || opt.image_url)" class="w-full h-full object-cover" ><Camera v-else class="w-5 h-5 text-amber-300" /></div>
             <div class="flex-1 min-w-0 space-y-1.5">
               <input v-model="opt.label" placeholder="Keju" class="w-full h-8 rounded-lg border px-2.5 text-[12px] font-bold focus:border-primary focus:outline-none">
-              <div class="flex gap-1.5"><input v-model.number="opt.price_delta" type="number" placeholder="3000" class="flex-1 min-w-0 h-8 rounded-lg border px-2 text-[11px] font-bold"><button type="button" class="shrink-0 h-8 px-2.5 rounded-lg bg-amber-50 border text-[10px] font-bold text-amber-700 active:scale-[0.98]" @click="()=>{ cropperAddonMasterIdx=idx; cropperTarget='addonMasterOption'; const input=document.createElement('input'); input.type='file'; input.accept='image/*'; input.onchange=(ev:any)=>{ const f=ev.target?.files?.[0]; if (!f) return; if (cropperSrc) URL.revokeObjectURL(cropperSrc); cropperSrc=URL.createObjectURL(f); cropperOpen=true }; input.click() }">Foto</button></div>
+              <div class="flex gap-1.5"><input v-model.number="opt.price_delta" type="number" placeholder="3000" class="flex-1 min-w-0 h-8 rounded-lg border px-2 text-[11px] font-bold"><button type="button" class="shrink-0 h-8 px-2.5 rounded-lg bg-amber-50 border text-[10px] font-bold text-amber-700 active:scale-[0.98]" @click="startCropAddonMasterOption(idx)">Foto</button></div>
             </div>
             <button class="w-8 h-8 rounded-full bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center shrink-0" @click="addonMasterOptions.splice(idx,1)"><Trash2 class="w-3.5 h-3.5" /></button>
           </div>
