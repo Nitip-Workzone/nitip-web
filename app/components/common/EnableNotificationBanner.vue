@@ -46,24 +46,20 @@ async function enable() {
   if (typeof window === 'undefined' || !('Notification' in window)) return
   isSaving.value = true
   try {
-    const perm = await Notification.requestPermission()
-    permission.value = perm
-    if (perm === 'granted') {
-      // Start FCM via composable
-      try {
-        const { start } = useFcm()
-        await start()
-      } catch (e) {
-        console.warn('[EnableNotificationBanner] useFcm start failed', e)
-      }
-      show.value = false
-    } else if (perm === 'denied') {
-      // Keep banner showing instructions
-    } else {
+    // requestPermissionAndGetToken dipanggil dari klik tombol (user gesture)
+    // sehingga browser mengizinkan permission prompt tampil
+    const { start, requestPermissionAndGetToken } = useFcm()
+    // Pastikan Firebase sudah diinisialisasi
+    await start()
+    // Minta izin dan ambil token — ini HARUS dipanggil dari user gesture
+    await requestPermissionAndGetToken()
+    // Update state permission lokal
+    permission.value = Notification.permission as NotificationPermission
+    if (Notification.permission === 'granted') {
       show.value = false
     }
   } catch (e) {
-    console.warn('[EnableNotificationBanner] permission error', e)
+    console.warn('[EnableNotificationBanner] enable failed', e)
   } finally {
     isSaving.value = false
   }

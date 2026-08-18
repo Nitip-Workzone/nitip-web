@@ -17,6 +17,7 @@ export interface FcmPayload {
 }
 
 let fcmInitialized = false
+let tokenSaved = false
 let messagingInstance: any = null
 let unsubMessage: (() => void) | null = null
 
@@ -61,18 +62,15 @@ export function useFcm() {
     if (!isSupported()) return
     if (fcmInitialized) return
     const fbConfig = getFirebaseConfig()
-    // If no firebase config in FE, skip client init — BE dispatcher still works via service worker? We need firebase JS for getToken
-    // If config missing, we still allow event listening via custom event from SW
+    // If no firebase config in FE, skip client init — BE dispatcher still works via service worker
     if (!fbConfig || !fbConfig.apiKey) {
-      console.log('[FCM] No Firebase config in FE env, skipping client init — BE FCM still works, SW may handle background')
-      // Still register listener for custom event from manual testing or SW via postMessage?
+      console.log('[FCM] No Firebase config in FE env, skipping client init')
       registerServiceWorkerListener()
       fcmInitialized = true
       return
     }
 
     // Dynamic import with fallback — if firebase not installed (CICD), don't break Rollup build
-    // Use new Function to avoid Vite static analysis of 'firebase/app' string literal
     let firebaseAppMod: any = null
     let firebaseMessagingMod: any = null
     try {
@@ -85,7 +83,7 @@ export function useFcm() {
     }
 
     if (!firebaseAppMod || !firebaseMessagingMod) {
-      console.log('[FCM] firebase/app not installed — skipping client init, using event bus only (CICD build passes). Install firebase with pnpm add firebase for full FCM.')
+      console.log('[FCM] firebase/app not installed — skipping client init, using event bus only')
       registerServiceWorkerListener()
       fcmInitialized = true
       return
@@ -93,22 +91,18 @@ export function useFcm() {
 
     try {
       const { initializeApp, getApps } = firebaseAppMod
-      const { getMessaging, getToken, onMessage, isSupported: isMessagingSupported } = firebaseMessagingMod
+      const { getMessaging, onMessage, isSupported: isMessagingSupported } = firebaseMessagingMod
 
       const supported = await isMessagingSupported().catch(() => false)
       if (!supported) {
         console.warn('[FCM] Messaging not supported in this browser')
+        fcmInitialized = true
         return
       }
 
       const app = getApps().length === 0 ? initializeApp(fbConfig) : getApps()[0]
       const messaging = getMessaging(app)
       messagingInstance = messaging
-
-      const vapidKey = (config.public as any).firebaseVapidKey
-      if (!vapidKey) {
-        console.warn('[FCM] No VAPID key set NUXT_PUBLIC_FIREBASE_VAPID_KEY, getToken may fail')
-      }
 
       registerServiceWorkerListener()
 
@@ -138,47 +132,91 @@ export function useFcm() {
       })
 
       unsubMessage = () => unsub()
-
-      try {
-        if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
-          console.log('[FCM] Requesting notification permission...')
-          const perm = await Notification.requestPermission().catch(() => 'default')
-          if (perm !== 'granted') {
-            console.warn('[FCM] Permission not granted, skipping token retrieval')
-          }
-        }
-
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          // Register service worker with correct config params to avoid config mismatch
-          let registration: ServiceWorkerRegistration | undefined
-          if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
-            try {
-              const swUrl = `/firebase-messaging-sw.js?apiKey=${encodeURIComponent(fbConfig.apiKey)}&messagingSenderId=${encodeURIComponent(fbConfig.messagingSenderId)}&appId=${encodeURIComponent(fbConfig.appId)}`
-              registration = await navigator.serviceWorker.register(swUrl, { scope: '/' })
-              console.log('[FCM] Service worker registered with config query params')
-            } catch (swErr) {
-              console.warn('[FCM] Service worker registration failed', swErr)
-            }
-          }
-
-          const token = await getToken(messaging, { 
-            vapidKey: vapidKey || undefined,
-            serviceWorkerRegistration: registration,
-          })
-          if (token) {
-            console.log('[FCM] Token obtained')
-            await saveToken(token)
-          }
-        }
-      } catch (e) {
-        console.warn('[FCM] getToken failed', e)
-      }
-
       fcmInitialized = true
+
+      // Jika permission sudah di-grant sebelumnya (misal dari session lalu), langsung ambil token
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && !tokenSaved) {
+        await requestPermissionAndGetToken()
+      }
     } catch (e) {
       console.warn('[FCM] init failed', e)
       registerServiceWorkerListener()
       fcmInitialized = true
+    }
+  }
+
+  // Dipanggil HANYA dari user gesture (klik tombol) atau saat permission sudah 'granted'
+  // Aman untuk dipanggil berulang kali — akan skip jika token sudah tersimpan
+  const requestPermissionAndGetToken = async () => {
+    if (!isSupported()) return
+    const fbConfig = getFirebaseConfig()
+    if (!fbConfig || !fbConfig.apiKey) return
+
+    // Pastikan Firebase sudah terinisialisasi
+    if (!fcmInitialized) await init()
+    if (!messagingInstance) {
+      console.warn('[FCM] Messaging instance not available')
+      return
+    }
+
+    // Minta permission jika belum granted (HARUS dari user gesture)
+    if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+      console.log('[FCM] Requesting notification permission from user gesture...')
+      try {
+        const perm = await Notification.requestPermission()
+        if (perm !== 'granted') {
+          console.warn('[FCM] Permission not granted:', perm)
+          return
+        }
+      } catch (e) {
+        console.warn('[FCM] requestPermission failed', e)
+        return
+      }
+    }
+
+    if (tokenSaved) {
+      console.log('[FCM] Token already saved, skipping')
+      return
+    }
+
+    try {
+      const dynImport = new Function('m', 'return import(m).catch(()=>null)') as (m: string) => Promise<any>
+      const firebaseMessagingMod = await dynImport('firebase/messaging')
+      if (!firebaseMessagingMod) return
+
+      const { getToken } = firebaseMessagingMod
+      const vapidKey = (config.public as any).firebaseVapidKey
+      if (!vapidKey) {
+        console.warn('[FCM] No VAPID key set NUXT_PUBLIC_FIREBASE_VAPID_KEY')
+      }
+
+      // Daftarkan SW dengan config yang benar via query params untuk menghindari config mismatch
+      let registration: ServiceWorkerRegistration | undefined
+      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+        try {
+          const swUrl = `/firebase-messaging-sw.js?apiKey=${encodeURIComponent(fbConfig.apiKey)}&messagingSenderId=${encodeURIComponent(fbConfig.messagingSenderId)}&appId=${encodeURIComponent(fbConfig.appId)}`
+          registration = await navigator.serviceWorker.register(swUrl, { scope: '/' })
+          // Tunggu SW aktif sebelum getToken
+          await navigator.serviceWorker.ready
+          console.log('[FCM] Service worker registered with config query params')
+        } catch (swErr) {
+          console.warn('[FCM] Service worker registration failed', swErr)
+        }
+      }
+
+      const token = await getToken(messagingInstance, {
+        vapidKey: vapidKey || undefined,
+        serviceWorkerRegistration: registration,
+      })
+      if (token) {
+        console.log('[FCM] Token obtained')
+        tokenSaved = true
+        await saveToken(token)
+      } else {
+        console.warn('[FCM] getToken returned empty token')
+      }
+    } catch (e) {
+      console.warn('[FCM] getToken failed', e)
     }
   }
 
@@ -224,8 +262,10 @@ export function useFcm() {
       unsubMessage = null
     }
     fcmInitialized = false
+    tokenSaved = false
+    messagingInstance = null
     console.log('[FCM] Stopped')
   }
 
-  return { init, start, stop, emitFcmEvent, isSupported }
+  return { init, start, stop, emitFcmEvent, isSupported, requestPermissionAndGetToken }
 }
