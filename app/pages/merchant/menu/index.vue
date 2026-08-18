@@ -83,9 +83,6 @@ const fetchProfile = async () => {
       } catch (e) {
         console.warn('[MerchantMenu] fetchOrders failed (non-fatal):', e)
       }
-
-      // Connect stream only if we actually have a merchant profile
-      connectStream()
     } else {
       hasMerchant.value = false
     }
@@ -115,7 +112,13 @@ const fetchOwnerPromos = async () => {
   }
 }
 
-const fetchOrders = async () => {
+let lastFetchedOrdersAt = 0
+const fetchOrders = async (force = false) => {
+  const now = Date.now()
+  if (!force && now - lastFetchedOrdersAt < 5000) {
+    return
+  }
+  lastFetchedOrdersAt = now
   try {
     await merchantsStore.fetchMerchantOrders()
   } catch (e) {

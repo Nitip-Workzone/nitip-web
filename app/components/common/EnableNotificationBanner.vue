@@ -9,6 +9,10 @@ const isInsideWebView = ref(false)
 
 onMounted(() => {
   if (typeof window === 'undefined') return
+  const authStore = useAuthStore()
+  if (authStore.user?.role === 'merchant') {
+    return // Hide for merchants completely on web
+  }
   if (typeof navigator !== 'undefined' && navigator.userAgent.includes('NitipMerchant')) {
     isInsideWebView.value = true
     return

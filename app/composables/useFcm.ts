@@ -25,6 +25,11 @@ export function useFcm() {
 
   const isSupported = () => {
     if (typeof window === 'undefined') return false
+    
+    // Disable for merchant role completely on web (they get push notifications on their mobile apps instead)
+    const authStore = useAuthStore()
+    if (authStore.user?.role === 'merchant') return false
+
     // Disable inside NitipMerchant WebView — handled natively by Flutter FCM
     if (typeof navigator !== 'undefined' && navigator.userAgent.includes('NitipMerchant')) return false
     return true

@@ -88,7 +88,13 @@ const getStepIndex = (status: string): number => {
   }
 }
 
+let lastFetchedOrdersAt = 0
 const fetchOrders = async (showToastOnNew = false) => {
+  const now = Date.now()
+  if (!showToastOnNew && now - lastFetchedOrdersAt < 5000) {
+    return
+  }
+  lastFetchedOrdersAt = now
   try {
     const prevPendingCount = pendingOrders.value.length
     await merchantsStore.fetchMerchantOrders()
@@ -200,7 +206,6 @@ onMounted(async () => {
   } catch (err) {
     console.warn('[Merchant Orders] fetchOrders failed:', err)
   }
-  connectStream()
 
   // Polling 30s fallback removed — replaced by FCM merchant_order + SSE
   // FCM listener for merchant new order

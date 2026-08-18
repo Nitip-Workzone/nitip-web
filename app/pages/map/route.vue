@@ -14,7 +14,26 @@ const mapContainer = ref<HTMLElement | null>(null)
 let map: any = null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let L: any = null
-let isInitialized = false
+let leafletPromise: Promise<any> | null = null
+
+const loadLeaflet = () => {
+  if (leafletPromise) return leafletPromise
+  leafletPromise = (async () => {
+    const leaflet = await import('leaflet')
+    await import('leaflet/dist/leaflet.css')
+    // Fix marker icons
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (leaflet.Icon.Default.prototype as any)._getIconUrl
+    leaflet.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    })
+    L = leaflet
+    return leaflet
+  })()
+  return leafletPromise
+}
 
 const initMap = async () => {
   const originLat = route.query.origin_lat ? parseFloat(route.query.origin_lat as string) : null
@@ -33,62 +52,55 @@ const initMap = async () => {
     return
   }
 
-  if (!isInitialized) {
-    isInitialized = true
+  const leaflet = await loadLeaflet()
 
-    L = await import('leaflet')
-    await import('leaflet/dist/leaflet.css')
-
-    // Fix marker icons
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    delete (L.Icon.Default.prototype as any)._getIconUrl
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-    })
-
-    map = L.map(mapContainer.value!, {
+  if (!map && mapContainer.value) {
+    map = leaflet.map(mapContainer.value, {
       zoomControl: false
     })
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map)
   }
 
-  // Clear existing markers and polylines
-  if (map && L) {
-    map.eachLayer((layer: any) => {
-      if (layer instanceof L.Marker || layer instanceof L.Polyline) {
-        map.removeLayer(layer)
-      }
-    })
-  }
+  if (!map) return
+
+  // Clear existing markers and polylines safely using leaflet instance
+  map.eachLayer((layer: any) => {
+    if (layer instanceof leaflet.Marker || layer instanceof leaflet.Polyline) {
+      map.removeLayer(layer)
+    }
+  })
 
   // Customize origin (green) and destination (red) markers
-  const originIcon = L.divIcon({
+  const originIcon = leaflet.divIcon({
     html: `<div style="background-color: #22c55e; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>`,
     className: 'custom-pin-marker',
     iconSize: [14, 14],
     iconAnchor: [7, 7]
   })
 
-  const destIcon = L.divIcon({
+  const destIcon = leaflet.divIcon({
     html: `<div style="background-color: #ef4444; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>`,
     className: 'custom-pin-marker',
     iconSize: [14, 14],
     iconAnchor: [7, 7]
   })
 
-  L.marker([originLat, originLng], { icon: originIcon }).addTo(map)
-  L.marker([destLat, destLng], { icon: destIcon }).addTo(map)
+  leaflet.marker([originLat, originLng], { icon: originIcon }).addTo(map)
+  leaflet.marker([destLat, destLng], { icon: destIcon }).addTo(map)
 
-  const bounds = L.latLngBounds([
+  const bounds = leaflet.latLngBounds([
     [originLat, originLng],
     [destLat, destLng]
   ])
-  map.fitBounds(bounds, { padding: [40, 40] })
+  setTimeout(() => {
+    if (map) {
+      map.invalidateSize()
+      map.fitBounds(bounds, { padding: [40, 40] })
+    }
+  }, 100)
 
   // Fetch routing geometry from Project OSRM API
   try {
@@ -101,25 +113,36 @@ const initMap = async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const latLngs = coordinates.map((c: any) => [c[1], c[0]])
       
-      const polyline = L.polyline(latLngs, {
+      const polyline = leaflet.polyline(latLngs, {
         color: '#6366f1',
         weight: 4,
         opacity: 0.8,
         lineJoin: 'round'
       }).addTo(map)
       
-      map.fitBounds(polyline.getBounds(), { padding: [40, 40] })
+      setTimeout(() => {
+        if (map) {
+          map.invalidateSize()
+          map.fitBounds(polyline.getBounds(), { padding: [40, 40] })
+        }
+      }, 100)
     } else {
       throw new Error('No routes found')
     }
   } catch (e) {
     console.warn('Failed to fetch routing, falling back to straight line:', e)
-    L.polyline([[originLat, originLng], [destLat, destLng]], {
+    const fallbackLine = leaflet.polyline([[originLat, originLng], [destLat, destLng]], {
       color: '#6366f1',
       weight: 4,
       dashArray: '5, 10',
       opacity: 0.8
     }).addTo(map)
+    setTimeout(() => {
+      if (map) {
+        map.invalidateSize()
+        map.fitBounds(fallbackLine.getBounds(), { padding: [40, 40] })
+      }
+    }, 100)
   }
 }
 
