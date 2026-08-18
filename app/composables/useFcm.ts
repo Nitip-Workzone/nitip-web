@@ -2,6 +2,7 @@
 // Mechanism: BE dispatcher per-device bucket 20/10m refill 3m delay + collapse_id prevents limit hit
 // Replaces: notifications 15s, orders active 10s, QRIS 5s, merchant fallback 30s, CS queue 10s
 // SSE useMerchantPoolStream remains primary, FCM backup + hidden tab
+// FIX: firebase/app is optional — if not installed (CICD without firebase dep), fallback to event bus only, no Rollup error
 
 export interface FcmPayload {
   type?: string
@@ -21,7 +22,6 @@ let unsubMessage: (() => void) | null = null
 
 export function useFcm() {
   const config = useRuntimeConfig()
-  const authStore = useAuthStore()
 
   const isSupported = () => {
     if (typeof window === 'undefined') return false
@@ -31,9 +31,7 @@ export function useFcm() {
   }
 
   const getFirebaseConfig = () => {
-    const pub = config.public as any
-    // Allow empty — will fallback to firebase-credentials.json BE only if needed
-    // But for web client we need at least projectId
+    const pub = (config.public as any) || {}
     if (!pub.firebaseProjectId) return null
     return {
       apiKey: pub.firebaseApiKey,
@@ -68,9 +66,29 @@ export function useFcm() {
       return
     }
 
+    // Dynamic import with fallback — if firebase not installed (CICD), don't break Rollup build
+    // Use new Function to avoid Vite static analysis of 'firebase/app' string literal
+    let firebaseAppMod: any = null
+    let firebaseMessagingMod: any = null
     try {
-      const { initializeApp, getApps } = await import('firebase/app')
-      const { getMessaging, getToken, onMessage, isSupported: isMessagingSupported } = await import('firebase/messaging')
+      const dynImport = new Function('m', 'return import(m).catch(()=>null)') as (m: string) => Promise<any>
+      firebaseAppMod = await dynImport('firebase/app')
+      firebaseMessagingMod = await dynImport('firebase/messaging')
+    } catch {
+      firebaseAppMod = null
+      firebaseMessagingMod = null
+    }
+
+    if (!firebaseAppMod || !firebaseMessagingMod) {
+      console.log('[FCM] firebase/app not installed — skipping client init, using event bus only (CICD build passes). Install firebase with pnpm add firebase for full FCM.')
+      registerServiceWorkerListener()
+      fcmInitialized = true
+      return
+    }
+
+    try {
+      const { initializeApp, getApps } = firebaseAppMod
+      const { getMessaging, getToken, onMessage, isSupported: isMessagingSupported } = firebaseMessagingMod
 
       const supported = await isMessagingSupported().catch(() => false)
       if (!supported) {
@@ -82,52 +100,40 @@ export function useFcm() {
       const messaging = getMessaging(app)
       messagingInstance = messaging
 
-      // Request permission via existing notifications.client plugin logic already does after 3s
-      // Here we ensure token
       const vapidKey = (config.public as any).firebaseVapidKey
       if (!vapidKey) {
         console.warn('[FCM] No VAPID key set NUXT_PUBLIC_FIREBASE_VAPID_KEY, getToken may fail')
       }
 
-      // Register SW listener for background messages forwarded via postMessage
       registerServiceWorkerListener()
 
-      // Foreground onMessage
       const unsub = onMessage(messaging, (payload: any) => {
         console.log('[FCM] Foreground message', payload)
         const data = payload.data || {}
         const notification = payload.notification || {}
         const fcmPayload: FcmPayload = {
-          type: data.type || notification?.type || 'unknown',
+          type: data.type || (notification as any)?.type || 'unknown',
           order_id: data.order_id || data.orderId,
           orderId: data.order_id || data.orderId,
           reference: data.reference,
           status: data.status,
           amount: data.amount,
-          title: notification.title || data.title,
-          body: notification.body || data.body,
+          title: (notification as any).title || data.title,
+          body: (notification as any).body || data.body,
           ...data,
         }
 
-        // Show local notification if tab hidden and permission granted (fallback if SW didn't)
         if (typeof document !== 'undefined' && document.hidden && Notification.permission === 'granted') {
           try {
             new Notification(fcmPayload.title || 'Nihtip', { body: fcmPayload.body || 'Ada pembaruan', icon: '/favicon.png' })
           } catch {}
         }
 
-        // Emit to app stores via custom event — replaces polling
         emitFcmEvent(fcmPayload)
-
-        // Special handling
-        if (fcmPayload.type === 'payment_confirmed' || fcmPayload.type === 'transaction_status' || fcmPayload.type === 'wallet_update') {
-          // Will be handled by notifications store + top_up sheet via event
-        }
       })
 
       unsubMessage = () => unsub()
 
-      // Get token and save to backend
       try {
         const token = await getToken(messaging, { vapidKey: vapidKey || undefined })
         if (token) {
@@ -141,6 +147,8 @@ export function useFcm() {
       fcmInitialized = true
     } catch (e) {
       console.warn('[FCM] init failed', e)
+      registerServiceWorkerListener()
+      fcmInitialized = true
     }
   }
 

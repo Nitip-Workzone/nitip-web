@@ -70,9 +70,15 @@ export default defineNuxtConfig({
       // Fix 2026-07-28: downgrade from es2022 to es2019 to avoid Array.at() which breaks old Android System WebView (< Chrome 92)
       // Real HP error: "w.matched.at is not a function" -> only on real device, not emulator (emulator Chrome 120+ supports at)
       target: 'es2019',
+      rollupOptions: {
+        // firebase/app is optional — if not installed (CICD without dep), don't break build
+        // useFcm.ts already handles dynamic import fallback with .catch(() => null)
+        external: [],
+      },
     },
     optimizeDeps: {
       include: ['vue-router'],
+      exclude: ['firebase/app', 'firebase/messaging'],
     },
     plugins: [
       // Rewrite matched.at(-1) -> matched[matched.length-1] for old WebView compatibility
