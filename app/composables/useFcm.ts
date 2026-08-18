@@ -149,7 +149,22 @@ export function useFcm() {
         }
 
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          const token = await getToken(messaging, { vapidKey: vapidKey || undefined })
+          // Register service worker with correct config params to avoid config mismatch
+          let registration: ServiceWorkerRegistration | undefined
+          if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+            try {
+              const swUrl = `/firebase-messaging-sw.js?apiKey=${encodeURIComponent(fbConfig.apiKey)}&messagingSenderId=${encodeURIComponent(fbConfig.messagingSenderId)}&appId=${encodeURIComponent(fbConfig.appId)}`
+              registration = await navigator.serviceWorker.register(swUrl, { scope: '/' })
+              console.log('[FCM] Service worker registered with config query params')
+            } catch (swErr) {
+              console.warn('[FCM] Service worker registration failed', swErr)
+            }
+          }
+
+          const token = await getToken(messaging, { 
+            vapidKey: vapidKey || undefined,
+            serviceWorkerRegistration: registration,
+          })
           if (token) {
             console.log('[FCM] Token obtained')
             await saveToken(token)
