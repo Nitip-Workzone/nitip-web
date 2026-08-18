@@ -75,6 +75,9 @@ onUnmounted(() => {
       <span>Koneksi internet lambat / tidak stabil</span>
     </div>
 
+    <!-- Enable Notification Banner — minta izin notifikasi browser untuk FCM web push (replaces polling 15s/10s/5s) -->
+    <CommonEnableNotificationBanner />
+
     <!-- Page Content -->
     <main class="flex-1 max-w-md mx-auto w-full pt-4 pb-20">
       <slot />
