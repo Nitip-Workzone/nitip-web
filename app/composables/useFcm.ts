@@ -140,10 +140,20 @@ export function useFcm() {
       unsubMessage = () => unsub()
 
       try {
-        const token = await getToken(messaging, { vapidKey: vapidKey || undefined })
-        if (token) {
-          console.log('[FCM] Token obtained')
-          await saveToken(token)
+        if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+          console.log('[FCM] Requesting notification permission...')
+          const perm = await Notification.requestPermission().catch(() => 'default')
+          if (perm !== 'granted') {
+            console.warn('[FCM] Permission not granted, skipping token retrieval')
+          }
+        }
+
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          const token = await getToken(messaging, { vapidKey: vapidKey || undefined })
+          if (token) {
+            console.log('[FCM] Token obtained')
+            await saveToken(token)
+          }
         }
       } catch (e) {
         console.warn('[FCM] getToken failed', e)
