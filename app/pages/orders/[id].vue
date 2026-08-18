@@ -17,12 +17,13 @@ const orderId = route.params.id as string
 const order = ref<UserOrder | null>(null)
 const loading = ref(true)
 
-// QRIS Countdown and Polling State
+// QRIS Countdown — countdown 1s UI keep, polling removed (replaced by FCM payment_confirmed)
 const timeLeft = ref('15:00')
 const isExpired = ref(false)
 const checkingPayment = ref(false)
 let countdownInterval: ReturnType<typeof setInterval> | null = null
-let pollInterval: ReturnType<typeof setInterval> | null = null
+// pollInterval removed — was 5s QRIS escrow polling, now FCM handles payment_confirmed via backend webhook
+// activeOrderPollInterval removed — was 10s fetchOrderDetail, now FCM order_status_changed via dispatcher + SSE
 
 const isSandboxQris = computed(() => {
   const qris = order.value?.qris_data || ''
@@ -71,44 +72,47 @@ function startCountdown(createdAtStr: string) {
   countdownInterval = setInterval(updateTimer, 1000)
 }
 
+// startPollingStatus removed — 5s QRIS polling replaced by FCM payment_confirmed (backend webhook dispatches via dispatcher collapse_id wallet_{user})
 function startPollingStatus() {
-  if (pollInterval) clearInterval(pollInterval)
-  pollInterval = setInterval(async () => {
-    const res = await ordersStore.fetchOrderDetail(orderId)
-    if (res) {
-      // Don't overwrite the whole object if status hasn't changed to avoid re-renders of list components
-      if (res.payment_status === 'escrow') {
-        order.value = res
-        if (pollInterval) clearInterval(pollInterval)
-        if (countdownInterval) clearInterval(countdownInterval)
-        toastStore.add('Pembayaran Berhasil! Pesanan Anda kini aktif.')
-      }
-    }
-  }, 5000)
+  console.log('[orders] startPollingStatus removed — FCM payment_confirmed now handles escrow→paid via backend Xendit/Midtrans webhook, no 5s polling')
+  // No interval — keep manual check via handleCheckPayment button
 }
 
-let activeOrderPollInterval: ReturnType<typeof setInterval> | null = null
-
+// startActiveOrderPolling removed — 10s active order polling replaced by FCM order_status_changed + SSE order:{id}
 function startActiveOrderPolling() {
-  if (activeOrderPollInterval) return
-  activeOrderPollInterval = setInterval(async () => {
-    const res = await ordersStore.fetchOrderDetail(orderId)
-    if (res) {
-      order.value = res
-      if (!['accepted', 'cooking', 'ready', 'purchasing', 'delivering'].includes(res.status)) {
-        if (activeOrderPollInterval) {
-          clearInterval(activeOrderPollInterval)
-          activeOrderPollInterval = null
+  console.log('[orders] startActiveOrderPolling removed — FCM order_status_changed + SSE order:{id} now handles status/location, no 10s polling')
+  // Register FCM listener for this order
+  if (typeof window !== 'undefined') {
+    const handler = (e: any) => {
+      const d = e?.detail || {}
+      if (d.order_id === orderId || d.orderId === orderId) {
+        if (d.status || d.type === 'order_status_changed' || d.type === 'payment_confirmed') {
+          ordersStore.fetchOrderDetail(orderId).then((res: any) => { if (res) order.value = res })
         }
       }
+      if (d.type === 'payment_confirmed' && (d.order_id === orderId || d.orderId === orderId)) {
+        ordersStore.fetchOrderDetail(orderId).then((res: any) => {
+          if (res) {
+            order.value = res
+            if (countdownInterval) clearInterval(countdownInterval)
+            toastStore.add('Pembayaran Berhasil! Pesanan Anda kini aktif. (via FCM)')
+          }
+        })
+      }
     }
-  }, 10000) // Poll location and order status every 10 seconds
+    window.addEventListener('nitip:fcm-notification' as any, handler)
+    // keep cleanup on unmount via closure variable
+    ;(window as any).__nitip_order_fcm_handler = handler
+  }
 }
 
 onUnmounted(() => {
   if (countdownInterval) clearInterval(countdownInterval)
-  if (pollInterval) clearInterval(pollInterval)
-  if (activeOrderPollInterval) clearInterval(activeOrderPollInterval)
+  const h = (window as any)?.__nitip_order_fcm_handler
+  if (h) {
+    window.removeEventListener('nitip:fcm-notification' as any, h)
+    delete (window as any).__nitip_order_fcm_handler
+  }
 })
 
 // Dispute modal state
@@ -439,21 +443,7 @@ function formatWeight(w: number) {
 }
 
 function getImageUrl(url: string | undefined) {
-  if (!url) return ''
-  // Case 1: URL langsung dari backend dengan host localhost/docker (hardcoded di storage.go)
-  // Contoh: http://localhost:8000/uploads/receipts/uuid.jpg
-  if (url.startsWith('http://localhost:8000') || url.startsWith('http://nitip-core:8000')) {
-    // Ambil hanya path-nya (/uploads/...) dan akses via Nuxt proxy
-    const relativePath = url.replace(/^http:\/\/[^/]+/, '')
-    return relativePath // Nuxt proxy /uploads/** akan meneruskan ke backend
-  }
-  // Case 2: Path relatif yang dimulai dengan /storage atau /uploads
-  if (url.startsWith('/storage') || url.startsWith('storage') || url.startsWith('/uploads') || url.startsWith('uploads')) {
-    const cleanPath = url.startsWith('/') ? url : `/${url}`
-    return cleanPath
-  }
-  // Case 3: URL eksternal (Firebase signed URL, Minio, dll) — langsung gunakan
-  return url
+  return (url || '').trim()
 }
 
 function openImage(url: string) {

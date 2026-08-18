@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, Star, MapPin, Plus, Minus, ShoppingCart, ShoppingBag, X, FileText, Flame, UtensilsCrossed, Wallet, CreditCard } from '@lucide/vue'
+import { ChevronLeft, Star, MapPin, Plus, Minus, ShoppingCart, ShoppingBag, X, FileText, Flame, UtensilsCrossed, Wallet, CreditCard, Banknote } from '@lucide/vue'
 import { useMerchantsStore } from '~/stores/merchants'
 import { useCartStore } from '~/stores/cart'
 import { useUserWalletStore } from '~/stores/user-wallet'
@@ -21,11 +21,129 @@ const showCartDrawer = ref(false)
 const showClearCartConfirm = ref(false)
 const checkoutLoading = ref(false)
 const pendingItem = ref<{ id: string; name: string; price: number; image_url?: string } | null>(null)
-const paymentSource = ref<'wallet' | 'qris'>('wallet')
+const paymentSource = ref<'wallet' | 'qris' | 'cod'>('wallet')
 
-const deliveryAddress = ref('Lolak, Sulawesi Utara')
-const deliveryLat = ref(0.8760)
-const deliveryLng = ref(124.0118)
+// COD availability - ikut existing new.vue logic (config public)
+const codEnabled = ref(true)
+const authStore = useAuthStore()
+const isCodKycRestricted = computed(() => {
+  // Food (merchant) COD hanya jika sudah e-KYC, sesuai backend service.go line 453-456
+  return codEnabled.value && !authStore.user?.is_verified
+})
+const fetchPublicCodConfig = async () => {
+  try {
+    const res = await request<{ data: { cod_enabled?: boolean } }>('/configs/public')
+    if (typeof res.data.cod_enabled === 'boolean') codEnabled.value = res.data.cod_enabled
+    if (!codEnabled.value && paymentSource.value === 'cod') paymentSource.value = 'wallet'
+  } catch {
+    codEnabled.value = true
+  }
+}
+
+// Handle klik COD: jika belum verified, cek status KYC lalu navigasi
+const kycChecking = ref(false)
+const handleCodClick = async () => {
+  if (!codEnabled.value) {
+    error('COD sedang dinonaktifkan oleh admin')
+    return
+  }
+  // Jika belum verified (KYC required), cek status untuk arahkan ke halaman yang tepat
+  if (isCodKycRestricted.value) {
+    kycChecking.value = true
+    try {
+      // Cek status KYC existing via /kyc/me (sama seperti intro.vue & status.vue)
+      const res = await request<{ data: { status: string } }>('/kyc/me')
+      const st = (res.data?.status || 'none').toLowerCase()
+      if (st === 'pending') {
+        // Sudah pending → halaman status e-KYC
+        router.push('/kyc/status')
+      } else if (st === 'rejected' || st === 'none' || st === '' ) {
+        // Belum pengajuan atau ditolak → intro e-KYC
+        router.push('/kyc/intro')
+      } else if (st === 'approved') {
+        // Sudah approved tapi is_verified belum sync → set verified true local dan allow COD
+        if (authStore.user) authStore.user.is_verified = true
+        paymentSource.value = 'cod'
+      } else {
+        router.push('/kyc/intro')
+      }
+    } catch {
+      // Jika 404 / tidak ada KYC → belum pengajuan → intro
+      router.push('/kyc/intro')
+    } finally {
+      kycChecking.value = false
+    }
+    return
+  }
+  // Sudah verified & COD enabled → pilih COD
+  paymentSource.value = 'cod'
+}
+
+// Delivery address — default current location user
+const deliveryAddress = ref('Mendeteksi lokasi saat ini...')
+const deliveryLat = ref(0.876031736523683)
+const deliveryLng = ref(124.0118274994378)
+const isCurrentLocation = ref(true) // true = pakai lokasi GPS, label "Lokasi saat ini"
+const locationLoading = ref(false)
+const showDeliveryLocationPicker = ref(false)
+
+const deliveryLabel = computed(() => isCurrentLocation.value ? '📍 Lokasi saat ini' : '📍 Alamat pengantaran')
+
+async function reverseGeocodeDelivery(lat: number, lng: number) {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=id`)
+    const data = await res.json()
+    if (data?.display_name) {
+      // Ambil 3-4 bagian pertama agar ringkas
+      const parts = data.display_name.split(',').slice(0, 4).join(',').trim()
+      return parts
+    }
+  } catch {}
+  return `Lokasi (${lat.toFixed(5)}, ${lng.toFixed(5)})`
+}
+
+async function fetchCurrentLocationAsDelivery() {
+  locationLoading.value = true
+  if (!navigator.geolocation) {
+    deliveryAddress.value = 'Lolak, Sulawesi Utara'
+    isCurrentLocation.value = false
+    locationLoading.value = false
+    return
+  }
+  return new Promise<void>((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        deliveryLat.value = pos.coords.latitude
+        deliveryLng.value = pos.coords.longitude
+        const addr = await reverseGeocodeDelivery(deliveryLat.value, deliveryLng.value)
+        deliveryAddress.value = addr
+        isCurrentLocation.value = true
+        locationLoading.value = false
+        resolve()
+      },
+      async () => {
+        // Fallback tetap Lolak
+        deliveryAddress.value = 'Lolak, Sulawesi Utara'
+        isCurrentLocation.value = false
+        locationLoading.value = false
+        resolve()
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    )
+  })
+}
+
+function handleDeliveryLocationSelect(payload: { lat: number; lng: number; address: string; name?: string }) {
+  deliveryLat.value = payload.lat
+  deliveryLng.value = payload.lng
+  deliveryAddress.value = payload.address
+  isCurrentLocation.value = false // user manual pick
+  showDeliveryLocationPicker.value = false
+}
+
+function useCurrentLocationAgain() {
+  fetchCurrentLocationAsDelivery()
+}
 
 const merchant = computed(() =>
   merchantsStore.merchants.find(m => m.id === merchantId) || merchantsStore.currentMerchant
@@ -73,17 +191,11 @@ onMounted(async () => {
     }
   } catch {}
 
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        deliveryLat.value = position.coords.latitude
-        deliveryLng.value = position.coords.longitude
-      },
-      (err) => {
-        console.warn('Geolocation error:', err)
-      }
-    )
-  }
+  // Fetch public COD config
+  fetchPublicCodConfig()
+
+  // Fetch current location sebagai alamat pengantaran default (label: Lokasi saat ini)
+  fetchCurrentLocationAsDelivery()
 })
 
 // ── SCROLL LOCK for modals: prevent background scroll bleeding (safe, no preventDefault) ──
@@ -105,8 +217,8 @@ const unlockBodyScroll = () => {
     delete documentElement.dataset.prevOverflow
   }
 }
-watch([showCartDrawer, showVariantPicker, showClearCartConfirm], ([cart, variant, clearCart]) => {
-  if (cart || variant || clearCart) lockBodyScroll()
+watch([showCartDrawer, showVariantPicker, showClearCartConfirm, showDeliveryLocationPicker], ([cart, variant, clearCart, deliveryPick]) => {
+  if (cart || variant || clearCart || deliveryPick) lockBodyScroll()
   else unlockBodyScroll()
 })
 onBeforeUnmount(() => unlockBodyScroll())
@@ -255,7 +367,22 @@ const handleCheckout = async () => {
   }))
   const itemDetailsString = cartStore.items.map(i => `${i.name}${(i as any).variant ? ` (${(i as any).variant.label})` : ''}${((i as any).toppings||[]).length ? ` + ${(i as any).toppings.map((t:any)=>t.label).join(', ')}` : ''} (${i.quantity}x)`).join(', ')
 
+  // Guard COD disabled / KYC restricted
+  if (paymentSource.value === 'cod' as any) {
+    if (!codEnabled.value) {
+      error('Metode COD sedang dinonaktifkan oleh admin')
+      checkoutLoading.value = false
+      return
+    }
+    if (isCodKycRestricted.value) {
+      error('COD hanya untuk akun terverifikasi e-KYC')
+      checkoutLoading.value = false
+      return
+    }
+  }
+
   try {
+    const isCod = paymentSource.value === 'cod'
     const res = await request<{ data: { id: string } }>('/orders', {
       method: 'POST',
       body: {
@@ -269,9 +396,9 @@ const handleCheckout = async () => {
         delivery_address: deliveryAddress.value,
         delivery_lat: deliveryLat.value,
         delivery_lng: deliveryLng.value,
-        payment_method: 'escrow',
-        payment_source: paymentSource.value,
-        promotion_code: cartStore.appliedPromotion?.code || promoCodeInput.value?.trim() || (activePromo.value?.auto_apply ? undefined : undefined),
+        payment_method: isCod ? 'cod' : 'escrow',
+        payment_source: isCod ? 'wallet' : paymentSource.value, // COD backend tetap butuh wallet source placeholder, tapi method=cod
+        promotion_code: isCod ? undefined : (cartStore.appliedPromotion?.code || promoCodeInput.value?.trim() || (activePromo.value?.auto_apply ? undefined : undefined)),
         weight_kg: 0.5,
         volume_liters: 1.0,
         merchant_id: merchant.value?.id,
@@ -630,224 +757,191 @@ const cartSubtotal = computed(() =>
           class="bg-white rounded-t-[2rem] w-full max-w-md flex flex-col overflow-hidden overscroll-contain"
           style="max-height: 92dvh; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;"
         >
-          <!-- Handle + Header (fixed) -->
-          <div class="px-6 pt-4 pb-3 border-b border-slate-100 shrink-0 bg-white">
-            <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
+          <!-- Header - compact, ruang jangan lebar -->
+          <div class="px-4 pt-3 pb-2.5 border-b border-slate-100 shrink-0 bg-white">
+            <div class="w-8 h-1 bg-slate-200 rounded-full mx-auto mb-2.5" />
             <div class="flex items-center justify-between">
-              <div>
-                <h3 class="text-sm font-black text-slate-900 flex items-center gap-2">
-                  <ShoppingBag class="w-4 h-4 text-primary" />
-                  Keranjang Belanja
-                </h3>
-                <p class="text-[10px] text-slate-400 mt-0.5">
-                  {{ cartStore.merchantName }} · {{ cartItemCount }}/10 item
-                </p>
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-primary flex items-center justify-center">
+                  <ShoppingBag class="w-3 h-3 text-white" />
+                </span>
+                <div>
+                  <h3 class="text-[12px] font-bold text-slate-900 leading-tight">Keranjang Belanja</h3>
+                  <p class="text-[10px] text-slate-400 leading-tight">{{ cartStore.merchantName }} · {{ cartItemCount }}/10</p>
+                </div>
               </div>
-              <button class="w-8 h-8 border border-slate-200 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-all" @click="showCartDrawer = false">
-                <X class="w-3.5 h-3.5 text-slate-500" />
+              <button class="w-6 h-6 border border-slate-200 rounded-md flex items-center justify-center hover:bg-slate-50 active:scale-95 transition-all" @click="showCartDrawer = false">
+                <X class="w-3 h-3 text-slate-500" />
               </button>
             </div>
-            <div class="mt-3">
-              <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  class="h-full rounded-full transition-all duration-300"
-                  :class="cartItemCount >= 8 ? 'bg-rose-400' : cartItemCount >= 5 ? 'bg-amber-400' : 'bg-emerald-400'"
-                  :style="{ width: (cartItemCount / 10 * 100) + '%' }"
-                />
+            <div class="mt-2 flex items-center gap-2">
+              <div class="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all" :class="cartItemCount >= 8 ? 'bg-rose-400' : 'bg-primary'" :style="{ width: (cartItemCount / 10 * 100) + '%' }" />
               </div>
-              <p class="text-[9px] font-bold mt-1" :class="cartItemCount >= 8 ? 'text-rose-500' : 'text-slate-400'">
-                {{ cartItemCount }}/10 item — {{ 10 - cartItemCount }} slot tersisa
-              </p>
+              <p class="text-[9px] font-medium shrink-0" :class="cartItemCount >= 8 ? 'text-rose-500' : 'text-slate-400'">{{ cartItemCount }}/10</p>
             </div>
           </div>
 
-          <!-- SCROLLABLE CONTENT: items + alamat + pembayaran + voucher (semua bisa scroll, tidak kejepit) -->
+          <!-- Scrollable - rapat, text normal kecil -->
           <div
-            class="flex-1 overflow-y-auto overscroll-contain px-6 py-4 space-y-5"
+            class="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-4"
             style="overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;"
           >
-            <!-- Cart items list -->
-            <div class="space-y-3">
-              <p class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Item Pesanan ({{ cartItemCount }})</p>
-              <div
-                v-for="item in cartStore.items"
-                :key="item.id"
-                class="bg-slate-50/80 border border-slate-100 rounded-2xl p-3 flex gap-3 items-start"
-              >
-                <div class="w-12 h-12 bg-white border border-slate-100 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
-                  <img v-if="(item as any).image_url" :src="(item as any).image_url" class="w-full h-full object-cover" >
-                  <span v-else class="text-xl">🍴</span>
+            <!-- 1. Items -->
+            <section class="space-y-2">
+              <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Item Pesanan</p>
+              <div class="space-y-2">
+                <div
+                  v-for="item in cartStore.items"
+                  :key="item.id"
+                  class="bg-white border border-slate-100 rounded-xl p-2.5 flex gap-2.5 items-start"
+                >
+                  <div class="w-10 h-10 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+                    <img v-if="(item as any).image_url" :src="(item as any).image_url" class="w-full h-full object-cover" >
+                    <span v-else class="text-base">🍴</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="min-w-0 flex-1">
+                        <h5 class="text-[11px] font-bold text-slate-800 leading-tight truncate">{{ item.name }}</h5>
+                        <p v-if="(item as any).variant" class="text-[10px] text-slate-500 mt-0.5 truncate">{{ (item as any).variant.label }}</p>
+                        <p class="text-[10px] font-medium text-slate-700 mt-0.5">Rp {{ ((item as any).finalPrice || item.price).toLocaleString('id-ID') }} × {{ item.quantity }}</p>
+                      </div>
+                      <div class="flex items-center bg-slate-50 border border-slate-100 rounded-md overflow-hidden shrink-0">
+                        <button class="w-6 h-6 flex items-center justify-center text-slate-500 hover:bg-white active:scale-90 transition-all" @click="handleDecrement(item.id)">
+                          <Minus class="w-3 h-3" />
+                        </button>
+                        <span class="text-[10px] font-bold text-slate-800 px-1 min-w-[18px] text-center">{{ item.quantity }}</span>
+                        <button class="w-6 h-6 flex items-center justify-center text-slate-500 hover:bg-white active:scale-90 transition-all" @click="handleIncrement(item.id)">
+                          <Plus class="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                    <div class="relative mt-1.5">
+                      <FileText class="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-300" />
+                      <input :value="item.notes" type="text" placeholder="Catatan..." class="w-full h-6 pl-6 pr-2 rounded-md border border-slate-100 text-[10px] focus:outline-none focus:border-primary/30 bg-slate-50" @input="e => cartStore.updateNotes(item.id, (e.target as HTMLInputElement).value)">
+                    </div>
+                  </div>
                 </div>
+              </div>
+            </section>
+
+            <!-- 2. Delivery -->
+            <section class="space-y-2">
+              <div class="flex items-center justify-between">
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Alamat Pengantaran</p>
+                <span class="text-[9px] font-medium px-1.5 py-0.5 rounded-full" :class="isCurrentLocation ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'">{{ deliveryLabel }}</span>
+              </div>
+              <button type="button" class="w-full text-left bg-white border border-slate-100 rounded-xl p-2.5 flex items-start gap-2 hover:border-slate-200 active:scale-[0.99] transition-all" @click="showDeliveryLocationPicker = true">
+                <MapPin class="w-3 h-3 text-primary shrink-0 mt-0.5" />
                 <div class="flex-1 min-w-0">
-                  <div class="flex items-start justify-between gap-2">
-                    <div class="min-w-0 flex-1">
-                      <h5 class="text-xs font-bold text-slate-800 leading-tight truncate">{{ item.name }}</h5>
-                      <p v-if="(item as any).variant" class="text-[10px] text-primary font-semibold mt-0.5">Varian: {{ (item as any).variant.label }} {{ (item as any).variant.priceDelta ? `+Rp ${(item as any).variant.priceDelta.toLocaleString('id-ID')}` : '' }}</p>
-                      <p v-if="((item as any).toppings||[]).length" class="text-[10px] text-amber-700 mt-0.5 truncate">+ {{ ((item as any).toppings||[]).map((t:any)=>t.label).join(', ') }}</p>
-                      <p class="text-[11px] text-slate-600 mt-1 font-bold">
-                        Rp {{ ((item as any).finalPrice || item.price).toLocaleString('id-ID') }} × {{ item.quantity }} = <span class="text-primary">Rp {{ (((item as any).finalPrice || item.price) * item.quantity).toLocaleString('id-ID') }}</span>
-                      </p>
-                    </div>
-                    <div class="flex items-center bg-white border border-slate-200 rounded-xl overflow-hidden shrink-0 shadow-sm">
-                      <button class="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 active:scale-90 transition-all" @click="handleDecrement(item.id)">
-                        <Minus class="w-3.5 h-3.5" />
-                      </button>
-                      <span class="text-xs font-black text-slate-800 px-2 min-w-[24px] text-center">{{ item.quantity }}</span>
-                      <button class="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 active:scale-90 transition-all" @click="handleIncrement(item.id)">
-                        <Plus class="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                  <div class="relative mt-2">
-                    <FileText class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-300" />
-                    <input
-                      :value="item.notes"
-                      type="text"
-                      placeholder="Catatan... (contoh: tidak pedas)"
-                      class="w-full h-8 pl-7 pr-3 rounded-xl border border-white text-[10px] font-medium focus:outline-none focus:border-primary/40 bg-white transition-all shadow-sm"
-                      @input="e => cartStore.updateNotes(item.id, (e.target as HTMLInputElement).value)"
-                    >
-                  </div>
+                  <p class="text-[11px] font-medium text-slate-800 leading-snug line-clamp-2"><span v-if="locationLoading">Mendeteksi...</span><span v-else>{{ deliveryAddress }}</span></p>
+                  <p class="text-[9px] text-slate-400 mt-0.5">{{ deliveryLat.toFixed(5) }}, {{ deliveryLng.toFixed(5) }} · ubah</p>
                 </div>
+                <ChevronLeft class="w-3 h-3 text-slate-300 rotate-180 shrink-0 mt-0.5" />
+              </button>
+              <div class="flex gap-1.5">
+                <button type="button" class="flex-1 h-7 text-[10px] font-medium rounded-md border border-slate-200 bg-white hover:bg-slate-50" :disabled="locationLoading" @click="useCurrentLocationAgain">📍 Saat ini</button>
+                <button type="button" class="flex-1 h-7 text-[10px] font-medium rounded-md bg-primary text-white hover:bg-primary/90" @click="showDeliveryLocationPicker = true">Ubah di peta</button>
               </div>
-            </div>
+            </section>
 
-            <!-- Delivery Address Input -->
-            <div class="space-y-2">
-              <label class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">Alamat Pengantaran</label>
-              <div class="relative">
-                <MapPin class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  v-model="deliveryAddress"
-                  type="text"
-                  placeholder="Tulis alamat pengantaran lengkap..."
-                  class="w-full h-11 pl-9 pr-3 rounded-2xl border border-slate-100 text-xs font-bold focus:outline-none focus:border-primary/40 bg-slate-50 transition-all"
-                >
-              </div>
-              <p class="text-[9px] text-slate-400 font-medium px-1">
-                📍 Koordinat: {{ deliveryLat.toFixed(5) }}, {{ deliveryLng.toFixed(5) }}
-              </p>
-            </div>
-
-            <!-- Payment Source Selection -->
-            <div class="space-y-2">
-              <label class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">Metode Pembayaran</label>
-              <div class="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  :class="[
-                    'p-2.5 border rounded-2xl text-left transition-all flex flex-col justify-between h-[56px] select-none',
-                    paymentSource === 'wallet' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 bg-slate-50/50 text-slate-500'
-                  ]"
-                  @click="paymentSource = 'wallet'"
-                >
-                  <div class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
-                    <Wallet class="w-3.5 h-3.5" />
-                    Wallet
-                  </div>
-                  <div class="text-[11px] font-black mt-0.5 truncate">
-                    Rp {{ walletStore.balance.toLocaleString('id-ID') }}
-                  </div>
+            <!-- 3. Payment - FIXED symmetric: semua kartu h-[52px] rounded-lg p-2, icon w-3 h-3 -->
+            <section class="space-y-2">
+              <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Metode Pembayaran</p>
+              <div class="grid grid-cols-3 gap-1.5">
+                <!-- Wallet -->
+                <button type="button" :class="['p-2 border rounded-lg text-left h-[52px] flex flex-col justify-between active:scale-[0.98] transition-all', paymentSource === 'wallet' ? 'border-primary bg-primary text-white shadow-sm' : 'border-slate-100 bg-white text-slate-600 hover:border-slate-200']" @click="paymentSource = 'wallet'">
+                  <span class="flex items-center gap-1 text-[10px] font-bold"><Wallet class="w-3 h-3" />Wallet</span>
+                  <span class="text-[9px] font-medium truncate">Rp {{ walletStore.balance.toLocaleString('id-ID') }}</span>
                 </button>
-                <button
-                  type="button"
-                  :class="[
-                    'p-2.5 border rounded-2xl text-left transition-all flex flex-col justify-between h-[56px] select-none',
-                    paymentSource === 'qris' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 bg-slate-50/50 text-slate-500'
-                  ]"
-                  @click="paymentSource = 'qris'"
-                >
-                  <div class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
-                    <CreditCard class="w-3.5 h-3.5" />
-                    QRIS
-                  </div>
-                  <div class="text-[9px] font-bold text-slate-400 leading-none">
-                    Bayar langsung
-                  </div>
+                <!-- QRIS -->
+                <button type="button" :class="['p-2 border rounded-lg text-left h-[52px] flex flex-col justify-between active:scale-[0.98] transition-all', paymentSource === 'qris' ? 'border-primary bg-primary text-white shadow-sm' : 'border-slate-100 bg-white text-slate-600 hover:border-slate-200']" @click="paymentSource = 'qris'">
+                  <span class="flex items-center gap-1 text-[10px] font-bold"><CreditCard class="w-3 h-3" />QRIS</span>
+                  <span class="text-[9px] font-medium">Langsung</span>
+                </button>
+                <!-- COD - symmetric same size -->
+                <button type="button" :class="['p-2 border rounded-lg text-left h-[52px] flex flex-col justify-between active:scale-[0.98] transition-all', paymentSource === 'cod' ? 'border-primary bg-primary text-white shadow-sm' : isCodKycRestricted || !codEnabled ? 'border-dashed border-slate-200 bg-slate-50/60 text-slate-400' : 'border-slate-100 bg-white text-slate-600 hover:border-slate-200']" @click="handleCodClick">
+                  <span class="flex items-center gap-1 text-[10px] font-bold"><Banknote class="w-3 h-3" />COD</span>
+                  <span class="text-[9px] font-medium">{{ !codEnabled ? 'Off' : isCodKycRestricted ? 'Butuh KYC' : 'Di tempat' }}</span>
                 </button>
               </div>
-            </div>
+              <p v-if="isCodKycRestricted" class="text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">COD butuh verifikasi e-KYC. Klik COD untuk verifikasi.</p>
+              <p v-if="!codEnabled" class="text-[10px] text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5">COD sedang dinonaktifkan.</p>
+            </section>
 
-            <!-- Voucher Input -->
-            <div class="space-y-2 bg-amber-50/60 border border-amber-100 rounded-2xl p-3">
-              <label class="text-[9px] font-extrabold text-amber-700 uppercase tracking-widest flex items-center gap-1">🎟️ Kode Voucher (contoh Merdeka81)</label>
-              <div class="flex gap-2">
+            <!-- 4. Voucher - compact -->
+            <section class="space-y-2.5">
+              <p class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Kode Voucher</p>
+              <div class="flex gap-1.5">
                 <input
                   v-model="promoCodeInput"
                   type="text"
                   placeholder="Merdeka81"
-                  class="flex-1 h-10 px-3 rounded-xl border border-amber-200 text-xs font-mono font-bold uppercase focus:outline-none focus:border-amber-400 bg-white"
+                  class="flex-1 h-8 px-2.5 rounded-lg border border-slate-200 text-[11px] font-mono font-bold uppercase focus:outline-none focus:border-primary bg-white"
                   @keyup.enter="handleApplyPromo()"
                 >
                 <button
-                  class="h-10 px-5 bg-amber-500 text-white text-[11px] font-black rounded-xl active:scale-95 transition-all disabled:opacity-50 shrink-0"
+                  class="h-8 px-3 bg-primary text-white text-[10px] font-bold rounded-lg active:scale-95 transition-all disabled:opacity-50 shrink-0"
                   :disabled="promoValidating"
                   @click="handleApplyPromo()"
                 >
-                  {{ promoValidating ? '...' : 'Apply' }}
+                  {{ promoValidating ? '...' : 'Pakai' }}
                 </button>
               </div>
-              <div v-if="cartStore.appliedPromotion" class="flex items-center justify-between bg-white border border-emerald-200 rounded-xl px-3 py-2.5">
-                <div class="text-[11px] min-w-0 flex-1">
-                  <span class="font-black text-emerald-700">{{ cartStore.appliedPromotion.code || cartStore.appliedPromotion.title }}</span>
-                  <span class="ml-1 text-emerald-600">-{{ formatRp(cartStore.appliedPromotion.discount_amount) }}</span>
-                  <span v-if="cartStore.appliedPromotion.first_purchase_only" class="ml-1 px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[9px]">First Buy</span>
-                </div>
-                <button class="text-[10px] font-bold text-rose-500 ml-2 shrink-0" @click="handleRemovePromo()">Hapus</button>
+              <div v-if="cartStore.appliedPromotion" class="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                <span class="text-[11px] font-bold text-emerald-800">{{ cartStore.appliedPromotion.code || cartStore.appliedPromotion.title }} -{{ formatRp(cartStore.appliedPromotion.discount_amount) }}</span>
+                <button class="text-[10px] font-bold text-rose-500 ml-2" @click="handleRemovePromo()">Hapus</button>
               </div>
-              <p v-if="promoError" class="text-[10px] text-rose-600 font-medium">{{ promoError }}</p>
-              <p v-else-if="activePromo && !cartStore.appliedPromotion" class="text-[10px] text-amber-700 leading-relaxed">Ada promo {{ activePromo.code || 'AUTO' }} {{ activePromo.discount_type==='flat' ? formatRp(activePromo.discount_value) : activePromo.discount_value+'%' }} - sisa {{ activePromo.max_uses - activePromo.used_count }} order. Ketik kode atau klik Apply.</p>
-            </div>
+              <p v-if="promoError" class="text-[10px] text-rose-600">{{ promoError }}</p>
+              <p v-else-if="activePromo && !cartStore.appliedPromotion" class="text-[10px] text-slate-500">Ada promo {{ activePromo.code || 'AUTO' }} {{ activePromo.discount_type==='flat' ? formatRp(activePromo.discount_value) : activePromo.discount_value+'%' }} - sisa {{ activePromo.max_uses - activePromo.used_count }}</p>
+            </section>
 
-            <!-- Price summary -->
-            <div class="space-y-2.5 text-xs bg-slate-50/70 border border-slate-100 rounded-2xl p-3.5">
-              <div class="flex justify-between text-slate-600">
-                <span>Subtotal ({{ cartItemCount }} item)</span>
-                <span class="font-bold text-slate-800">Rp {{ cartSubtotal.toLocaleString('id-ID') }}</span>
-              </div>
-              <div class="flex justify-between text-slate-600">
-                <span>Ongkos Kirim</span>
-                <span class="font-bold text-slate-800">Rp 10.000</span>
-              </div>
-              <div v-if="cartStore.deliveryFeeSurcharge > 0" class="flex justify-between text-primary font-bold">
-                <span class="flex items-center gap-1">
-                  Surcharge
-                  <span class="text-[8px] px-1.5 py-0.5 rounded-full bg-primary/10 uppercase">+2RB/item</span>
-                </span>
-                <span>Rp {{ cartStore.deliveryFeeSurcharge.toLocaleString('id-ID') }}</span>
-              </div>
-              <div v-if="cartStore.appliedPromotion" class="flex justify-between text-emerald-600 font-black">
-                <span class="truncate mr-2">Diskon {{ cartStore.appliedPromotion.code || 'AUTO' }}</span>
-                <span class="shrink-0">-{{ formatRp(cartStore.discountTotal) }}</span>
-              </div>
-              <div class="bg-indigo-50/60 border border-indigo-100 rounded-xl px-3 py-2.5 flex items-start gap-2">
-                <span class="text-[14px] shrink-0">ℹ️</span>
-                <div class="text-[10px] leading-relaxed">
-                  <p class="font-bold text-indigo-800">Biaya layanan ditanggung merchant</p>
-                  <p class="text-indigo-700/80">Harga yang kamu bayar tetap murni. Fee tier 1k/3k/5k dipotong dari saldo merchant saat settlement.</p>
+            <!-- 5. Summary - compact -->
+            <section class="space-y-2.5">
+              <p class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Ringkasan</p>
+              <div class="bg-white border border-slate-100 rounded-2xl p-4 space-y-2.5">
+                <div class="flex justify-between text-[12px]">
+                  <span class="text-slate-500">Subtotal</span>
+                  <span class="font-bold text-slate-800">Rp {{ cartSubtotal.toLocaleString('id-ID') }}</span>
                 </div>
+                <div class="flex justify-between text-[12px]">
+                  <span class="text-slate-500">Ongkos Kirim</span>
+                  <span class="font-bold text-slate-800">Rp 10.000</span>
+                </div>
+                <div v-if="cartStore.deliveryFeeSurcharge > 0" class="flex justify-between text-[12px] font-bold">
+                  <span class="text-slate-500">Surcharge</span>
+                  <span class="text-slate-800">Rp {{ cartStore.deliveryFeeSurcharge.toLocaleString('id-ID') }}</span>
+                </div>
+                <div v-if="cartStore.appliedPromotion" class="flex justify-between text-[12px] font-bold bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-1.5">
+                  <span class="text-emerald-700">Diskon {{ cartStore.appliedPromotion.code || 'AUTO' }}</span>
+                  <span class="text-emerald-700">-{{ formatRp(cartStore.discountTotal) }}</span>
+                </div>
+                <div class="h-px bg-slate-100 my-1" />
+                <div class="flex justify-between items-center">
+                  <span class="text-[12px] font-black text-slate-900">Total</span>
+                  <span class="text-[15px] font-black text-slate-900">Rp {{ (cartSubtotal + 10000 + cartStore.deliveryFeeSurcharge - cartStore.discountTotal).toLocaleString('id-ID') }}</span>
+                </div>
+                <p v-if="cartStore.discountTotal>0" class="text-[10px] text-emerald-600 font-bold text-right">Hemat {{ formatRp(cartStore.discountTotal) }}</p>
+                <p class="text-[9px] text-slate-400 leading-relaxed bg-slate-50 rounded-lg px-2.5 py-1.5">ℹ️ Biaya layanan ditanggung merchant. Harga murni, fee potong saldo merchant saat settlement.</p>
               </div>
-              <div class="flex justify-between items-center font-black text-slate-900 pt-2.5 border-t border-slate-200">
-                <span class="text-[13px]">Total Estimasi</span>
-                <span class="text-[16px] text-primary">Rp {{ (cartSubtotal + 10000 + cartStore.deliveryFeeSurcharge - cartStore.discountTotal).toLocaleString('id-ID') }}</span>
-              </div>
-              <p v-if="cartStore.discountTotal>0" class="text-[10px] text-emerald-600 font-black text-right">Hemat {{ formatRp(cartStore.discountTotal) }}!</p>
-            </div>
+            </section>
           </div>
 
-          <!-- Footer fixed: checkout button only (tidak kejepit karena content sudah scrollable) -->
-          <div class="px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 border-t border-slate-100 space-y-2.5 shrink-0 bg-white">
+          <!-- Footer - black button -->
+          <div class="px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 border-t border-slate-100 bg-white space-y-2 shrink-0">
             <button
               :disabled="checkoutLoading || cartStore.items.length === 0"
-              class="w-full h-[52px] bg-primary text-white font-black text-[13px] rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-primary/25 active:scale-[0.98] transition-all disabled:opacity-50"
+              class="w-full h-10 bg-primary text-white font-bold text-[12px] rounded-xl flex items-center justify-center gap-2 shadow-md shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
               @click="handleCheckout"
             >
               <span v-if="checkoutLoading" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              <ShoppingBag v-else class="w-4 h-4" />
-              {{ checkoutLoading ? 'Memproses...' : paymentSource === 'qris' ? 'Pesan & Bayar QRIS' : 'Pesan & Kunci Escrow' }}
+              <ShoppingBag v-else-if="paymentSource !== 'cod'" class="w-4 h-4" />
+              <Banknote v-else class="w-4 h-4" />
+              Pesan Sekarang
             </button>
-            <p class="text-[9px] text-slate-400 text-center font-medium pb-1">
-              {{ paymentSource === 'qris' ? '⚡️ Bayar langsung instan QRIS' : '🔒 Saldo dikunci via Escrow' }}
+            <p class="text-[10px] text-slate-400 text-center">
+              {{ paymentSource === 'qris' ? 'Bayar langsung via QRIS' : paymentSource === 'cod' ? 'Bayar tunai saat makanan sampai' : 'Pesanan diproses setelah pembayaran' }}
             </p>
           </div>
         </div>
@@ -913,5 +1007,15 @@ const cartSubtotal = computed(() =>
         </div>
       </div>
     </Transition>
+
+    <!-- Delivery Location Picker (alamat pengantaran - bisa klik ubah) -->
+    <CommonLocationPickerModal
+      v-if="showDeliveryLocationPicker"
+      title="Pilih Alamat Pengantaran"
+      :initial-lat="deliveryLat"
+      :initial-lng="deliveryLng"
+      @close="showDeliveryLocationPicker = false"
+      @select="handleDeliveryLocationSelect"
+    />
   </div>
 </template>

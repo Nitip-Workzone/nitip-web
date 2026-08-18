@@ -40,11 +40,20 @@ onMounted(() => {
   connectivityStore.initialize()
   if (authStore.isAuthenticated) {
     notificationsStore.startPolling()
+    // Start FCM — replaces 15s interval polling, uses per-device bucket 20/10m antrian
+    try {
+      const { start } = useFcm()
+      start()
+    } catch {}
   }
 })
 
 onUnmounted(() => {
   notificationsStore.stopPolling()
+  try {
+    const { stop } = useFcm()
+    stop()
+  } catch {}
 })
 </script>
 

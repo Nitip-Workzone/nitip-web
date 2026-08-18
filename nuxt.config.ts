@@ -18,6 +18,17 @@ export default defineNuxtConfig({
       // URL publik API untuk digunakan browser langsung (kosong = gunakan proxy lokal /api/v1)
       // Di production: set NUXT_PUBLIC_NITIP_API_URL=https://api.nihtip.com
       nitipApiUrl: process.env.NUXT_PUBLIC_NITIP_API_URL || process.env.API_BASE_URL || '',
+      // ASSET_BASE_URL — single source truth final read https://upload.nihtip.com/ default, configurable via env
+      uploadBaseUrl: process.env.NUXT_PUBLIC_UPLOAD_BASE_URL || process.env.ASSET_BASE_URL || 'https://upload.nihtip.com/',
+      assetBaseUrl: process.env.NUXT_PUBLIC_UPLOAD_BASE_URL || process.env.ASSET_BASE_URL || 'https://upload.nihtip.com/',
+      // Firebase config for FCM web — uses same project as mobile (nihtip-f5178)
+      firebaseApiKey: process.env.NUXT_PUBLIC_FIREBASE_API_KEY || '',
+      firebaseAuthDomain: process.env.NUXT_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
+      firebaseProjectId: process.env.NUXT_PUBLIC_FIREBASE_PROJECT_ID || 'nihtip-f5178',
+      firebaseStorageBucket: process.env.NUXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
+      firebaseMessagingSenderId: process.env.NUXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
+      firebaseAppId: process.env.NUXT_PUBLIC_FIREBASE_APP_ID || '',
+      firebaseVapidKey: process.env.NUXT_PUBLIC_FIREBASE_VAPID_KEY || '',
     },
   },
   experimental: {

@@ -18,6 +18,9 @@ export const useNotificationsStore = defineStore('notifications', {
         loading: false,
         notifiedIds: [] as string[],
         pollingIntervalId: null as any,
+        // FCM listener handle — no interval polling anymore
+        _fcmUnsub: null as any,
+        _fcmListenerRegistered: false,
     }),
 
     actions: {
@@ -78,32 +81,48 @@ export const useNotificationsStore = defineStore('notifications', {
 
         startPolling() {
             if (typeof window === 'undefined') return
-            if (this.pollingIntervalId) return
             
-            // Disable notifications polling if inside the NitipMerchant WebView
-            // to avoid duplicate toast/notifications (which are handled natively by the Flutter app)
+            // Disable if inside NitipMerchant WebView — handled natively by Flutter FCM
             if (typeof navigator !== 'undefined' && navigator.userAgent.includes('NitipMerchant')) {
                 console.log('[Store-Notifications] Running inside NitipMerchant WebView: disabling web polling.')
                 return
             }
             
-            // Ask permission if default
             this.requestPermission()
             
-            // Initial load triggering web notification
+            // Single initial fetch — no interval, replaced by FCM
             this.fetchNotifications(true)
-            
-            // Poll every 15 seconds
-            this.pollingIntervalId = setInterval(() => {
-                this.fetchNotifications(true)
-            }, 15000)
+
+            // Register FCM listener if available (via useFcm composable)
+            if (!this._fcmListenerRegistered) {
+                this._fcmListenerRegistered = true
+                try {
+                    // Lazy import to avoid circular dep — use window custom event emitted by useFcm / firebase plugin
+                    if (typeof window !== 'undefined') {
+                        const handler = (e: any) => {
+                            const detail = e?.detail || {}
+                            // Any new notification FCM -> refresh unread count + list
+                            // data.type: new_notification, order_status_changed, payment_confirmed, merchant_order etc
+                            if (detail) {
+                                this.fetchNotifications(true)
+                            }
+                        }
+                        window.addEventListener('nitip:fcm-notification' as any, handler)
+                        this._fcmUnsub = () => window.removeEventListener('nitip:fcm-notification' as any, handler)
+                    }
+                } catch {}
+            }
+            console.log('[Store-Notifications] Polling disabled — using FCM + single fetch. Interval removed.')
         },
 
         stopPolling() {
-            if (this.pollingIntervalId) {
-                clearInterval(this.pollingIntervalId)
-                this.pollingIntervalId = null
+            if (this._fcmUnsub) {
+                try { this._fcmUnsub() } catch {}
+                this._fcmUnsub = null
             }
+            this._fcmListenerRegistered = false
+            // No interval to clear anymore
+            this.pollingIntervalId = null
         },
 
         async markAsRead(id: string) {

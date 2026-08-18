@@ -8,7 +8,7 @@ const toastStore = useToastStore()
 const activeTab = ref<'queue' | 'my' | 'all'>('queue')
 const loading = ref(true)
 
-let queuePoll: ReturnType<typeof setInterval> | null = null
+// queuePoll removed — 10s polling replaced by FCM support_ticket_created
 
 onMounted(async () => {
   await Promise.all([
@@ -18,16 +18,26 @@ onMounted(async () => {
   ])
   loading.value = false
 
-  queuePoll = setInterval(() => {
-    supportStore.fetchQueue()
-    supportStore.fetchMyActiveCsTicket()
-  }, 10000)
+  // FCM listener for CS queue — no interval, maximize FCM antrian per-device bucket 20/10m
+  if (typeof window !== 'undefined') {
+    const fcmHandler = (e: any) => {
+      const d = e?.detail || {}
+      if (d.type === 'support_ticket_created' || d.type === 'support_ticket_claimed' || d.type === 'support_message_new') {
+        supportStore.fetchQueue()
+        supportStore.fetchMyActiveCsTicket()
+      }
+    }
+    window.addEventListener('nitip:fcm-notification' as any, fcmHandler)
+    ;(window as any).__nitip_support_fcm_handler = fcmHandler
+  }
+  console.log('[Support] 10s queue polling removed — using FCM support_ticket_created')
 })
 
 onUnmounted(() => {
-  if (queuePoll) {
-    clearInterval(queuePoll)
-    queuePoll = null
+  const h = (window as any)?.__nitip_support_fcm_handler
+  if (h) {
+    window.removeEventListener('nitip:fcm-notification' as any, h)
+    delete (window as any).__nitip_support_fcm_handler
   }
 })
 

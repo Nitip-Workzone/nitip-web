@@ -53,7 +53,7 @@ const navigation = computed(() => {
   return baseNavigation
 })
 
-// Fetch profile on mount
+// Fetch profile on mount — 15s notifications polling removed, FCM antrian now
 onMounted(async () => {
   connectivityStore.initialize()
   if (authStore.isAuthenticated) {
@@ -61,11 +61,19 @@ onMounted(async () => {
       await authStore.fetchProfile()
     }
     notificationsStore.startPolling()
+    try {
+      const { start } = useFcm()
+      start()
+    } catch {}
   }
 })
 
 onUnmounted(() => {
   notificationsStore.stopPolling()
+  try {
+    const { stop } = useFcm()
+    stop()
+  } catch {}
 })
 
 // Handle mobile responsiveness

@@ -16,7 +16,7 @@ const merchantsStore = useMerchantsStore()
 const { success, error } = useToast()
 
 const activeTab = ref<'pending' | 'processing' | 'completed'>('pending')
-const pollingTimer = ref<ReturnType<typeof setInterval> | null>(null)
+// pollingTimer removed — 30s fallback polling replaced by FCM merchant_order + SSE useMerchantPoolStream, no interval
 const actionLoadingId = ref('')
 const lastUpdate = ref<string>('')
 
@@ -201,16 +201,28 @@ onMounted(async () => {
     console.warn('[Merchant Orders] fetchOrders failed:', err)
   }
   connectStream()
-  
-  pollingTimer.value = setInterval(() => {
-    if (isLive.value) return 
-    if (document.hidden) return
-    fetchOrders(false)
-  }, 30000)
+
+  // Polling 30s fallback removed — replaced by FCM merchant_order + SSE
+  // FCM listener for merchant new order
+  if (typeof window !== 'undefined') {
+    const fcmHandler = (e: any) => {
+      const d = e?.detail || {}
+      if (d.type === 'merchant_order' || d.type === 'order_created' || d.type === 'pool_order_created') {
+        fetchOrders(false)
+      }
+    }
+    window.addEventListener('nitip:fcm-notification' as any, fcmHandler)
+    ;(window as any).__nitip_merchant_fcm_handler = fcmHandler
+  }
+  console.log('[Merchant Orders] 30s polling fallback removed — using SSE + FCM')
 })
 
 onUnmounted(() => {
-  if (pollingTimer.value) clearInterval(pollingTimer.value)
+  const h = (window as any)?.__nitip_merchant_fcm_handler
+  if (h) {
+    window.removeEventListener('nitip:fcm-notification' as any, h)
+    delete (window as any).__nitip_merchant_fcm_handler
+  }
   disconnectStream()
 })
 </script>
@@ -224,12 +236,12 @@ onUnmounted(() => {
           <h2 class="text-xl font-black text-slate-900 tracking-tight">Pesanan Toko</h2>
           <span
             class="text-[8px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider border"
-            :class="isLive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'"
-          >{{ isLive ? 'Live' : 'Polling' }}</span>
+            :class="isLive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'"
+          >{{ isLive ? 'Live • SSE + FCM' : 'Offline • FCM' }}</span>
         </div>
         <p class="text-[10px] text-slate-400 font-semibold mt-0.5">
-          Proses antrean aktif toko Anda. 
-          <span v-if="lastUpdate" class="text-[9px] text-slate-500 font-extrabold ml-1">Terakhir update: {{ lastUpdate }}</span>
+          Realtime semua tipe: instant, regular, kirim — SSE + FCM tanpa polling
+          <span v-if="lastUpdate" class="text-[9px] text-slate-500 font-extrabold ml-1">• Terakhir: {{ lastUpdate }}</span>
         </p>
       </div>
       <button 

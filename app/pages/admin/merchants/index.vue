@@ -169,20 +169,7 @@ const refresh = async () => {
 }
 
 function getImageUrl(url: string | undefined) {
-  if (!url) return ''
-  if (url.startsWith('http://localhost:8000') || url.startsWith('http://nitip-core:8000')) {
-    const relativePath = url.replace(/^http:\/\/[^/]+/, '')
-    return relativePath
-  }
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url
-  }
-  if (url.startsWith('/uploads') || url.startsWith('uploads')) {
-    return url.startsWith('/') ? url : `/${url}`
-  }
-  // If it's a relative path starting with 'merchants/' etc., prepend '/uploads/'
-  const cleanPath = url.startsWith('/') ? url : `/${url}`
-  return `/uploads${cleanPath}`
+  return (url || '').trim()
 }
 
 function copyToClipboard(text: string) {

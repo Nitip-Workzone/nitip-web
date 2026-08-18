@@ -69,18 +69,19 @@ const fetchData = async () => {
   }
 }
 
-// Handle Auto-Refresh Lifecycle
+// Handle Auto-Refresh Lifecycle — interval polling 15s removed, replaced by FCM + SSE + manual refresh
+// Admin trigger is low-priority, manual refresh only, no auto polling (preserves Lighthouse 2.6TB quota)
 const toggleAutoRefresh = () => {
   isAutoRefresh.value = !isAutoRefresh.value
   
   if (isAutoRefresh.value) {
-    appendToConsole('Auto-refresh diaktifkan (per 15 detik).', 'info')
-    refreshIntervalId = setInterval(() => {
-      fetchData()
-      appendToConsole('Data diperbarui otomatis.', 'info')
-    }, 15000)
+    appendToConsole('Auto-refresh dinonaktifkan — pakai FCM + manual refresh (interval polling dihapus).', 'info')
+    // No setInterval — FCM antrian per-device bucket 20/10m + SSE order:global handles realtime
+    // Manual fetch once when toggled
+    fetchData()
+    appendToConsole('Data dimuat sekali — FCM akan update otomatis tanpa polling.', 'info')
   } else {
-    appendToConsole('Auto-refresh dinonaktifkan.', 'info')
+    appendToConsole('Mode manual — tarik refresh jika perlu.', 'info')
     if (refreshIntervalId) {
       clearInterval(refreshIntervalId)
       refreshIntervalId = null
