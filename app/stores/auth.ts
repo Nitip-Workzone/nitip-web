@@ -46,6 +46,16 @@ export const useAuthStore = defineStore('auth', {
                 } else {
                     document.cookie = `auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
                 }
+
+                // Kirim token ke native bridge jika berjalan di dalam WebView
+                const w = window as any
+                if (w.NitipToken) {
+                    try {
+                        w.NitipToken.postMessage(token || '')
+                    } catch (e) {
+                        console.warn('[FCM-WebView] Gagal mengirim token ke native bridge:', e)
+                    }
+                }
             }
         },
         async login(email: string, pass: string, totpCode?: string, platform = 'web') {

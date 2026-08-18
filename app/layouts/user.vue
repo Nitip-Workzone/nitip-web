@@ -45,6 +45,18 @@ onMounted(() => {
       const { start } = useFcm()
       start()
     } catch {}
+
+    // Kirim token ke native bridge jika berjalan di dalam WebView pada load awal
+    if (typeof window !== 'undefined') {
+      const w = window as any
+      if (w.NitipToken && authStore.token) {
+        try {
+          w.NitipToken.postMessage(authStore.token)
+        } catch (e) {
+          console.warn('[FCM-WebView] Gagal sinkronisasi token awal ke native bridge:', e)
+        }
+      }
+    }
   }
 })
 
