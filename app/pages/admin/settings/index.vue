@@ -72,6 +72,8 @@ const getConfigLabel = (key: string): string => {
     // KYC Limits
     kyc_daily_order_limit: 'Batas Pesanan Harian Non-KYC',
     kyc_daily_withdrawal_limit: 'Batas Penarikan Harian Non-KYC',
+    runner_min_balance_unverified: 'Saldo Minimal Kurir Non-KYC (Belum Verifikasi)',
+    runner_min_balance_verified: 'Saldo Minimal Kurir KYC (Terverifikasi)',
 
     // Lain-lain
     max_search_radius_km: 'Radius Maksimal Pencarian Mitra',
@@ -90,7 +92,7 @@ const groupedConfigs = computed(() => {
     'Biaya Layanan & Pemeriksaan': [] as typeof configsStore.configs,
     'Tarif Layanan Merchant (Bertingkat)': [] as typeof configsStore.configs,
     'Batas Transaksi & COD': [] as typeof configsStore.configs,
-    'Limit Akun (Non-KYC)': [] as typeof configsStore.configs,
+    'Limit Akun & Saldo Kurir': [] as typeof configsStore.configs,
     'Lain-lain': [] as typeof configsStore.configs,
   }
 
@@ -105,8 +107,8 @@ const groupedConfigs = computed(() => {
       groups['Tarif Layanan Merchant (Bertingkat)'].push(c)
     } else if (c.key.startsWith('cod_') || c.key === 'min_trust_score_cod') {
       groups['Batas Transaksi & COD'].push(c)
-    } else if (c.key.startsWith('kyc_') || c.key.includes('limit')) {
-      groups['Limit Akun (Non-KYC)'].push(c)
+    } else if (c.key.startsWith('kyc_') || c.key.includes('limit') || c.key.startsWith('runner_min_balance_')) {
+      groups['Limit Akun & Saldo Kurir'].push(c)
     } else {
       groups['Lain-lain'].push(c)
     }
