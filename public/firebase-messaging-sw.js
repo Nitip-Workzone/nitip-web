@@ -32,6 +32,9 @@ try {
     firebaseConfig.apiKey = urlParams.get('apiKey')
     firebaseConfig.messagingSenderId = urlParams.get('messagingSenderId') || firebaseConfig.messagingSenderId
     firebaseConfig.appId = urlParams.get('appId') || firebaseConfig.appId
+    firebaseConfig.projectId = urlParams.get('projectId') || firebaseConfig.projectId
+    firebaseConfig.authDomain = urlParams.get('authDomain') || firebaseConfig.authDomain
+    firebaseConfig.storageBucket = urlParams.get('storageBucket') || firebaseConfig.storageBucket
   }
   firebase.initializeApp(firebaseConfig)
   console.log('[SW][FCM] Firebase initialized with project', firebaseConfig.projectId)
@@ -88,7 +91,11 @@ self.addEventListener('notificationclick', (event) => {
   const data = event.notification.data || {}
   const orderId = data.order_id || data.orderId
   let url = '/'
-  if (orderId) {
+  if (data.url) {
+    url = data.url
+  } else if (data.click_action) {
+    url = data.click_action
+  } else if (orderId) {
     url = `/orders/${orderId}`
   } else if (data.type === 'merchant_order') {
     url = '/merchant/orders'

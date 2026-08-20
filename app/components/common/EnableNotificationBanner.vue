@@ -7,6 +7,8 @@ const permission = ref<NotificationPermission | 'unsupported'>('default')
 const isSaving = ref(false)
 const isInsideWebView = ref(false)
 
+const { start, requestPermissionAndGetToken } = useFcm()
+
 onMounted(() => {
   if (typeof window === 'undefined') return
   const authStore = useAuthStore()
@@ -46,9 +48,6 @@ async function enable() {
   if (typeof window === 'undefined' || !('Notification' in window)) return
   isSaving.value = true
   try {
-    // requestPermissionAndGetToken dipanggil dari klik tombol (user gesture)
-    // sehingga browser mengizinkan permission prompt tampil
-    const { start, requestPermissionAndGetToken } = useFcm()
     // Pastikan Firebase sudah diinisialisasi
     await start()
     // Minta izin dan ambil token — ini HARUS dipanggil dari user gesture

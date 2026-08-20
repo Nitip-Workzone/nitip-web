@@ -26,7 +26,7 @@ export function useFcm() {
 
   const isSupported = () => {
     if (typeof window === 'undefined') return false
-    
+
     // Disable for merchant role completely on web (they get push notifications on their mobile apps instead)
     const authStore = useAuthStore()
     if (authStore.user?.role === 'merchant') return false
@@ -55,7 +55,7 @@ export function useFcm() {
       const ev = new CustomEvent('nitip:fcm-notification', { detail: payload })
       window.dispatchEvent(ev)
       console.log('[FCM] Dispatched nitip:fcm-notification', payload)
-    } catch {}
+    } catch { }
   }
 
   const init = async () => {
@@ -74,10 +74,10 @@ export function useFcm() {
     let firebaseAppMod: any = null
     let firebaseMessagingMod: any = null
     try {
-      const dynImport = new Function('m', 'return import(m).catch(()=>null)') as (m: string) => Promise<any>
-      firebaseAppMod = await dynImport('firebase/app')
-      firebaseMessagingMod = await dynImport('firebase/messaging')
-    } catch {
+      firebaseAppMod = await import('firebase/app')
+      firebaseMessagingMod = await import('firebase/messaging')
+    } catch (e) {
+      console.warn('[FCM] import failed', e)
       firebaseAppMod = null
       firebaseMessagingMod = null
     }
@@ -122,10 +122,18 @@ export function useFcm() {
           ...data,
         }
 
+        // Putar suara notifikasi secara terprogram (chime)
+        try {
+          const audio = new Audio('/sounds/nitip_chime.wav')
+          audio.play().catch(() => {
+            console.log('[FCM] Pemutaran audio notifikasi diblokir oleh kebijakan autoplay browser')
+          })
+        } catch { }
+
         if (typeof document !== 'undefined' && document.hidden && Notification.permission === 'granted') {
           try {
             new Notification(fcmPayload.title || 'Nihtip', { body: fcmPayload.body || 'Ada pembaruan', icon: '/favicon.png' })
-          } catch {}
+          } catch { }
         }
 
         emitFcmEvent(fcmPayload)
@@ -151,6 +159,10 @@ export function useFcm() {
     if (!isSupported()) return
     const fbConfig = getFirebaseConfig()
     if (!fbConfig || !fbConfig.apiKey) return
+
+    const authStore = useAuthStore()
+    const userId = authStore.user?.id
+    console.log('[FCM] requestPermissionAndGetToken: userId =', userId)
 
     // Pastikan Firebase sudah terinisialisasi
     if (!fcmInitialized) await init()
@@ -180,13 +192,14 @@ export function useFcm() {
     }
 
     try {
-      const dynImport = new Function('m', 'return import(m).catch(()=>null)') as (m: string) => Promise<any>
-      const firebaseMessagingMod = await dynImport('firebase/messaging')
+      const firebaseMessagingMod = await import('firebase/messaging')
       if (!firebaseMessagingMod) return
 
       const { getToken } = firebaseMessagingMod
-      const vapidKey = (config.public as any).firebaseVapidKey
-      if (!vapidKey) {
+      let vapidKey = (config.public as any).firebaseVapidKey
+      if (vapidKey) {
+        vapidKey = vapidKey.replace(/^["']|["']$/g, '')
+      } else {
         console.warn('[FCM] No VAPID key set NUXT_PUBLIC_FIREBASE_VAPID_KEY')
       }
 
@@ -194,11 +207,32 @@ export function useFcm() {
       let registration: ServiceWorkerRegistration | undefined
       if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
         try {
-          const swUrl = `/firebase-messaging-sw.js?apiKey=${encodeURIComponent(fbConfig.apiKey)}&messagingSenderId=${encodeURIComponent(fbConfig.messagingSenderId)}&appId=${encodeURIComponent(fbConfig.appId)}`
-          registration = await navigator.serviceWorker.register(swUrl, { scope: '/' })
-          // Tunggu SW aktif sebelum getToken
-          await navigator.serviceWorker.ready
-          console.log('[FCM] Service worker registered with config query params')
+          const swUrl = `/firebase-messaging-sw.js?apiKey=${encodeURIComponent(fbConfig.apiKey)}&messagingSenderId=${encodeURIComponent(fbConfig.messagingSenderId)}&appId=${encodeURIComponent(fbConfig.appId)}&projectId=${encodeURIComponent(fbConfig.projectId)}&authDomain=${encodeURIComponent(fbConfig.authDomain || '')}&storageBucket=${encodeURIComponent(fbConfig.storageBucket || '')}`
+          
+          const activeReg = await navigator.serviceWorker.getRegistration('/')
+          if (activeReg && activeReg.active && activeReg.active.scriptURL.endsWith(swUrl)) {
+            registration = activeReg
+            console.log('[FCM] Using existing active service worker registration (config matched)')
+          } else {
+            registration = await navigator.serviceWorker.register(swUrl, { scope: '/' })
+            await navigator.serviceWorker.ready
+            console.log('[FCM] Service worker registered/updated with config query params')
+          }
+
+          // Listener otomatis untuk mendeteksi adanya update Service Worker baru
+          if (registration) {
+            registration.addEventListener('updatefound', () => {
+              const installingWorker = registration?.installing
+              if (installingWorker) {
+                installingWorker.addEventListener('statechange', () => {
+                  if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    console.log('[FCM] New service worker version detected, reloading to apply...')
+                    window.location.reload()
+                  }
+                })
+              }
+            })
+          }
         } catch (swErr) {
           console.warn('[FCM] Service worker registration failed', swErr)
         }
@@ -225,6 +259,13 @@ export function useFcm() {
     // Listen message from firebase-messaging-sw.js via postMessage or BroadcastChannel
     navigator.serviceWorker.addEventListener('message', (event: any) => {
       const data = event.data || {}
+      
+      // Putar suara notifikasi saat menerima pesan latar belakang dari Service Worker
+      try {
+        const audio = new Audio('/sounds/nitip_chime.wav')
+        audio.play().catch(() => {})
+      } catch { }
+
       if (data.type && data.type.includes('fcm') || data.type?.startsWith('order_') || data.type?.startsWith('merchant_') || data.type === 'payment_confirmed') {
         emitFcmEvent(data)
       } else if (data.data) {
@@ -258,7 +299,7 @@ export function useFcm() {
 
   const stop = () => {
     if (unsubMessage) {
-      try { unsubMessage() } catch {}
+      try { unsubMessage() } catch { }
       unsubMessage = null
     }
     fcmInitialized = false

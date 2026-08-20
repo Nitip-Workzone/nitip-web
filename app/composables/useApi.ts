@@ -82,6 +82,10 @@ export const useApi = () => {
                         if (!isLoginRequest) {
                             try {
                                 if (import.meta.client) {
+                                    const userId = authStore.user?.id
+                                    if (userId) {
+                                        localStorage.removeItem(`nitip:fcm-token:${userId}`)
+                                    }
                                     authStore.logout()
                                 } else {
                                     authStore.token = null
