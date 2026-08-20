@@ -295,6 +295,21 @@ export function useFcm() {
     }
     await init()
     console.log('[FCM] Started — polling removed, using FCM antrian per-device bucket 20/10m')
+
+    // Otomatis lakukan "unlock" audio saat user melakukan klik pertama kali di halaman
+    if (typeof window !== 'undefined') {
+      const unlock = () => {
+        try {
+          const audio = new Audio('/sounds/nitip_chime.wav')
+          audio.volume = 0.01
+          audio.play().then(() => {
+            console.log('[FCM] Audio playback unlocked successfully')
+            window.removeEventListener('click', unlock)
+          }).catch(() => {})
+        } catch {}
+      }
+      window.addEventListener('click', unlock)
+    }
   }
 
   const stop = () => {
