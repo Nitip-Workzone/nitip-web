@@ -520,7 +520,7 @@ onUnmounted(() => {
           >{{ isLive ? 'Live Stream' : 'Polling' }}</span>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 gap-3">
           <!-- Toggle Open Status Switcher -->
           <button 
             class="flex items-center justify-between p-3.5 border rounded-2xl transition-all text-left active:scale-[0.98] group" 
@@ -539,28 +539,6 @@ onUnmounted(() => {
               <div 
                 class="w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200"
                 :style="{ transform: storeForm.is_open ? 'translateX(12px)' : 'translateX(0)' }"
-              />
-            </div>
-          </button>
-
-          <!-- Toggle Auto Confirm Switcher -->
-          <button 
-            class="flex items-center justify-between p-3.5 border rounded-2xl transition-all text-left active:scale-[0.98] group" 
-            :class="storeForm.auto_confirm ? 'bg-indigo-50/15 border-indigo-100 hover:bg-indigo-50/30' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'"
-            @click="storeForm.auto_confirm = !storeForm.auto_confirm; toggleAutoConfirm()"
-          >
-            <div class="space-y-0.5">
-              <span class="text-[8px] font-extrabold text-slate-400 uppercase tracking-wider">Auto Confirm</span>
-              <p class="text-[11px] font-black text-slate-800">{{ storeForm.auto_confirm ? 'Aktif' : 'Mati' }}</p>
-            </div>
-            <!-- Switch slider -->
-            <div 
-              class="w-8 h-5 rounded-full p-0.5 transition-colors duration-200 flex-shrink-0 flex items-center"
-              :class="storeForm.auto_confirm ? 'bg-indigo-600' : 'bg-slate-300'"
-            >
-              <div 
-                class="w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200"
-                :style="{ transform: storeForm.auto_confirm ? 'translateX(12px)' : 'translateX(0)' }"
               />
             </div>
           </button>

@@ -433,18 +433,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Auto Confirm Toggle -->
-        <div class="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
-          <div class="space-y-0.5">
-            <p class="text-xs font-bold text-slate-700">Auto Confirm Pesanan</p>
-            <p class="text-[10px] text-muted-foreground">Aktifkan agar setiap pesanan masuk langsung berstatus COOKING otomatis.</p>
-          </div>
-          <input
-            v-model="form.auto_confirm"
-            type="checkbox"
-            class="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2"
-          >
-        </div>
+
 
         <!-- Action Buttons -->
         <div class="flex items-center gap-3 pt-3">
