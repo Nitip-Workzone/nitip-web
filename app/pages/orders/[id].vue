@@ -269,15 +269,25 @@ const canNormalCancel = computed(() => {
 const showCancelBtn = computed(() => {
   if (!order.value) return false
   const status = order.value.status
-  return status !== 'completed' && status !== 'cancelled'
+  // Show cancel for active statuses; hide for terminal including expired/disputed/completed/cancelled
+  // cooking/ready/delivering will be disabled via cancelDisabled and show admin hint
+  return ['pending', 'merchant_accepted', 'cooking', 'ready', 'accepted', 'purchasing', 'delivering'].includes(status)
 })
 
 const cancelDisabled = computed(() => {
+  if (!order.value) return false
+  // cooking/ready/delivering always disabled for buyer — must via admin
+  if (['cooking', 'ready', 'delivering'].includes(order.value.status)) return true
   return !canNormalCancel.value && !isStagnant.value
 })
 
 async function handleCancel() {
-  if (cancelDisabled.value) return
+  if (cancelDisabled.value) {
+    if (order.value && ['cooking', 'ready', 'delivering'].includes(order.value.status)) {
+      toastStore.add('Pembatalan pada status cooking/ready/delivering harus melalui admin. Silakan hubungi admin.')
+    }
+    return
+  }
 
   let reason = ''
   if (!canNormalCancel.value) {
@@ -297,7 +307,9 @@ async function handleCancel() {
     toastStore.add('Pesanan berhasil dibatalkan.')
     await loadOrder()
   } else {
-    toastStore.add('Gagal membatalkan pesanan.')
+    // Refetch to show stale handling
+    await loadOrder()
+    toastStore.add('Gagal membatalkan pesanan. Status mungkin sudah berubah.')
   }
 }
 
@@ -412,8 +424,8 @@ function getStatusColor(status: string) {
 
 function getStatusLabel(status: string) {
   switch (status) {
-    case 'pending': return order.value?.merchant_id ? 'Menunggu Dapur Menerima' : 'Mencari Runner'
-    case 'merchant_accepted': return 'Diterima Dapur'
+    case 'pending': return order.value?.merchant_id ? 'Menunggu Konfirmasi Merchant' : 'Mencari Runner'
+    case 'merchant_accepted': return 'Mencari Runner'
     case 'cooking': return 'Sedang Dimasak'
     case 'ready': return 'Pesanan Siap Diambil'
     case 'accepted': return 'Diterima Runner'
@@ -421,6 +433,7 @@ function getStatusLabel(status: string) {
     case 'delivering': return 'Sedang Diantar'
     case 'completed': return 'Selesai'
     case 'cancelled': return 'Dibatalkan'
+    case 'expired': return 'Expired'
     case 'disputed': return 'Sengketa'
     default: return status
   }
@@ -519,6 +532,10 @@ function openImage(url: string) {
             <!-- QR Code -->
             <div class="relative w-64 h-64 bg-white p-1 border border-slate-100 rounded-xl flex items-center justify-center">
               <img v-if="qrisImageUrl" :src="qrisImageUrl" alt="QRIS Code" class="w-full h-full object-contain" >
+              <div v-else-if="order.qris_data === '' || !order.qris_data" class="flex flex-col items-center gap-2 p-4 text-center">
+                <p class="text-[11px] font-bold text-slate-600">QRIS belum tersedia</p>
+                <button :disabled="ordersStore.actionLoading" class="bg-primary text-white text-[11px] font-bold py-2 px-4 rounded-xl disabled:opacity-60" @click="handleRefreshQRIS">Coba Buat QRIS</button>
+              </div>
               <div v-else class="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
               
               <!-- Expired overlay -->
@@ -886,12 +903,10 @@ function openImage(url: string) {
           </div>
         </div>
 
-        <!-- Completion Code QR/Display (if delivering) -->
+        <!-- Completion Code QR/Display (only delivering, requester only) -->
         <div v-if="order.status === 'delivering' && order.completion_code" class="bg-white border border-border/30 rounded-3xl p-5 shadow-sm text-center space-y-4">
-          <h3 class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Kode Konfirmasi Pengiriman</h3>
-          <p class="text-[11px] text-muted-foreground px-2">Berikan kode unik ini kepada Runner hanya saat barang sudah Anda terima dengan baik.</p>
-          
-          <!-- QR Code Display -->
+          <h3 class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Kode Penyelesaian</h3>
+          <p class="text-[11px] text-muted-foreground px-2">Berikan kode ini kepada runner setelah pesanan diterima.</p>
           <div class="flex flex-col items-center gap-3">
             <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
               <ClientOnly>
@@ -904,11 +919,11 @@ function openImage(url: string) {
               </ClientOnly>
             </div>
             <div class="inline-flex flex-col items-center gap-1">
-              <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Kode</span>
+              <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Kode penyelesaian: {{ order.completion_code }}</span>
               <div class="bg-primary/5 text-primary text-2xl font-extrabold tracking-[0.2em] px-6 py-3 rounded-2xl border border-primary/20">
                 {{ order.completion_code }}
               </div>
-              <p class="text-[10px] text-slate-400 mt-1 max-w-[260px]">Tunjukkan kode QR ini kepada Runner untuk dipindai saat barang telah Anda terima.</p>
+              <p class="text-[10px] text-slate-400 mt-1 max-w-[260px]">Berikan kode ini kepada runner setelah pesanan diterima.</p>
             </div>
           </div>
         </div>
