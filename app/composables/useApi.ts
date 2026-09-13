@@ -20,10 +20,25 @@ export const useApi = () => {
         ? (rawApiUrl.endsWith('/api/v1') ? rawApiUrl : `${rawApiUrl}/api/v1`)
         : '/api/v1'
 
+    // Single-flight refresh shared across requests
+    let refreshPromise: Promise<boolean> | null = null
+    const doRefresh = async (): Promise<boolean> => {
+        if (refreshPromise) return refreshPromise
+        refreshPromise = (async () => {
+            try {
+                const auth = useAuthStore()
+                const ok = await auth.refreshSession()
+                return ok
+            } catch { return false } finally { refreshPromise = null }
+        })()
+        return refreshPromise
+    }
+
     return {
         async request<T>(path: string, options: ApiOptions = {}) {
+            // X-Platform always web for web app; never 'mobile'
             const headers: Record<string, string> = {
-                'X-Platform': authStore.token ? 'mobile' : 'web-admin',
+                'X-Platform': 'web',
                 ...options.headers,
             }
 
@@ -79,6 +94,53 @@ export const useApi = () => {
                     }
 
                     if (status === 401) {
+                        const isRefreshRequest = request.toString().includes('/auth/refresh')
+                        const isLogoutRequest = request.toString().includes('/auth/logout')
+                        const errorCode = (response._data as any)?.error_code as string | undefined
+                        const isSessionExpired = !errorCode || errorCode === 'SESSION_EXPIRED' || errorCode === 'ACCOUNT_NOT_FOUND'
+                        const isSuspended = errorCode === 'ACCOUNT_SUSPENDED' || errorCode === 'ACCOUNT_DELETED'
+                        if (isRefreshRequest || isLogoutRequest) {
+                            // refresh/logout failure: clear session
+                            try {
+                                if (import.meta.client) {
+                                    const userId = authStore.user?.id
+                                    if (userId) localStorage.removeItem(`nitip:fcm-token:${userId}`)
+                                    authStore.logout()
+                                } else authStore.token = null
+                            } catch {}
+                            return
+                        }
+                        if (!isLoginRequest && isSessionExpired) {
+                            // try single-flight refresh once, then retry original request
+                            const ok = await doRefresh()
+                            if (ok) {
+                                // retry original request with new token
+                                const retryHeaders: Record<string, string> = { 'X-Platform': 'web', ...options.headers }
+                                if (authStore.token) retryHeaders['Authorization'] = `Bearer ${authStore.token}`
+                                const retryPath = request.toString().includes(baseURL) ? request.toString() : targetPath
+                                try {
+                                    const retryRes = await $fetch<T>(retryPath, { method: options.method, body: options.body, query: options.query, headers: retryHeaders, signal: options.signal })
+                                    return retryRes as any
+                                } catch {}
+                            }
+                            try {
+                                if (import.meta.client) {
+                                    const userId = authStore.user?.id
+                                    if (userId) localStorage.removeItem(`nitip:fcm-token:${userId}`)
+                                    authStore.logout()
+                                } else authStore.token = null
+                            } catch {}
+                            return
+                        }
+                        if (isSuspended) {
+                            try {
+                                const errorStore = useErrorStore()
+                                const msg = (response._data as any)?.message || 'Akun ditangguhkan.'
+                                errorStore.showError(msg, 'Akses Ditolak')
+                                if (import.meta.client) authStore.logout()
+                            } catch {}
+                            return
+                        }
                         if (!isLoginRequest) {
                             try {
                                 if (import.meta.client) {

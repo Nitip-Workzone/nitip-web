@@ -7,6 +7,7 @@ interface User {
     role: string
     trust_score: number
     is_verified: boolean
+    kyc_level: string
     whatsapp_number?: string
     avatar_url?: string
     has_pin?: boolean
@@ -21,6 +22,7 @@ export const useAuthStore = defineStore('auth', {
     state: () => ({
         user: null as User | null,
         token: null as string | null,
+        refreshToken: null as string | null,
         loading: false,
     }),
 
@@ -58,6 +60,31 @@ export const useAuthStore = defineStore('auth', {
                 }
             }
         },
+        setRefreshToken(token: string | null) {
+            this.refreshToken = token
+            if (typeof window !== 'undefined') {
+                if (token) {
+                    const maxAge = 60 * 60 * 24 * 7
+                    document.cookie = `auth_refresh=${token}; path=/; max-age=${maxAge}; SameSite=Lax`
+                } else {
+                    document.cookie = `auth_refresh=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
+                }
+            }
+        },
+        getDeviceId(): string {
+            if (typeof window === 'undefined') return 'web-client'
+            try {
+                const key = 'nitip:device_id'
+                let id = localStorage.getItem(key)
+                if (!id) {
+                    id = `web-${crypto.randomUUID()}`
+                    localStorage.setItem(key, id)
+                }
+                return id
+            } catch {
+                return 'web-client'
+            }
+        },
         async login(email: string, pass: string, totpCode?: string, platform = 'web') {
             this.loading = true
             try {
@@ -71,11 +98,12 @@ export const useAuthStore = defineStore('auth', {
                 const baseURL = rawApiUrl 
                     ? (rawApiUrl.endsWith('/api/v1') ? rawApiUrl : `${rawApiUrl}/api/v1`)
                     : '/api/v1'
-                const res = await $fetch<{ data: { token?: string, require_totp?: boolean } }>(
+                const deviceId = this.getDeviceId()
+                const res = await $fetch<{ data: { token?: string, refresh_token?: string, require_totp?: boolean } }>(
                     `${baseURL}/auth/login`,
                     {
                         method: 'POST',
-                        body: { email, password: pass, device_id: 'web-client', totp_code: totpCode },
+                        body: { email, password: pass, device_id: deviceId, totp_code: totpCode },
                         headers: {
                             'X-Grant-Token': grantToken,
                             'X-Platform': platform,
@@ -89,6 +117,7 @@ export const useAuthStore = defineStore('auth', {
 
                 if (res.data?.token) {
                     this.setToken(res.data.token)
+                    if (res.data?.refresh_token) this.setRefreshToken(res.data.refresh_token)
                     return { success: true }
                 }
                 return { success: false }
@@ -118,12 +147,12 @@ export const useAuthStore = defineStore('auth', {
             this.loading = true
             const { request } = useApi()
             try {
+                const deviceId = this.getDeviceId()
                 const res = await request<{ data: { id: string } }>('/users/register', {
                     method: 'POST',
                     body: {
                         ...payload,
-                        role: ROLE_REQUESTER,
-                        device_id: 'web-client',
+                        device_id: deviceId,
                     },
                 })
 
@@ -134,6 +163,12 @@ export const useAuthStore = defineStore('auth', {
                 }
                 return false
             } catch (error: unknown) {
+                const msg = (error as { data?: { message?: string }, message?: string })?.data?.message
+                    || (error as { message?: string })?.message || 'Registrasi gagal.'
+                try {
+                    const errStore = useErrorStore()
+                    errStore.showError(msg as string, 'Gagal Daftar')
+                } catch {}
                 console.error('Registration failed:', error)
                 return false
             } finally {
@@ -305,9 +340,46 @@ export const useAuthStore = defineStore('auth', {
                 this.loading = false
             }
         },
-        logout() {
+        async refreshSession(): Promise<boolean> {
+            // Single-flight refresh
+            if ((this as any)._refreshPromise) return (this as any)._refreshPromise
+            const p = (async () => {
+                try {
+                    const refresh = this.refreshToken || (typeof document !== 'undefined' ? (document.cookie.match(/(?:^|; )auth_refresh=([^;]*)/)?.[1] || null) : null)
+                    if (!refresh) return false
+                    const { getGrantToken } = useAuthGrant()
+                    const grant = await getGrantToken()
+                    const config = useRuntimeConfig()
+                    const rawApiUrl = (config.public.nitipApiUrl as string || '').replace(/\/$/, '')
+                    const baseURL = rawApiUrl ? (rawApiUrl.endsWith('/api/v1') ? rawApiUrl : `${rawApiUrl}/api/v1`) : '/api/v1'
+                    const res = await $fetch<{ data: { token: string; refresh_token: string } }>(`${baseURL}/auth/refresh`, {
+                        method: 'POST',
+                        body: { refresh_token: decodeURIComponent(refresh) },
+                        headers: { 'X-Grant-Token': grant, 'X-Platform': 'web' },
+                    })
+                    if (res.data?.token) {
+                        this.setToken(res.data.token)
+                        if (res.data.refresh_token) this.setRefreshToken(res.data.refresh_token)
+                        return true
+                    }
+                    return false
+                } catch {
+                    return false
+                } finally {
+                    ;(this as any)._refreshPromise = null
+                }
+            })()
+            ;(this as any)._refreshPromise = p
+            return p
+        },
+        async logout() {
+            try {
+                const { request } = useApi()
+                await request('/auth/logout', { method: 'POST' })
+            } catch {}
             this.setUser(null)
             this.setToken(null)
+            this.setRefreshToken(null)
             if (import.meta.client) {
                 navigateTo('/login')
             }

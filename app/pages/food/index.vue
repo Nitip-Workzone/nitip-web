@@ -12,54 +12,23 @@ const { error } = useToast()
 const searchQuery = ref('')
 const currentPage = ref(1)
 const itemsPerPage = 15
-const searchRadius = ref(5.0)
-const showRadiusPicker = ref(false)
 
-const radiusOptions = [
-  { label: '1 Km', value: 1.0 },
-  { label: '3 Km', value: 3.0 },
-  { label: '5 Km', value: 5.0, default: true },
-  { label: '10 Km', value: 10.0 },
-]
-
-// Geolocation state
-const lat = ref(0.876031736523683)
-const lng = ref(124.0118274994378)
+// Geolocation state — no default Lolak, no radius picker (radius from backend config)
+const lat = ref<number | null>(null)
+const lng = ref<number | null>(null)
 const geoLoading = ref(false)
-const locationLabel = ref('Lolak, Sulawesi Utara')
-
-const loadLocationAndMerchants = async () => {
-  geoLoading.value = true
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        lat.value = position.coords.latitude
-        lng.value = position.coords.longitude
-        // Simple reverse geocode for display
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat.value}&lon=${lng.value}&accept-language=id`
-          )
-          const data = await res.json()
-          const parts = data.display_name?.split(',') || []
-          locationLabel.value = parts.slice(0, 2).join(',').trim()
-        } catch { /* ignore */ }
-        fetchMerchants()
-      },
-      () => {
-        fetchMerchants()
-      }
-    )
-  } else {
-    fetchMerchants()
-  }
-}
+const locationLabel = ref('Membutuhkan lokasi')
+const locationError = ref('')
+const showLocationPrompt = ref(false)
+const showManualPicker = ref(false)
+const hasRequestedLocation = ref(false)
 
 const fetchMerchants = async () => {
+  if (lat.value === null || lng.value === null) return
+  geoLoading.value = true
   try {
-    await merchantsStore.fetchNearbyMerchants(lat.value, lng.value, searchRadius.value)
+    await merchantsStore.fetchNearbyMerchants(lat.value, lng.value)
     geoLoading.value = false
-    // fetch active promotions for first 10 merchants for badge display
     if (merchantsStore.merchants.length > 0) {
       const ids = merchantsStore.merchants.slice(0, 10).map(m => m.id)
       merchantsStore.fetchActivePromotionsBatch(ids)
@@ -70,29 +39,71 @@ const fetchMerchants = async () => {
   }
 }
 
-const setRadius = (val: number) => {
-  searchRadius.value = val
-  showRadiusPicker.value = false
-  currentPage.value = 1
+const requestLocation = () => {
+  if (!navigator.geolocation) {
+    locationError.value = 'Browser tidak mendukung geolocation.'
+    showLocationPrompt.value = false
+    return
+  }
+  hasRequestedLocation.value = true
+  showLocationPrompt.value = false
+  geoLoading.value = true
+  locationError.value = ''
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      lat.value = position.coords.latitude
+      lng.value = position.coords.longitude
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat.value}&lon=${lng.value}&accept-language=id`
+        )
+        const data = await res.json()
+        const parts = data.display_name?.split(',') || []
+        locationLabel.value = parts.slice(0, 2).join(',').trim() || `${lat.value.toFixed(4)}, ${lng.value.toFixed(4)}`
+      } catch { locationLabel.value = `${lat.value!.toFixed(4)}, ${lng.value!.toFixed(4)}` }
+      fetchMerchants()
+    },
+    (err) => {
+      geoLoading.value = false
+      if (err.code === err.PERMISSION_DENIED) {
+        locationError.value = 'Izin lokasi ditolak. Aktifkan di pengaturan browser (ikon gembok di address bar) atau pilih lokasi manual.'
+      } else if (err.code === err.POSITION_UNAVAILABLE) {
+        locationError.value = 'GPS tidak tersedia. Coba lagi atau pilih lokasi manual.'
+      } else if (err.code === err.TIMEOUT) {
+        locationError.value = 'Meminta lokasi timeout. Coba lagi.'
+      } else {
+        locationError.value = 'Gagal mendapatkan lokasi. Coba lagi atau pilih lokasi manual.'
+      }
+    },
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+  )
+}
+
+const onManualLocationSelected = (payload: { lat: number; lng: number; address: string }) => {
+  lat.value = payload.lat
+  lng.value = payload.lng
+  locationLabel.value = payload.address
+  locationError.value = ''
+  showManualPicker.value = false
   fetchMerchants()
 }
 
+const refreshLocation = () => {
+  requestLocation()
+}
+
 onMounted(() => {
-  loadLocationAndMerchants()
+  showLocationPrompt.value = true
 })
 
-// Computed
+// Computed — use backend sorting (is_open DESC, distance ASC), do not re-sort by rating
 const filteredMerchants = computed(() => {
   let list = [...merchantsStore.merchants]
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase()
     list = list.filter(m => m.name.toLowerCase().includes(q) || (m.description && m.description.toLowerCase().includes(q)))
   }
-  return list.sort((a, b) => {
-    if (a.is_open && !b.is_open) return -1
-    if (!a.is_open && b.is_open) return 1
-    return (b.rating || 0) - (a.rating || 0)
-  })
+  return list
 })
 
 const openMerchants = computed(() => filteredMerchants.value.filter(m => m.is_open))
@@ -151,7 +162,7 @@ const scrollToTop = () => {
           <!-- Location row -->
           <button
             class="flex items-center gap-1 mt-0.5 group"
-            @click="loadLocationAndMerchants"
+            @click="refreshLocation"
           >
             <LocateFixed class="w-3 h-3 text-primary shrink-0" />
             <span class="text-[10px] font-semibold text-slate-500 truncate max-w-[200px] group-hover:text-primary transition-colors">
@@ -159,6 +170,7 @@ const scrollToTop = () => {
             </span>
             <RefreshCw v-if="geoLoading" class="w-2.5 h-2.5 text-slate-400 animate-spin" />
           </button>
+          <button v-if="lat !== null" class="text-[10px] font-bold text-primary underline ml-2" @click="showManualPicker = true">Ubah Lokasi</button>
         </div>
       </div>
 
@@ -180,23 +192,24 @@ const scrollToTop = () => {
           <X class="w-3 h-3 text-slate-500" />
         </button>
       </div>
+    </div>
 
-      <!-- Radius Pill -->
-      <div class="flex items-center gap-2 mt-3">
-        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Radius:</span>
-        <div class="flex gap-1.5">
-          <button
-            v-for="opt in radiusOptions"
-            :key="opt.value"
-            class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold border transition-all"
-            :class="searchRadius === opt.value
-              ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25'
-              : 'bg-white text-slate-500 border-slate-200 hover:border-primary/40'"
-            @click="setRadius(opt.value)"
-          >
-            {{ opt.label }}
-          </button>
-        </div>
+    <!-- Location Prompt -->
+    <div v-if="showLocationPrompt" class="mx-4 mt-4 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+      <p class="text-xs font-bold text-amber-800">Lokasi diperlukan untuk menampilkan merchant terdekat.</p>
+      <p class="text-[11px] text-amber-700 mt-1">Lokasi ini tidak disimpan sebagai alamat profil.</p>
+      <div class="flex gap-2 mt-3">
+        <button class="flex-1 h-9 bg-primary text-white text-xs font-bold rounded-xl" @click="requestLocation">Lanjut</button>
+        <button class="flex-1 h-9 bg-white border border-slate-200 text-xs font-bold rounded-xl" @click="showManualPicker = true">Pilih Lokasi Manual</button>
+      </div>
+    </div>
+
+    <!-- Location Error -->
+    <div v-if="locationError" class="mx-4 mt-4 bg-red-50 border border-red-200 rounded-2xl p-4">
+      <p class="text-xs font-bold text-red-800">{{ locationError }}</p>
+      <div class="flex gap-2 mt-3">
+        <button class="flex-1 h-9 bg-primary text-white text-xs font-bold rounded-xl" @click="requestLocation">Coba Lagi</button>
+        <button class="flex-1 h-9 bg-white border border-slate-200 text-xs font-bold rounded-xl" @click="showManualPicker = true">Pilih Lokasi Manual</button>
       </div>
     </div>
 
@@ -252,12 +265,11 @@ const scrollToTop = () => {
         </div>
         <h3 class="text-xs font-extrabold text-slate-700">Tidak Ada Mitra Food</h3>
         <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
-          Tidak ada toko dalam radius <span class="font-bold text-primary">{{ searchRadius }} km</span> dari lokasi Anda.
-          <br>Coba perluas radius pencarian.
+          Tidak ada toko dalam jangkauan dari lokasi Anda.
         </p>
         <button
           class="mt-5 inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-[11px] font-bold rounded-xl active:scale-95 transition-all shadow-sm shadow-primary/25"
-          @click="loadLocationAndMerchants"
+          @click="refreshLocation"
         >
           <RefreshCw class="w-3.5 h-3.5" />
           Coba Lagi
@@ -340,7 +352,7 @@ const scrollToTop = () => {
               </span>
               <span class="text-[10px] text-slate-400 flex items-center gap-1 ml-auto truncate">
                 <MapPin class="w-3 h-3 shrink-0" />
-                {{ m.address ? m.address.split(',')[0] : searchRadius + ' km' }}
+                {{ m.address ? m.address.split(',')[0] : `${m.distance_km?.toFixed(1) || ''} km` }}
               </span>
             </div>
           </div>
@@ -383,9 +395,12 @@ const scrollToTop = () => {
       <!-- Bottom hint text -->
       <div v-if="!isLoading && filteredMerchants.length > 0" class="text-center py-2">
         <p class="text-[9px] text-slate-300 font-medium">
-          Menampilkan {{ Math.min(currentPage * itemsPerPage, filteredMerchants.length) }} dari {{ filteredMerchants.length }} mitra &nbsp;·&nbsp; diurutkan berdasarkan rating tertinggi
+          Menampilkan {{ Math.min(currentPage * itemsPerPage, filteredMerchants.length) }} dari {{ filteredMerchants.length }} mitra &nbsp;·&nbsp; {{ lat !== null ? locationLabel : '' }}
         </p>
       </div>
+
+    <!-- Manual Location Picker Modal -->
+    <LocationPickerModal v-if="showManualPicker" @close="showManualPicker = false" @selected="onManualLocationSelected" />
     </div>
   </div>
 </template>

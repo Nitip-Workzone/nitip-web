@@ -50,8 +50,11 @@ export default defineNuxtRouteMiddleware(async (to) => {
     try {
       authStore.token = null
       authStore.setUser(null)
+      ;(authStore as any).refreshToken = null
       const tokenCookie = useCookie('auth_token')
       tokenCookie.value = null
+      const refreshCookie = useCookie('auth_refresh')
+      refreshCookie.value = null
     } catch {}
   }
 

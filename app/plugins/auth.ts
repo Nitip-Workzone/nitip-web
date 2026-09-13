@@ -11,9 +11,13 @@
 export default defineNuxtPlugin(() => {
     const authStore = useAuthStore()
     const tokenCookie = useCookie('auth_token')
+    const refreshCookie = useCookie('auth_refresh')
 
     // Hidrasikan token dari cookie ke store jika belum ada
     if (tokenCookie.value && !authStore.token) {
         authStore.token = tokenCookie.value
+    }
+    if (refreshCookie.value && !(authStore as any).refreshToken) {
+        ;(authStore as any).refreshToken = refreshCookie.value
     }
 })

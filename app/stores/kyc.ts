@@ -9,6 +9,7 @@ export interface KycSubmission {
   facebook_name?: string
   facebook_screenshot_url?: string
   status: string // 'pending' | 'approved' | 'rejected'
+  target_level: string // 'separuh' | 'penuh'
   admin_note?: string
   created_at: string
   updated_at: string
@@ -54,6 +55,15 @@ export const useKycStore = defineStore('kyc', {
       } finally {
         this.actionLoading = false
       }
+    },
+    async resetRetry(userId: string, targetLevel: string) {
+      const { request } = useApi()
+      await request('/admin/kyc/reset-retry', { method: 'POST', body: { user_id: userId, target_level: targetLevel } })
+    },
+    async fetchMySubmissions() {
+      const { request } = useApi()
+      const res = await request<{ data: { submissions: KycSubmission[], remaining: Record<string, number> } }>('/kyc/submissions')
+      return res.data
     },
   },
 })

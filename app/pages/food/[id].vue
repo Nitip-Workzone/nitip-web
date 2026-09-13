@@ -105,18 +105,17 @@ async function reverseGeocodeDelivery(lat: number, lng: number) {
     const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=id`)
     const data = await res.json()
     if (data?.display_name) {
-      // Ambil 3-4 bagian pertama agar ringkas
       const parts = data.display_name.split(',').slice(0, 4).join(',').trim()
       return parts
     }
   } catch {}
-  return `Lokasi (${lat.toFixed(5)}, ${lng.toFixed(5)})`
+  return 'Lokasi dipilih'
 }
 
 async function fetchCurrentLocationAsDelivery() {
   locationLoading.value = true
   if (!navigator.geolocation) {
-    deliveryAddress.value = 'Lolak, Sulawesi Utara'
+    deliveryAddress.value = 'Lokasi dipilih'
     isCurrentLocation.value = false
     locationLoading.value = false
     return
@@ -133,8 +132,7 @@ async function fetchCurrentLocationAsDelivery() {
         resolve()
       },
       async () => {
-        // Fallback tetap Lolak
-        deliveryAddress.value = 'Lolak, Sulawesi Utara'
+        deliveryAddress.value = 'Lokasi dipilih'
         isCurrentLocation.value = false
         locationLoading.value = false
         resolve()
@@ -243,7 +241,7 @@ watch(paymentSource, (newVal) => {
 
 onMounted(async () => {
   if (merchantsStore.merchants.length === 0) {
-    await merchantsStore.fetchNearbyMerchants(0.876031736523683, 124.0118274994378, 15.0)
+    await merchantsStore.fetchNearbyMerchants(0.876031736523683, 124.0118274994378)
   }
   await merchantsStore.fetchMerchantMenuPublic(merchantId)
   await walletStore.fetchBalance()
@@ -433,9 +431,24 @@ function handleRemovePromo() {
   promoError.value = ''
 }
 
+let idempotencyKey: string | null = null
+const hasValidDestination = computed(() => !!deliveryLat.value && !!deliveryLng.value && deliveryLat.value !== 0 && deliveryLng.value !== 0)
+
 const handleCheckout = async () => {
   if (cartStore.items.length === 0) return
+  if (!hasValidDestination.value) {
+    error('Pilih alamat pengantaran terlebih dahulu')
+    return
+  }
   checkoutLoading.value = true
+  // Generate idempotency key once per checkout attempt, keep on retry
+  if (!idempotencyKey) {
+    try { idempotencyKey = crypto.randomUUID() } catch { idempotencyKey = `${Date.now()}-${Math.random()}` }
+  }
+  const expectedFoodSubtotal = cartStore.subtotal
+  const expectedDeliveryFee = estimatedDeliveryFee.value ?? 10000
+  const expectedDiscount = cartStore.appliedPromotion?.discount_amount ?? 0
+  const expectedTotal = expectedFoodSubtotal + expectedDeliveryFee + (cartStore.totalItems > 1 ? (cartStore.totalItems - 1) * 2000 : 0) - expectedDiscount
   const itemsPayload = cartStore.items.map(i => ({
     menu_id: i.id,
     quantity: i.quantity,
@@ -467,6 +480,7 @@ const handleCheckout = async () => {
     const isCod = paymentSource.value === 'cod'
     const res = await request<{ data: { id: string } }>('/orders', {
       method: 'POST',
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {},
       body: {
         item_details: `Nitip Food: ${itemDetailsString}`,
         service_category: 'beli',
@@ -479,12 +493,18 @@ const handleCheckout = async () => {
         delivery_lat: deliveryLat.value,
         delivery_lng: deliveryLng.value,
         payment_method: isCod ? 'cod' : 'escrow',
-        payment_source: isCod ? 'wallet' : paymentSource.value, // COD backend tetap butuh wallet source placeholder, tapi method=cod
+        payment_source: isCod ? 'wallet' : paymentSource.value,
         promotion_code: isCod ? undefined : (cartStore.appliedPromotion?.code || promoCodeInput.value?.trim() || (activePromo.value?.auto_apply ? undefined : undefined)),
         weight_kg: 0.5,
         volume_liters: 1.0,
         merchant_id: merchant.value?.id,
         items: itemsPayload,
+        expected_summary: {
+          food_subtotal: expectedFoodSubtotal,
+          delivery_fee: expectedDeliveryFee,
+          discount: expectedDiscount,
+          total_payment: expectedTotal,
+        },
       }
     })
     if (res.data) {
@@ -493,21 +513,41 @@ const handleCheckout = async () => {
         console.warn('[Checkout] res.data.id missing', res)
         success('Pesanan berhasil dibuat! Lihat di Order Saya.')
         cartStore.clearCart()
+        idempotencyKey = null
         showCartDrawer.value = false
         await navigateTo('/orders')
       } else {
         success('Pesanan berhasil dibuat! Mengalihkan ke detail pesanan...')
         cartStore.clearCart()
+        idempotencyKey = null
         showCartDrawer.value = false
-        // Langsung direct ke halaman detail order yang sedang berjalan (running order)
-        // Tunda sedikit agar drawer close animation selesai, lalu push
         setTimeout(async () => {
           await navigateTo(`/orders/${orderId}`)
         }, 150)
       }
     }
   } catch (err: unknown) {
-    error((err as { data?: { message?: string } })?.data?.message || 'Gagal mengirimkan pesanan.')
+    const errData = (err as any)?.data || {}
+    const code = errData?.error_code || errData?.code
+    if (code === 'ORDER_SUMMARY_CHANGED') {
+      const latest = errData?.data || {}
+      error('Harga atau biaya pesanan berubah. Silakan periksa kembali.')
+      // Update estimate from server summary if provided
+      if (latest.delivery_fee) estimatedDeliveryFee.value = latest.delivery_fee
+      // New key because previous request did not create order
+      idempotencyKey = null
+      // Clear invalid promo if any
+      if (latest.discount === 0 && cartStore.appliedPromotion) {
+        cartStore.removePromotion()
+      }
+    } else if (code === 'IDEMPOTENCY_CONFLICT') {
+      error('Pesanan dengan data berbeda sudah menggunakan Idempotency-Key ini')
+      idempotencyKey = null
+    } else if (code === 'MENU_NOT_FOUND' || code === 'MENU_UNAVAILABLE' || code === 'MENU_MERCHANT_MISMATCH' || code === 'VARIANT_INVALID' || code === 'TOPPING_INVALID') {
+      error(errData?.message || 'Menu/variant/topping tidak valid, perbarui keranjang')
+    } else {
+      error((err as { data?: { message?: string } })?.data?.message || 'Gagal mengirimkan pesanan.')
+    }
   } finally {
     checkoutLoading.value = false
   }
@@ -631,7 +671,7 @@ const cartSubtotal = computed(() =>
 
             <span class="text-[11px] text-slate-500 font-medium flex items-center gap-1 flex-1 min-w-0">
               <MapPin class="w-3.5 h-3.5 shrink-0 text-slate-400" />
-              <span class="truncate">{{ merchant?.address || 'Trans Sulawesi, Lolak' }}</span>
+              <span class="truncate">{{ merchant?.address || 'Alamat belum tersedia' }}</span>
             </span>
           </div>
 

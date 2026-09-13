@@ -253,8 +253,12 @@ async function saveProfile() {
     isEditing.value = false
     toastStore.add('Profil berhasil diperbarui!')
   } catch (error: unknown) {
-    const err = error as { data?: { message?: string, errors?: Array<{ message?: string }> } }
-    const msg = err.data?.message || (err.data?.errors?.[0]?.message) || 'Gagal menyimpan profil.'
+    const err = error as { data?: { message?: string, error_code?: string, errors?: Array<{ message?: string }> } }
+    let msg = err.data?.message || (err.data?.errors?.[0]?.message) || 'Gagal menyimpan profil.'
+    if (err.data?.error_code === 'WHATSAPP_ALREADY_USED' || msg.toLowerCase().includes('whatsapp sudah digunakan')) {
+      msg = 'Nomor WhatsApp sudah digunakan'
+      profileErrors.value.whatsapp = msg
+    }
     toastStore.add(msg)
   } finally {
     saving.value = false

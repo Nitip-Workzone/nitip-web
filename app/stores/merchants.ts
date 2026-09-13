@@ -16,6 +16,7 @@ export interface Merchant {
   image_url?: string
   cover_url?: string
   opening_hours?: string
+  distance_km?: number
   created_at: string
   updated_at: string
 }
@@ -57,12 +58,12 @@ export const useMerchantsStore = defineStore('merchants', {
   }),
 
   actions: {
-    async fetchNearbyMerchants(lat: number, lng: number, radiusKm = 10.0) {
+    async fetchNearbyMerchants(lat: number, lng: number) {
       this.loading = true
       const { request } = useApi()
       try {
         const res = await request<{ data: Merchant[] }>(
-          `/merchants?lat=${lat}&lng=${lng}&radius_km=${radiusKm}`
+          `/merchants?lat=${lat}&lng=${lng}`
         )
         if (res.data) {
           this.merchants = res.data
