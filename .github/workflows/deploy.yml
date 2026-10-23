@@ -17,23 +17,19 @@ jobs:
         run: |
           cp ~/.secret/nitip-web-production.env .env
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: '22'
-
-      - name: Enable Corepack (Yarn)
-        run: |
-          corepack enable
+          bun-version: '1.4.4'
 
       - name: Install Dependencies
         run: |
-          yarn install --frozen-lockfile
+          bun install
 
       - name: Build Static Site
         run: |
           rm -rf .output .nuxt
-          yarn generate
+          bun run generate
 
       - name: Stop and Cleanup Docker Web Container
         run: |
